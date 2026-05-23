@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/28175519/README.md)
 # Resonant
 
 **Resonant** is a voice-first AI learning assistant built for blind and visually impaired students — and anyone who learns better by listening.
@@ -87,44 +86,18 @@ LIVEKIT_API_SECRET=your_secret
 
 ## Running the Project
 
-All three processes need to run simultaneously: the Flask backend, the LiveKit agent, and a static file server for the frontend.
-
-Run each in a separate terminal:
-
 ```bash
-# Terminal 1 — backend
-source .venv/bin/activate
-python3 server.py
-
-# Terminal 2 — agent
-source .venv/bin/activate
-python3 agent.py dev
-
-# Terminal 3 — frontend
-python3 -m http.server 8080
+chmod +x start.sh
+./start.sh
 ```
 
-Then open:
+That's it. The script starts the backend, the agent, and the frontend server all at once. Then open:
 
 ```
 http://localhost:8080
 ```
 
-Or use a single launch script:
-
-```bash
-#!/bin/bash
-cd "$(dirname "$0")"
-fuser -k 5000/tcp 2>/dev/null
-fuser -k 8080/tcp 2>/dev/null
-source .venv/bin/activate
-echo "Starting Resonant..."
-python3 server.py &
-python3 -m http.server 8080 &
-python3 agent.py dev &
-echo "All running at http://localhost:8080 — Ctrl+C to stop."
-wait
-```
+Press `Ctrl+C` to stop everything.
 
 ---
 
