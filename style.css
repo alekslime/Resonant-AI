@@ -1,0 +1,575 @@
+/* ========================= */
+/* RESET & BASE              */
+/* ========================= */
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    background: #fff;
+    color: #000;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ========================= */
+/* PAGE 1: HERO              */
+/* ========================= */
+
+.hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 640px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+/* FULLSCREEN WAVES */
+#waveCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Logo top-left */
+.logo {
+    position: absolute;
+    top: 28px;
+    left: 48px;
+    height: 36px;
+    width: auto;
+    z-index: 10;
+}
+
+/* Person image ABOVE waves */
+.hero-bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 65%;
+    object-fit: cover;
+    object-position: center top;
+    z-index: 2;
+}
+
+/* Hero text ABOVE everything */
+.hero-title {
+    position: absolute;
+    left: 90px;
+    bottom: 168px;
+    font-size: clamp(48px, 5.5vw, 72px);
+    font-weight: 400;
+    line-height: 1.08;
+    color: #000;
+    z-index: 5;
+    letter-spacing: -0.5px;
+}
+
+/* Bottom row */
+.hero-bottom-row {
+    position: absolute;
+    left: 90px;
+    bottom: 88px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    z-index: 5;
+}
+
+.hero-text {
+    font-size: clamp(36px, 4.2vw, 56px);
+    font-weight: 400;
+    line-height: 1;
+    color: #000;
+    white-space: nowrap;
+}
+
+/* CTA button */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #FFB938 0%, #FF9800 100%);
+    border: none;
+    border-radius: 999px;
+    padding: 0 28px;
+    height: 46px;
+    min-width: 110px;
+    color: #000;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.45);
+}
+
+/* Rotated watermark */
+.built-by {
+    position: absolute;
+    right: -56px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #bbb;
+    font-weight: 300;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+/* ========================= */
+/* PAGE 2: SECOND            */
+/* ========================= */
+
+.second-page {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 600px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.second-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    object-position: left 20%;
+    z-index: 1;
+}
+
+.second-content {
+    position: absolute;
+    top: 10%;
+    right: 4%;
+    width: 48%;
+    text-align: right;
+    z-index: 5;
+}
+
+.second-page h3 {
+    font-size: clamp(36px, 4.2vw, 62px);
+    font-weight: 400;
+    line-height: 1.12;
+    margin-bottom: 36px;
+    color: #000;
+    letter-spacing: -0.3px;
+}
+
+.second-page h3 span {
+    color: #FF8C00;
+}
+
+.description {
+    font-size: clamp(15px, 1.3vw, 20px);
+    font-weight: 400;
+    line-height: 1.65;
+    color: #222;
+}
+
+/* ========================= */
+/* PAGE 3: STORY SCROLL      */
+/* ========================= */
+
+.third-page-scroll {
+    position: relative;
+    height: 500vh;
+}
+
+.third-page-sticky {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.steps-title {
+    position: absolute;
+    top: 80px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 20;
+
+    font-size: clamp(48px, 5vw, 64px);
+    font-weight: 400;
+    color: #000;
+    letter-spacing: -0.5px;
+}
+
+.steps-title span {
+    color: #FF8C00;
+}
+
+/* Story cards */
+.story-card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+
+    opacity: 0;
+    transform: scale(0.4);
+
+    will-change: transform, opacity;
+}
+
+.story-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Dark gradient */
+.story-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 45%;
+    background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.75) 0%,
+        transparent 100%
+    );
+    z-index: 1;
+}
+
+.story-card-text {
+    position: relative;
+    z-index: 2;
+
+    width: 100%;
+    padding: 48px 64px;
+
+    opacity: 0;
+    transform: translateY(20px);
+
+    transition:
+        opacity 0.4s ease,
+        transform 0.4s ease;
+}
+
+.story-card-text h4 {
+    font-size: 48px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    line-height: 1;
+}
+
+.story-card-text p {
+    font-size: 20px;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.5;
+    max-width: 520px;
+}
+
+.story-card.text-visible .story-card-text {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ========================= */
+/* PAGE 4: WHO'S IT FOR      */
+/* ========================= */
+
+.fourth-page {
+    position: relative;
+    min-height: 100vh;
+    background: #fff;
+    padding: 80px 80px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    border-top: 1px solid #e8e8e8;
+}
+
+.fourth-bg {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    z-index: 0;
+    opacity: 0.30;
+    pointer-events: none;
+}
+
+.fourth-top {
+    position: relative;
+    z-index: 1;
+}
+
+.whos-title {
+    font-size: clamp(72px, 9vw, 128px);
+    font-weight: 400;
+    color: #000;
+    margin: 0 0 28px;
+    line-height: 1;
+    letter-spacing: -2px;
+}
+
+.whos-title span {
+    color: #FF8C00;
+}
+
+.whos-text {
+    font-size: clamp(15px, 1.4vw, 20px);
+    font-weight: 400;
+    color: #111;
+    line-height: 1.75;
+    max-width: 900px;
+    margin: 0 0 20px;
+}
+
+.fourth-quote {
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    padding-top: 40px;
+    text-align: right;
+}
+
+.fourth-quote blockquote {
+    font-size: clamp(36px, 4.5vw, 64px);
+    font-weight: 400;
+    color: #000;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    font-style: normal;
+}
+
+.fourth-quote blockquote span {
+    color: #FF8C00;
+}
+
+/* ========================= */
+/* PAGE 5: READY TO LISTEN   */
+/* ========================= */
+
+.fifth-page {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background: #ffffff;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 80px 20px 48px;
+}
+
+.ready-title {
+    font-size: clamp(40px, 4.5vw, 64px);
+    font-weight: 400;
+    color: #000;
+    letter-spacing: -0.5px;
+    margin-top: 8px;
+}
+
+.big-round-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 420px;
+    height: 420px;
+
+    border-radius: 50%;
+
+    background: linear-gradient(
+        180deg,
+        #FFB938 0%,
+        #FF9800 100%
+    );
+
+    color: #000;
+    font-size: 36px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    box-shadow: 0 20px 60px rgba(255, 152, 0, 0.28);
+
+    transition:
+        transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.3s ease;
+}
+
+.big-round-button:hover {
+    transform: scale(1.04);
+    box-shadow: 0 28px 70px rgba(255, 152, 0, 0.42);
+}
+
+.big-round-button:active {
+    transform: scale(0.97);
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 18px;
+    font-weight: 500;
+    color: #000;
+}
+
+.footer-logo img {
+    height: 26px;
+    width: auto;
+}
+
+/* ========================= */
+/* RESPONSIVE                */
+/* ========================= */
+
+@media (max-width: 900px) {
+
+    .hero-title {
+        left: 40px;
+        bottom: 140px;
+    }
+
+    .hero-bottom-row {
+        left: 40px;
+        bottom: 70px;
+        gap: 16px;
+    }
+
+    .built-by {
+        display: none;
+    }
+
+    .second-content {
+        left: 52%;
+        right: 3%;
+    }
+
+    .fourth-page {
+        padding: 60px 40px;
+    }
+
+    .whos-title {
+        letter-spacing: -1px;
+    }
+
+    .big-round-button {
+        width: 300px;
+        height: 300px;
+        font-size: 28px;
+    }
+
+    .story-card-text {
+        padding: 36px;
+    }
+
+    .story-card-text h4 {
+        font-size: 36px;
+    }
+
+    .story-card-text p {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 640px) {
+
+    .hero-title {
+        left: 24px;
+        font-size: 36px;
+        bottom: 120px;
+    }
+
+    .hero-bottom-row {
+        left: 24px;
+        flex-wrap: wrap;
+    }
+
+    .hero-bg {
+        width: 100%;
+        opacity: 0.5;
+    }
+
+    .second-bg {
+        width: 100%;
+        opacity: 0.25;
+    }
+
+    .second-content {
+        position: absolute;
+        top: 50%;
+        left: 5%;
+        right: 5%;
+        transform: translateY(-50%);
+        text-align: left;
+        width: auto;
+    }
+
+    .story-card-text {
+        padding: 24px;
+    }
+
+    .story-card-text h4 {
+        font-size: 28px;
+    }
+
+    .story-card-text p {
+        font-size: 16px;
+    }
+
+    .fourth-page {
+        padding: 48px 24px;
+    }
+
+    .big-round-button {
+        width: 240px;
+        height: 240px;
+        font-size: 22px;
+    }
+}
