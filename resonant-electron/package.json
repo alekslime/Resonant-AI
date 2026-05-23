@@ -1,0 +1,72 @@
+{
+  "name": "resonant",
+  "version": "1.0.0",
+  "description": "Voice-first AI learning assistant",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --win --linux"
+  },
+  "build": {
+    "appId": "com.resonant.app",
+    "productName": "Resonant",
+    "copyright": "GDG Tirana 2026",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "setup.html",
+      "style.css",
+      "logo.png",
+      "grad.png",
+      "ask.png",
+      "listen.png",
+      "upload.png",
+      "slide1.png",
+      "slide2.png",
+      "fourth-bg.png"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-python/server",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "dist-python/agent",
+        "to": "agent",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "logo.png",
+      "extraResources": [
+        {
+          "from": "dist-python/server.exe",
+          "to": "server.exe"
+        },
+        {
+          "from": "dist-python/agent.exe",
+          "to": "agent.exe"
+        }
+      ]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "logo.png",
+      "category": "Education"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}
