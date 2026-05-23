@@ -38,6 +38,7 @@ No endless scrolling. No screen dependency. Just conversation powered by AI.
 ├── index.html
 ├── demo.html
 ├── style.css
+├── start.sh
 ├── requirements.txt
 ├── .gitignore
 ├── logo.png
