@@ -13,3 +13,10 @@ Thumbs.db
 
 # Optional
 *.log
+kokoro-v0_19.pth
+voices/
+vectorstore/
+.env.local
+.venv/
+__pycache__/
+uploads/
