@@ -1,4 +1,13 @@
 flask
 flask-cors
+flask-sock
 python-dotenv
-livekit-api
+faster-whisper
+pyttsx3
+numpy
+requests
+# RAG dependencies
+chromadb
+sentence-transformers
+PyMuPDF
+python-docx

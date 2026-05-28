@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Resonant — AI Tutor</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -454,15 +454,22 @@
 </div>
 
 <script>
-const TOKEN_SERVER_URL = 'http://localhost:5000/api/token';
-const LivekitClient = window.LivekitClient;
+// ── State ────────────────────────────────────────────────────────────
+const STATES = { READY:'ready', LISTENING:'listening', THINKING:'thinking', SPEAKING:'speaking', MUTED:'muted' };
+const STATE_LABELS   = { ready:'Ready', listening:'Listening', thinking:'Processing', speaking:'Speaking', muted:'Muted' };
+const STATUS_CLASSES = { ready:'s-ready', listening:'s-listening', thinking:'s-thinking', speaking:'s-speaking', muted:'s-muted' };
 
-let room            = null;
-let isMuted         = false;
-let localAudioTrack = null;
-let sessionStart    = null;
-let timerInterval   = null;
+let currentState     = STATES.READY;
+let ws               = null;
+let isMuted          = false;
+let mediaRecorder    = null;
+let audioChunks      = [];
+let isRecording      = false;
+let sessionStart     = null;
+let timerInterval    = null;
+let currentAudio     = null;
 
+// ── DOM ──────────────────────────────────────────────────────────────
 const loadingScreen  = document.getElementById('loadingScreen');
 const errorScreen    = document.getElementById('errorScreen');
 const errorMsg       = document.getElementById('errorMsg');
@@ -481,12 +488,7 @@ const sessionBox     = document.getElementById('sessionBox');
 const sessionTimer   = document.getElementById('sessionTimer');
 const sessionStatus  = document.getElementById('sessionStatus');
 
-const STATES = { READY:'ready', LISTENING:'listening', THINKING:'thinking', SPEAKING:'speaking', MUTED:'muted' };
-let currentState = STATES.READY;
-
-const STATE_LABELS   = { ready:'Ready', listening:'Listening', thinking:'Processing', speaking:'Speaking', muted:'Muted' };
-const STATUS_CLASSES = { ready:'s-ready', listening:'s-listening', thinking:'s-thinking', speaking:'s-speaking', muted:'s-muted' };
-
+// ── UI helpers ───────────────────────────────────────────────────────
 function setState(state) {
   if (state === currentState) return;
   currentState = state;
@@ -499,11 +501,6 @@ function setState(state) {
 function setStatusRaw(dotClass, label) {
   statusDot.className = 'status-indicator ' + dotClass;
   statusText.textContent = label;
-}
-
-function setAgentSpeaking(speaking) {
-  if (speaking) setState(STATES.SPEAKING);
-  else if (!isMuted) setState(STATES.LISTENING);
 }
 
 function setTranscript(text, isAgent) {
@@ -521,115 +518,159 @@ function startTimer() {
   }, 1000);
 }
 
-async function connect() {
-  try {
-    setStatusRaw('s-connecting', 'Connecting…');
-    loadingMsg.textContent = 'Connecting to your tutor…';
+// ── Audio playback ───────────────────────────────────────────────────
+function playAudio(b64) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  const binary = atob(b64);
+  const buf = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
+  const blob = new Blob([buf], { type: 'audio/wav' });
+  const url = URL.createObjectURL(blob);
+  currentAudio = new Audio(url);
+  setState(STATES.SPEAKING);
+  currentAudio.play().catch(console.error);
+  currentAudio.onended = () => {
+    URL.revokeObjectURL(url);
+    currentAudio = null;
+    if (!isMuted) setState(STATES.LISTENING);
+  };
+}
 
-    const res = await fetch(TOKEN_SERVER_URL);
-    if (!res.ok) throw new Error('Token server returned ' + res.status + '. Is your server.py running?');
-    const { token, url } = await res.json();
+// ── WebSocket ────────────────────────────────────────────────────────
+function connect() {
+  setStatusRaw('s-connecting', 'Connecting…');
+  loadingMsg.textContent = 'Connecting to your tutor…';
 
-    loadingMsg.textContent = 'Joining room…';
-    room = new LivekitClient.Room({
-      adaptiveStream: true, dynacast: true,
-      audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+  const wsUrl = `ws://${location.host}/ws`;
+  ws = new WebSocket(wsUrl);
 
-    room.on(LivekitClient.RoomEvent.Connected, () => {
-      loadingScreen.classList.add('hidden');
-      mainPage.style.opacity = '1';
-      sessionBox.classList.add('visible');
-      setState(STATES.READY);
-      hintText.textContent = 'Microphone active — speak to your tutor';
-      startTimer();
-    });
-
-    room.on(LivekitClient.RoomEvent.Disconnected, () => {
-      clearInterval(timerInterval);
-      disconnected.classList.add('visible');
-    });
-
-    room.on(LivekitClient.RoomEvent.ParticipantConnected, () => {
-      setTranscript('Resonant is ready. Ask me anything!', true);
-      setState(STATES.LISTENING);
-    });
-
-    room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
-      if (track.kind === LivekitClient.Track.Kind.Audio) {
-        const audioEl = track.attach();
-        audioEl.autoplay = true;
-        document.body.appendChild(audioEl);
-        track.on('audioLevelsChanged', (levels) => {
-          setAgentSpeaking(levels.some(l => l > 0.01));
-        });
-      }
-    });
-
-    room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => { track.detach(); });
-
-    room.on(LivekitClient.RoomEvent.DataReceived, (data, participant) => {
-      try {
-        const msg = JSON.parse(new TextDecoder().decode(data));
-        if (msg.type === 'transcript') {
-          const isAgent = participant && participant.identity !== room.localParticipant.identity;
-          setTranscript(msg.text, isAgent);
-        }
-      } catch (_) {}
-    });
-
-    room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-      const agentSpeaking = speakers.some(s => s.identity !== room.localParticipant.identity);
-      setAgentSpeaking(agentSpeaking);
-      const meSpeaking = speakers.some(s => s.identity === room.localParticipant.identity);
-      if (meSpeaking && !agentSpeaking && !isMuted) setState(STATES.THINKING);
-    });
-
-    await room.connect(url, token);
-
-    document.getElementById('permNote').style.display = 'block';
-    hintText.textContent = 'Requesting microphone…';
-
-    localAudioTrack = await LivekitClient.createLocalAudioTrack({
-      echoCancellation: true, noiseSuppression: true, autoGainControl: true,
-    });
-
-    await room.localParticipant.publishTrack(localAudioTrack);
-    document.getElementById('permNote').style.display = 'none';
-    hintText.textContent = 'Microphone active — speak to your tutor';
+  ws.onopen = () => {
+    loadingScreen.classList.add('hidden');
+    mainPage.style.opacity = '1';
+    sessionBox.classList.add('visible');
     setState(STATES.LISTENING);
+    hintText.textContent = 'Microphone active — speak to your tutor';
+    startTimer();
+    requestMic();
+  };
 
-  } catch (err) {
-    console.error('Connection error:', err);
+  ws.onclose = () => {
+    clearInterval(timerInterval);
+    disconnected.classList.add('visible');
+  };
+
+  ws.onerror = () => {
     loadingScreen.classList.add('hidden');
     errorScreen.classList.remove('hidden');
-    if (err.message.includes('Token server')) {
-      errorMsg.textContent = err.message;
-    } else if (err.name === 'NotAllowedError') {
-      errorMsg.textContent = 'Microphone access was denied. Please allow microphone access and try again.';
-    } else {
-      errorMsg.textContent = 'Could not connect to the tutoring session. Make sure your server is running and try again.';
+    errorMsg.textContent = 'Could not connect to the server. Make sure server.py is running.';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'status') {
+      // show subtle hint updates without changing state
+      if (msg.message.includes('Thinking'))    setState(STATES.THINKING);
+      else if (msg.message.includes('Transcrib')) setState(STATES.THINKING);
     }
+
+    if (msg.type === 'transcript') {
+      setTranscript(msg.text, false);  // student's words
+    }
+
+    if (msg.type === 'response') {
+      setTranscript(msg.text, true);   // Resonant's reply
+      if (msg.audio) playAudio(msg.audio);
+    }
+
+    if (msg.type === 'error') {
+      setTranscript(msg.message, true);
+      if (!isMuted) setState(STATES.LISTENING);
+    }
+  };
+}
+
+// ── Microphone ───────────────────────────────────────────────────────
+async function requestMic() {
+  try {
+    document.getElementById('permNote').style.display = 'block';
+    hintText.textContent = 'Requesting microphone…';
+    await navigator.mediaDevices.getUserMedia({ audio: true }); // just to trigger permission
+    document.getElementById('permNote').style.display = 'none';
+    hintText.textContent = 'Microphone active — hold mic button to speak';
+  } catch (err) {
+    document.getElementById('permNote').style.display = 'none';
+    hintText.textContent = 'Microphone access denied.';
   }
 }
 
+async function startRecording() {
+  if (isMuted || isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const ab = await blob.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+      ws.send(JSON.stringify({ type: 'audio', data: b64 }));
+      setState(STATES.THINKING);
+    };
+    mediaRecorder.start(100);
+    isRecording = true;
+    setState(STATES.LISTENING);
+    hintText.textContent = 'Listening… release to send';
+  } catch (err) {
+    hintText.textContent = 'Could not access microphone.';
+  }
+}
+
+function stopRecording() {
+  if (!isRecording || !mediaRecorder) return;
+  isRecording = false;
+  mediaRecorder.stop();
+  hintText.textContent = 'Processing…';
+}
+
+// Hold-to-talk on mic button
+micBtn.addEventListener('mousedown',  startRecording);
+micBtn.addEventListener('mouseup',    stopRecording);
+micBtn.addEventListener('mouseleave', stopRecording);
+micBtn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); });
+micBtn.addEventListener('touchend',   e => { e.preventDefault(); stopRecording(); });
+
+// ── Mute toggle (click without hold = mute) ──────────────────────────
+// We distinguish a quick tap (mute) from a hold (record) via timing
+let pressStart = 0;
+micBtn.addEventListener('mousedown', () => pressStart = Date.now());
+micBtn.addEventListener('mouseup', () => {
+  if (Date.now() - pressStart < 200) toggleMic(); // quick tap = mute
+});
+
 function toggleMic() {
-  if (!localAudioTrack) return;
   isMuted = !isMuted;
-  localAudioTrack.mute(isMuted);
   micBtn.classList.toggle('muted', isMuted);
   micIcon.style.display      = isMuted ? 'none'  : 'block';
   micMutedIcon.style.display = isMuted ? 'block' : 'none';
-  hintText.textContent = isMuted ? 'Microphone muted' : 'Microphone active — speak to your tutor';
+  hintText.textContent = isMuted ? 'Microphone muted' : 'Hold to speak, tap to mute';
   setState(isMuted ? STATES.MUTED : STATES.LISTENING);
 }
 
+// ── End session ──────────────────────────────────────────────────────
 function endSession() {
-  if (room) room.disconnect();
+  if (ws) ws.close();
   clearInterval(timerInterval);
   disconnected.classList.add('visible');
 }
 
+// ── Boot ─────────────────────────────────────────────────────────────
 connect();
 </script>
 </body>
