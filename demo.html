@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resonant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="sr-live" role="status" aria-live="polite" aria-atomic="true" class="sr-only">
+    Resonant ready. Press Space to begin listening.
+  </div>
+
+  <a href="#main-controls" class="skip-link">Skip to controls</a>
+
+  <main id="voice-app" role="application" aria-label="Resonant voice learning assistant">
+
+    <!-- Top-right settings -->
+    <header class="corner-tr">
+      <button id="btn-settings" class="glass-btn" aria-label="Open settings" aria-haspopup="dialog">
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Center stage: orb + label -->
+    <section class="orb-stage" aria-label="Voice activity">
+      <canvas id="orb-canvas" aria-hidden="true" focusable="false"></canvas>
+      <p id="state-label" class="state-label" aria-hidden="true">Ready</p>
+    </section>
+
+    <!-- Bottom: mic left, end right -->
+    <nav id="main-controls" class="bottom-controls" aria-label="Session controls">
+
+      <button id="btn-mic" class="glass-btn glass-btn--mic" aria-label="Start listening" aria-pressed="false">
+        <svg class="icon-mic" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M19 10a7 7 0 0 1-14 0"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8"  y1="22" x2="16" y2="22"/>
+        </svg>
+        <svg class="icon-mic-off" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <line x1="1" y1="1" x2="23" y2="23"/>
+          <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+          <path d="M17 16.95A7 7 0 0 1 5 10v-1m14 0v1a7 7 0 0 1-.11 1.23"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="8"  y1="22" x2="16" y2="22"/>
+        </svg>
+      </button>
+
+      <button id="btn-end" class="glass-btn glass-btn--end" aria-label="End session">
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+    </nav>
+
+    <!-- Settings dialog -->
+    <div id="settings-panel" class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" aria-hidden="true" tabindex="-1">
+      <div class="settings-inner">
+        <h2 class="settings-title">Settings</h2>
+
+        <label class="setting-row">
+          <span>Voice speed</span>
+          <select id="voice-speed" aria-label="Voice speed">
+            <option value="0.8">Slower</option>
+            <option value="1" selected>Normal</option>
+            <option value="1.3">Faster</option>
+          </select>
+        </label>
+
+        <label class="setting-row">
+          <span>High contrast</span>
+          <input type="checkbox" id="high-contrast" aria-label="Enable high contrast mode" />
+        </label>
+
+        <label class="setting-row">
+          <span>Reduce motion</span>
+          <input type="checkbox" id="reduce-motion" aria-label="Reduce animations" />
+        </label>
+
+        <button id="settings-close" class="glass-btn settings-close-btn" aria-label="Close settings">Done</button>
+      </div>
+    </div>
+
+  </main>
+
+  <aside class="key-hints" aria-label="Keyboard shortcuts">
+    <span>Space · listen</span>
+    <span>Esc · end</span>
+    <span>S · settings</span>
+  </aside>
+
+  <script src="app.js"></script>
+</body>
+</html>
