@@ -1,165 +1,303 @@
 # Resonant
 
-> 1st place — GDG Tirana 2026
+## 1st Place — GDG Tirana 2026
 
-**Resonant** is a voice-first AI learning assistant built for blind and visually impaired students — and anyone who learns better by listening.
+# Your personal AI teacher that talks, reads, sees, and remembers.
 
-Upload any study material, ask questions out loud, and receive real answers back in real time. Like having a tutor that never stops listening.
+Resonant is a multimodal AI learning platform designed to make education more personalized, accessible, and natural.
 
-No endless scrolling. No screen dependency. Just conversation powered by AI.
+Students can chat with Resonant through text, voice, and visual input. It understands learning materials, explains difficult concepts, tracks progress, and adapts to each student's needs.
 
-![Resonant Logo](logo.png)
-
----
-
-## Features
-
-- Voice-first AI interaction
-- Real-time spoken questions and answers
-- Textbook and study material understanding
-- Accessible learning experience designed for blind and visually impaired students
-- Lightweight web interface
-- AI-powered tutoring workflow
+Built for every student — including blind and visually impaired learners.
 
 ---
 
-## Tech Stack
+# Why Resonant?
+
+Traditional education tools provide information.
+
+AI assistants provide answers.
+
+But learning requires something more:
+
+- Understanding how a student learns
+- Remembering previous struggles
+- Explaining concepts in different ways
+- Making knowledge accessible
+- Helping students build confidence
+
+Resonant is designed to be a personal AI teacher that grows with the student.
+
+---
+
+# Features
+
+## Multimodal AI Learning
+
+Interact with Resonant however you learn best:
+
+### Text Chat
+A familiar ChatGPT-like experience:
+
+- Ask questions
+- Solve problems
+- Request explanations
+- Generate summaries
+- Create quizzes
+- Build study plans
+
+---
+
+### Voice Conversations
+
+Learn naturally through speech:
+
+- Real-time spoken conversations
+- Hands-free studying
+- Voice explanations
+- Language practice
+- Accessibility support
+
+---
+
+### Vision & Document Understanding
+
+Resonant understands educational materials:
+
+- Textbooks
+- PDFs
+- Homework
+- Notes
+- Images
+- Diagrams
+- Presentations
+
+Examples:
+
+"Explain this page."
+
+"Why is my answer wrong?"
+
+"Summarize this chapter."
+
+"Describe this diagram."
+
+---
+
+# Personal Learning Memory
+
+Resonant is not just a chatbot.
+
+It remembers the student's learning journey.
+
+It can track:
+
+- Topics studied
+- Previous mistakes
+- Weak areas
+- Learning goals
+- Exam preparation
+- Preferred explanation styles
+
+The AI teacher improves as it learns about the student.
+
+---
+
+# Accessibility First
+
+Resonant was originally created to support blind and visually impaired students.
+
+Accessibility is not an extra feature. It is part of the foundation.
+
+Supported experiences:
+
+- Textbook reading
+- Image descriptions
+- Diagram explanations
+- Voice-first navigation
+- Audio learning
+- Accessible quizzes
+- Screen-reader compatibility
+
+Education should not depend on eyesight.
+
+---
+
+# Language Learning
+
+Resonant can act as a personal language tutor.
+
+Support for:
+
+- IELTS preparation
+- DELF preparation
+- TOEFL preparation
+- Speaking practice
+- Listening exercises
+- Pronunciation feedback
+- Conversation simulations
+
+Example:
+
+"Practice a DELF B2 speaking exam with me."
+
+---
+
+# Private Local AI
+
+The future of Resonant is local-first.
+
+Student data should remain private.
+
+Goals:
+
+- No required AI API subscriptions
+- No external processing of private learning data
+- Offline-capable AI
+- Local model inference
+
+Your education belongs to you.
+
+---
+
+# Architecture
+
+Current prototype:
+
+
+Student
+|
+|
+Text / Voice / Images
+|
+|
+Resonant Interface
+|
+|
+AI Processing Pipeline
+|
+|
+Personalized Learning Response
+
+
+---
+
+# Current Prototype Stack
+
+The original GDG Tirana prototype uses:
 
 - Python
 - Flask
+- HTML/CSS/JavaScript
 - LiveKit
-- HTML / CSS / JavaScript
-- OpenAI GPT-4o (via LiveKit inference)
-- Deepgram Nova-3 (speech-to-text)
-- Cartesia Sonic-3 (text-to-speech)
-- Silero VAD (voice activity detection)
-- ai_coustics (noise cancellation)
+- GPT-4o
+- Deepgram Nova-3
+- Cartesia Sonic-3
+- Silero VAD
+- ai_coustics
+
+This prototype proved the voice-learning experience.
+
+The next generation focuses on local AI and personalization.
 
 ---
 
-## How It Works
+# Planned Local AI Architecture
 
-### `server.py`
-A lightweight Flask API with a single endpoint (`/api/token`). When the frontend loads, it calls this server to generate a short-lived LiveKit access token. That token lets the browser join a private LiveKit room scurely without exposing any API keys to the client.
+Target stack:
 
-### `agent.py`
-The LiveKit agent that runs the actual AI tutoring session. It connects to the same room as the student, listens via Deepgram's multilingual speech-to-text, processes the question through GPT-4o with a custom tutoring prompt, and speaks the answer back using Cartesia's voice. It also applies noise cancellation and voice activity detection so the conversation feels natural.
+## Language Model
 
----
+Local LLM inference:
 
-## Project Structure
+- llama.cpp
+- Qwen
+- Llama
+- Mistral
 
-```
-.
-├── agent.py          — LiveKit AI agent (voice pipeline + GPT-4o)
-├── server.py         — Flask token server
-├── index.html        — Main frontend
-├── demo.html         — Demo/presentation page
-├── style.css         — Styles
-├── start.sh          — One-command launch script
-├── requirements.txt  — Python dependencies
-├── .gitignore
-├── logo.png
-├── grad.png
-├── ask.png
-├── listen.png
-├── upload.png
-├── slide1.png
-└── slide2.png
-```
+## Speech Recognition
 
----
+Local speech-to-text:
 
-## Requirements
+- Whisper.cpp
+- Faster Whisper
 
-- Python 3.9+
-- A [LiveKit Cloud](https://cloud.livekit.io) account (free tier works)
-- Internet connection (all AI models run via LiveKit's inference API)
+## Text To Speech
 
----
+Local voice generation:
 
-## Installation
+- Piper
+- Kokoro
 
-**Clone the repository:**
+## Vision
 
-```bash
-git clone https://github.com/alekslime/Resonant-AI.git
-cd Resonant-AI
-```
+Local multimodal models:
 
-**Create and activate a virtual environment:**
+- MiniCPM-V
+- Qwen-VL
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
+## Memory
 
-**Install dependencies:**
+Private learning database:
 
-```bash
-pip install -r requirements.txt
-```
-
-**Create a `.env.local` file in the project root:**
-
-```
-LIVEKIT_URL=your_livekit_url
-LIVEKIT_API_KEY=your_key
-LIVEKIT_API_SECRET=your_secret
-```
-
-Get these from your [LiveKit Cloud dashboard](https://cloud.livekit.io) under Settings → API Keys.
+- SQLite
+- Vector embeddings
+- Local retrieval system
 
 ---
 
-## Running the Project
+# Roadmap
 
-```bash
-chmod +x start.sh
-./start.sh
-```
+## Phase 1 — Core Platform
 
-That's it. The script starts the Flask token server, the LiveKit agent, and the frontend file server all at once. Then open:
+- Text chat interface
+- Voice conversations
+- File uploads
+- Basic AI tutoring
 
-```
-http://localhost:8080
-```
+## Phase 2 — Understanding
 
-Press `Ctrl+C` to stop everything.
+- PDF processing
+- Textbook understanding
+- Image analysis
+- Homework assistance
 
----
+## Phase 3 — Personal Teacher
 
-## Known Limitations
+- Student profiles
+- Learning memory
+- Progress tracking
+- Personalized explanations
 
-- Requires a LiveKit Cloud account — does not run fully offline
-- All AI models (STT, LLM, TTS) are called via LiveKit's hosted inference API, so a stable internet connection is required
-- No file upload handling in the backend — the study material understanding is handled conversationally through the agent's prompt
-- Tested on Linux; `fuser` in `start.sh` may not work on macOS (use `lsof -ti:5000 | xargs kill` instead)
+## Phase 4 — Accessibility
 
----
+- Blind student workflows
+- Voice-only learning
+- Accessible exams
+- Tactile feedback integration
 
-## Security
+## Phase 5 — Local AI
 
-API keys and environment variables are excluded via `.gitignore`. Never commit `.env` or `.env.local` files.
-
----
-
-## Inspiration
-
-Education should feel human, immediate, and accessible.
-
-Resonant was built to explore how voice and AI can reduce friction in learning — and to give people who have always deserved better tools a way to interact with knowledge more naturally.
+- Remove external API dependency
+- Fully local inference
+- Offline education mode
 
 ---
 
-## Built At
+# Vision
 
-**GDG Tirana 2026** — 1st place
+> Every student deserves a teacher that understands them.
+
+---
+
+# Built At
+
+GDG Tirana 2026 — 1st Place
 
 Supported by:
 
-- AI Hub Albania
 - Google
+- AI Hub Albania
 - Plug and Play
 - Gjirafa Mall
 - Codevider
@@ -167,6 +305,6 @@ Supported by:
 
 ---
 
-## License
+# License
 
 MIT License
