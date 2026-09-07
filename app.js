@@ -1,6 +1,6 @@
 /**
  * RESONANT — Voice-First AI Learning Assistant
- * app.js — ChatGPT-style pixel fluid orb + LiveKit + full a11y
+ * app.js — ChatGPT-style pixel fluid orb + local voice pipeline + full a11y
  * Colors: #f9952a (amber) → #f9c22a (yellow) with state animations
  */
 
@@ -171,32 +171,80 @@ class OrbRenderer {
 
 
 /* ═══════════════════════════════════════════════════════
-   2. AUDIO ANALYSER — mic FFT → orb energy
+   2. VOICE CONTROLLER — local mic capture + silence-VAD + backend turns
+      Captures the mic once, drives the orb's energy from it, and uses a
+      simple energy-based VAD to detect when an utterance ends. Each
+      utterance is POSTed to the local Flask backend (/api/voice), which
+      runs Whisper -> local LLM -> Piper and returns transcript + reply +
+      a WAV to play back. No cloud realtime infra involved.
 ═══════════════════════════════════════════════════════ */
-class AudioAnalyser {
-  constructor(orb) {
-    this.orb    = orb;
-    this.stream = null;
-    this.actx   = null;
-    this.raf    = null;
+class VoiceController {
+  constructor(orb, history) {
+    this.orb      = orb;
+    this.stream   = null;
+    this.actx     = null;
+    this.analyser = null;
+    this.buf      = null;
+    this.raf      = null;
+
+    this.recorder = null;
+    this.chunks   = [];
+
+    this.active   = false;  // mic toggled on
+    this.speaking = false;  // currently playing back a reply
+    this.history  = history || [];  // shared with text chat if passed in
+
+    // VAD tuning — tweak SILENCE_THRESHOLD if it cuts off too eagerly/late
+    this.SILENCE_THRESHOLD = 0.02;
+    this.SILENCE_MS        = 900;  // silence needed to end an utterance
+    this.MIN_SPEECH_MS     = 300;  // ignore blips shorter than this
+    this._speechStart  = null;
+    this._silenceStart = null;
   }
 
-  async start() {
+  async start(onState) {
+    this.onState = onState;
     try {
-      this.stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.actx     = new (window.AudioContext || window.webkitAudioContext)();
-      const src     = this.actx.createMediaStreamSource(this.stream);
-      this.analyser = this.actx.createAnalyser();
-      this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.80;
-      src.connect(this.analyser);
-      this.buf = new Uint8Array(this.analyser.frequencyBinCount);
-      this._tick();
-      return true;
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (e) {
       console.warn('Mic unavailable:', e);
       return false;
     }
+
+    this.actx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = this.actx.createMediaStreamSource(this.stream);
+    this.analyser = this.actx.createAnalyser();
+    this.analyser.fftSize = 512;
+    this.analyser.smoothingTimeConstant = 0.75;
+    src.connect(this.analyser);
+    this.buf = new Uint8Array(this.analyser.frequencyBinCount);
+
+    this.active = true;
+    this._armRecorder();
+    this._tick();
+    this.onState('listening');
+    return true;
+  }
+
+  stop() {
+    this.active = false;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.recorder && this.recorder.state !== 'inactive') this.recorder.stop();
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    if (this.actx) this.actx.close();
+    this.orb.setEnergy(0);
+    this.raf = null;
+    this.recorder = null;
+  }
+
+  _armRecorder() {
+    this.chunks = [];
+    this.recorder = new MediaRecorder(this.stream);
+    this.recorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
+    this.recorder.onstop = () => this._onUtteranceEnd();
+    this.recorder.start();
+    this._speechStart  = null;
+    this._silenceStart = null;
   }
 
   _tick() {
@@ -205,71 +253,75 @@ class AudioAnalyser {
     this.analyser.getByteFrequencyData(this.buf);
     const avg = this.buf.reduce((a, b) => a + b, 0) / this.buf.length / 255;
     this.orb.setEnergy(avg * 3.0);
-  }
 
-  stop() {
-    if (this.raf) cancelAnimationFrame(this.raf);
-    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
-    if (this.actx) this.actx.close();
-    this.orb.setEnergy(0);
-    this.raf = null;
-  }
-}
+    // Don't run VAD while the assistant is talking (avoid self-triggering)
+    if (this.speaking || !this.active) return;
 
+    const now = performance.now();
+    const isSpeech = avg > this.SILENCE_THRESHOLD;
 
-/* ═══════════════════════════════════════════════════════
-   3. LIVEKIT SESSION
-═══════════════════════════════════════════════════════ */
-class VoiceSession {
-  constructor() { this.room = null; this.connected = false; }
-
-  async connect(onState) {
-    try {
-      const res  = await fetch('http://localhost:5000/api/token');
-      const data = await res.json();
-      if (!data.token || !data.url) throw new Error('No token');
-
-      if (typeof LivekitClient === 'undefined') {
-        await this._loadScript('https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js');
+    if (isSpeech) {
+      if (this._speechStart === null) this._speechStart = now;
+      this._silenceStart = null;
+    } else if (this._speechStart !== null) {
+      if (this._silenceStart === null) this._silenceStart = now;
+      const spokeLongEnough  = (now - this._speechStart) > this.MIN_SPEECH_MS;
+      const silentLongEnough = (now - this._silenceStart) > this.SILENCE_MS;
+      if (spokeLongEnough && silentLongEnough && this.recorder && this.recorder.state === 'recording') {
+        this.recorder.stop(); // -> _onUtteranceEnd
       }
-
-      this.room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
-
-      this.room.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === LivekitClient.Track.Kind.Audio) {
-          track.attach();
-          onState('speaking');
-        }
-      });
-      this.room.on(LivekitClient.RoomEvent.TrackUnsubscribed, () => onState('listening'));
-      this.room.on(LivekitClient.RoomEvent.Disconnected, () => { this.connected = false; onState('idle'); });
-
-      await this.room.connect(data.url, data.token);
-      await this.room.localParticipant.setMicrophoneEnabled(true);
-      this.connected = true;
-      onState('listening');
-      return true;
-    } catch (e) {
-      console.warn('LiveKit demo mode:', e);
-      onState('listening');
-      return false;
     }
   }
 
-  async disconnect() {
-    if (this.room) { await this.room.disconnect(); this.room = null; }
-    this.connected = false;
+  async _onUtteranceEnd() {
+    const blob = new Blob(this.chunks, { type: 'audio/webm' });
+    this.chunks = [];
+
+    if (blob.size < 2000) { // too short to be real speech — keep listening
+      if (this.active) this._armRecorder();
+      return;
+    }
+
+    this.onState('thinking');
+
+    try {
+      const form = new FormData();
+      form.append('audio', blob, 'utterance.webm');
+      form.append('history', JSON.stringify(this.history));
+
+      const res  = await fetch('/api/voice', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (!data.transcript) {
+        this.onState(this.active ? 'listening' : 'idle');
+      } else {
+        this.history.push({ role: 'user', content: data.transcript });
+        this.history.push({ role: 'assistant', content: data.reply });
+        await this._playReply(data.audio);
+      }
+    } catch (e) {
+      console.warn('Voice turn failed:', e);
+      this.onState('idle');
+    }
+
+    if (this.active) this._armRecorder();
   }
 
-  async toggleMic(enabled) {
-    if (this.room) await this.room.localParticipant.setMicrophoneEnabled(enabled);
-  }
-
-  _loadScript(src) {
-    return new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = src; s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
+  _playReply(base64Wav) {
+    return new Promise(resolve => {
+      if (!base64Wav) { this.onState(this.active ? 'listening' : 'idle'); resolve(); return; }
+      this.speaking = true;
+      this.onState('speaking');
+      const audio = new Audio('data:audio/wav;base64,' + base64Wav);
+      const done = () => {
+        this.speaking = false;
+        this.onState(this.active ? 'listening' : 'idle');
+        resolve();
+      };
+      audio.onended = done;
+      audio.onerror = done;
+      audio.play().catch(done);
     });
   }
 }
@@ -291,9 +343,14 @@ class ResonantUI {
     this.chkContrast   = document.getElementById('high-contrast');
     this.chkMotion     = document.getElementById('reduce-motion');
 
-    this.orb      = new OrbRenderer(this.canvas);
-    this.analyser = new AudioAnalyser(this.orb);
-    this.session  = new VoiceSession();
+    this.chatLog   = document.getElementById('chat-log');
+    this.textForm  = document.getElementById('text-form');
+    this.textInput = document.getElementById('text-input');
+    this.btnSend   = document.getElementById('btn-send');
+
+    this.orb     = new OrbRenderer(this.canvas);
+    this.history = [];  // shared conversation history — text + voice both append here
+    this.voice   = new VoiceController(this.orb, this.history);
 
     this.micActive    = false;
     this.settingsOpen = false;
@@ -329,21 +386,15 @@ class ResonantUI {
 
   async _toggleMic() {
     if (!this.micActive) {
-      await this.analyser.start();
-      this.micActive = true;
-      this.btnMic.setAttribute('aria-pressed', 'true');
-      this.btnMic.setAttribute('aria-label', 'Mute microphone');
-      this.btnMic.querySelector('.icon-mic').style.display     = 'none';
-      this.btnMic.querySelector('.icon-mic-off').style.display = '';
-      if (!this.session.connected) {
-        await this.session.connect(s => this._setState(s));
-      } else {
-        await this.session.toggleMic(true);
-        this._setState('listening');
-      }
+      const ok = await this.voice.start(s => this._setState(s));
+      this.micActive = ok;
+      this.btnMic.setAttribute('aria-pressed', String(ok));
+      this.btnMic.setAttribute('aria-label', ok ? 'Mute microphone' : 'Start listening');
+      this.btnMic.querySelector('.icon-mic').style.display     = ok ? 'none' : '';
+      this.btnMic.querySelector('.icon-mic-off').style.display = ok ? '' : 'none';
+      if (!ok) this._announce('Microphone unavailable. Check browser permissions.');
     } else {
-      this.analyser.stop();
-      await this.session.toggleMic(false);
+      this.voice.stop();
       this.micActive = false;
       this.btnMic.setAttribute('aria-pressed', 'false');
       this.btnMic.setAttribute('aria-label', 'Start listening');
@@ -353,9 +404,8 @@ class ResonantUI {
     }
   }
 
-  async _endSession() {
-    this.analyser.stop();
-    await this.session.disconnect();
+  _endSession() {
+    this.voice.stop();
     this.micActive = false;
     this.btnMic.setAttribute('aria-pressed', 'false');
     this.btnMic.setAttribute('aria-label', 'Start listening');
@@ -377,7 +427,55 @@ class ResonantUI {
     this.btnSettings.focus();
   }
 
+  _renderMessage(role, content) {
+    const div = document.createElement('div');
+    div.className = `chat-msg chat-msg--${role}`;
+    div.textContent = content;
+    this.chatLog.appendChild(div);
+    this.chatLog.scrollTop = this.chatLog.scrollHeight;
+  }
+
+  async _sendText() {
+    const text = this.textInput.value.trim();
+    if (!text) return;
+
+    this.textInput.value = '';
+    this.textInput.disabled = true;
+    this.btnSend.disabled = true;
+
+    this._renderMessage('user', text);
+    this.history.push({ role: 'user', content: text });
+    this._setState('thinking');
+
+    try {
+      const res  = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: this.history }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      this.history.push({ role: 'assistant', content: data.reply });
+      this._renderMessage('assistant', data.reply);
+      this._setState('idle');
+    } catch (e) {
+      console.warn('Text chat failed:', e);
+      this._renderMessage('error', `Something went wrong: ${e.message}`);
+      this._setState('idle');
+    } finally {
+      this.textInput.disabled = false;
+      this.btnSend.disabled = false;
+      this.textInput.focus();
+    }
+  }
+
   _bindEvents() {
+    this.textForm.addEventListener('submit', e => {
+      e.preventDefault();
+      this._sendText();
+    });
+
     this.btnMic.addEventListener('click',        () => this._toggleMic());
     this.btnEnd.addEventListener('click',        () => this._endSession());
     this.btnSettings.addEventListener('click',   () => this._openSettings());
@@ -397,6 +495,7 @@ class ResonantUI {
     });
 
     document.addEventListener('keydown', e => {
+      if (e.target === this.textInput) return; // let normal typing through
       if (this.settingsOpen && e.target !== document.body) return;
       switch (e.key) {
         case ' ':

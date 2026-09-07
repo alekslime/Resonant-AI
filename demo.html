@@ -34,33 +34,48 @@
       <p id="state-label" class="state-label" aria-hidden="true">Ready</p>
     </section>
 
-    <!-- Bottom: mic left, end right -->
-    <nav id="main-controls" class="bottom-controls" aria-label="Session controls">
+    <!-- Text chat transcript (empty until first message) -->
+    <section id="chat-log" class="chat-log" aria-label="Conversation" aria-live="polite"></section>
 
-      <button id="btn-mic" class="glass-btn glass-btn--mic" aria-label="Start listening" aria-pressed="false">
-        <svg class="icon-mic" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="2" width="6" height="11" rx="3"/>
-          <path d="M19 10a7 7 0 0 1-14 0"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
-          <line x1="8"  y1="22" x2="16" y2="22"/>
-        </svg>
-        <svg class="icon-mic-off" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-          <line x1="1" y1="1" x2="23" y2="23"/>
-          <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-          <path d="M17 16.95A7 7 0 0 1 5 10v-1m14 0v1a7 7 0 0 1-.11 1.23"/>
-          <line x1="12" y1="19" x2="12" y2="22"/>
-          <line x1="8"  y1="22" x2="16" y2="22"/>
-        </svg>
-      </button>
+    <!-- Bottom: text input, then mic left / end right -->
+    <div class="bottom-stack">
+      <form id="text-form" class="text-input-row" autocomplete="off">
+        <input type="text" id="text-input" class="text-input" placeholder="Type a message…" aria-label="Type a message" />
+        <button type="submit" id="btn-send" class="glass-btn glass-btn--send" aria-label="Send message">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </form>
 
-      <button id="btn-end" class="glass-btn glass-btn--end" aria-label="End session">
-        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6"  y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
+      <nav id="main-controls" class="bottom-controls" aria-label="Session controls">
 
-    </nav>
+        <button id="btn-mic" class="glass-btn glass-btn--mic" aria-label="Start listening" aria-pressed="false">
+          <svg class="icon-mic" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M19 10a7 7 0 0 1-14 0"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8"  y1="22" x2="16" y2="22"/>
+          </svg>
+          <svg class="icon-mic-off" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+            <path d="M17 16.95A7 7 0 0 1 5 10v-1m14 0v1a7 7 0 0 1-.11 1.23"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8"  y1="22" x2="16" y2="22"/>
+          </svg>
+        </button>
+
+        <button id="btn-end" class="glass-btn glass-btn--end" aria-label="End session">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6"  y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+      </nav>
+    </div>
 
     <!-- Settings dialog -->
     <div id="settings-panel" class="settings-panel" role="dialog" aria-modal="true" aria-label="Settings" aria-hidden="true" tabindex="-1">
