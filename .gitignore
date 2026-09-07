@@ -1,0 +1,22 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python bytecode / cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local environment config (contains machine-specific paths)
+.env.local
+
+# Downloaded local AI models — too large for git, and easy to re-download
+models/
+*.gguf
+*.onnx
+*.onnx.json
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
