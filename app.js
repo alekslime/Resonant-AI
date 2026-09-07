@@ -344,6 +344,7 @@ class ResonantUI {
     this.chkMotion     = document.getElementById('reduce-motion');
 
     this.chatLog   = document.getElementById('chat-log');
+    this.appRoot   = document.getElementById('voice-app');
     this.textForm  = document.getElementById('text-form');
     this.textInput = document.getElementById('text-input');
     this.btnSend   = document.getElementById('btn-send');
@@ -428,6 +429,7 @@ class ResonantUI {
   }
 
   _renderMessage(role, content) {
+    this.appRoot.classList.add('chat-active');
     const div = document.createElement('div');
     div.className = `chat-msg chat-msg--${role}`;
     div.textContent = content;
