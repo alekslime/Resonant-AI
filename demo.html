@@ -16,17 +16,13 @@
 
   <a href="#main-controls" class="skip-link">Skip to controls</a>
 
-  <main id="voice-app" role="application" aria-label="Resonant voice learning assistant">
+  <main id="voice-app" role="application" aria-label="Resonant voice learning assistant" data-state="idle">
 
-    <!-- Top-right settings -->
-    <header class="corner-tr">
-      <button id="btn-settings" class="glass-btn" aria-label="Open settings" aria-haspopup="dialog">
-        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
-    </header>
+    <!-- Brand mark -->
+    <div class="brand-badge" aria-hidden="true">
+      <img src="assets/logo.png" alt="">
+      <span>Resonant</span>
+    </div>
 
     <!-- Center stage: orb + label -->
     <section class="orb-stage" aria-label="Voice activity">
@@ -37,7 +33,7 @@
     <!-- Text chat transcript (empty until first message) -->
     <section id="chat-log" class="chat-log" aria-label="Conversation" aria-live="polite"></section>
 
-    <!-- Bottom: text input, then mic left / end right -->
+    <!-- Bottom: text input, then unified dock (settings / mic / end) -->
     <div class="bottom-stack">
       <form id="text-form" class="text-input-row" autocomplete="off">
         <input type="text" id="text-input" class="text-input" placeholder="Type a message…" aria-label="Type a message" />
@@ -49,9 +45,16 @@
         </button>
       </form>
 
-      <nav id="main-controls" class="bottom-controls" aria-label="Session controls">
+      <nav id="main-controls" class="dock" aria-label="Session controls">
 
-        <button id="btn-mic" class="glass-btn glass-btn--mic" aria-label="Start listening" aria-pressed="false">
+        <button id="btn-settings" class="dock-btn dock-btn--settings" aria-label="Open settings" aria-haspopup="dialog">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+
+        <button id="btn-mic" class="dock-btn dock-btn--mic" aria-label="Start listening" aria-pressed="false">
           <svg class="icon-mic" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="2" width="6" height="11" rx="3"/>
             <path d="M19 10a7 7 0 0 1-14 0"/>
@@ -67,7 +70,7 @@
           </svg>
         </button>
 
-        <button id="btn-end" class="glass-btn glass-btn--end" aria-label="End session">
+        <button id="btn-end" class="dock-btn dock-btn--end" aria-label="End session">
           <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6"  y1="6" x2="18" y2="18"/>

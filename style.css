@@ -1,15 +1,25 @@
 /* ════════════════════════════════════════════════
-   RESONANT — ChatGPT Advanced Voice style
-   Pure white. Small crisp orb. Nothing else.
+   RESONANT — Voice app (demo.html)
+   Solid dark surfaces, single top glow, crisp borders.
+   No glassmorphism / blur. Bold tight type.
 ════════════════════════════════════════════════ */
 
 :root {
-  --btn-size:    52px;
-  --blue:        #3a8cff;
-  --glass-bg:    rgba(255,255,255,0.60);
-  --glass-bdr:   rgba(0,0,0,0.08);
-  --glass-shd:   rgba(0,0,0,0.06);
-  --text-hint:   rgba(0,0,0,0.28);
+  --amber:       #f9952a;
+  --amber-light: #ffc24d;
+  --bg:          #060402;
+
+  --surface:      #141110;
+  --surface-2:    #1c1815;
+  --border:       rgba(255,255,255,0.10);
+  --border-soft:  rgba(255,255,255,0.07);
+
+  --text-primary:   #f5f1ea;
+  --text-secondary: rgba(245,241,234,0.56);
+  --text-hint:      rgba(245,241,234,0.32);
+
+  --btn-size: 48px;
+  --dock-mic-size: 60px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,15 +28,15 @@ html, body {
   width: 100%; height: 100%; overflow: hidden;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Pure white — exactly like ChatGPT */
-  background: #ffffff;
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 /* ── Skip link ───────────────────────────────── */
 .skip-link {
   position: absolute; top: -100px; left: 16px; z-index: 9999;
-  padding: 10px 18px; background: var(--blue); color: #fff;
-  border-radius: 8px; font-size: 14px; text-decoration: none;
+  padding: 10px 18px; background: var(--amber); color: #1a0e04;
+  border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none;
   transition: top 0.15s;
 }
 .skip-link:focus { top: 16px; }
@@ -37,150 +47,168 @@ html, body {
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-/* ── Main layout ─────────────────────────────── */
+/* ── Main layout + single top glow ────────────── */
 #voice-app {
-  position: relative; width: 100%; height: 100vh;
+  position: relative; width: 100%; height: 100vh; overflow: hidden; z-index: 0;
+  background: var(--bg);
+}
+#voice-app::before {
+  content: '';
+  position: fixed; inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 60% 46% at 50% 4%, rgba(255,244,222,0.55), transparent 48%),
+    radial-gradient(ellipse 80% 60% at 50% 8%, rgba(249,149,42,0.34), transparent 62%),
+    radial-gradient(ellipse 100% 70% at 50% 0%, rgba(120,58,12,0.22), transparent 70%),
+    var(--bg);
+}
+/* subtle grain to kill the flat-CG look */
+#voice-app::after {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  opacity: 0.05; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* ── Top-right corner ────────────────────────── */
-.corner-tr {
-  position: absolute; top: 24px; right: 24px; z-index: 10;
+/* ── Brand mark — plain icon + wordmark, no chip ── */
+.brand-badge {
+  position: absolute; top: 26px; left: 26px; z-index: 10;
+  display: flex; align-items: center; gap: 9px;
+}
+.brand-badge img { width: 22px; height: 22px; display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+.brand-badge span {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.4);
 }
 
-/* ── Glass button ────────────────────────────── */
+/* ── Flat button (settings-close, send) ───────── */
 .glass-btn {
   display: flex; align-items: center; justify-content: center;
   width: var(--btn-size); height: var(--btn-size);
   border-radius: 50%;
-  border: 1px solid var(--glass-bdr);
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 2px 12px var(--glass-shd), inset 0 1px 0 rgba(255,255,255,0.9);
-  color: rgba(0,0,0,0.40);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1),
-              box-shadow 0.2s ease,
-              color 0.2s ease;
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1),
+              border-color 0.15s ease,
+              color 0.15s ease,
+              background 0.15s ease;
 }
-.glass-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.glass-btn svg { width: 19px; height: 19px; flex-shrink: 0; }
 .glass-btn:hover {
-  transform: scale(1.07);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
-  color: rgba(0,0,0,0.65);
+  transform: scale(1.06);
+  background: var(--surface-2);
+  border-color: rgba(255,255,255,0.18);
+  color: var(--text-primary);
 }
 .glass-btn:active { transform: scale(0.95); }
-.glass-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-
-/* ── Mic active ──────────────────────────────── */
-.glass-btn--mic[aria-pressed="true"] {
-  background: rgba(58,140,255,0.12);
-  border-color: rgba(58,140,255,0.30);
-  color: var(--blue);
-  box-shadow: 0 0 0 5px rgba(58,140,255,0.08), 0 2px 12px rgba(58,140,255,0.15);
-  animation: mic-ring 2.2s ease-in-out infinite;
-}
-@keyframes mic-ring {
-  0%,100% { box-shadow: 0 0 0 5px rgba(58,140,255,0.08), 0 2px 12px rgba(58,140,255,0.15); }
-  50%      { box-shadow: 0 0 0 10px rgba(58,140,255,0.04), 0 4px 20px rgba(58,140,255,0.22); }
-}
-
-/* ── End button ──────────────────────────────── */
-.glass-btn--end { color: rgba(180,50,50,0.45); }
-.glass-btn--end:hover {
-  background: rgba(255,220,220,0.45);
-  border-color: rgba(200,80,80,0.20);
-  color: rgba(200,40,40,0.80);
-}
+.glass-btn:focus-visible { outline: 2px solid var(--amber-light); outline-offset: 3px; }
 
 /* ── Orb stage ───────────────────────────────── */
 .orb-stage {
   position: absolute; top: 0; left: 0; right: 0; height: 100vh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  transition: height 0.45s cubic-bezier(0.4,0,0.2,1);
+  transition: height 0.4s cubic-bezier(0.4,0,0.2,1);
+  z-index: 1;
 }
 
 /* ── Canvas — the orb itself ─────────────────── */
 #orb-canvas {
-  width: 160px;
-  height: 160px;
+  width: 168px;
+  height: 168px;
   border-radius: 50%;
-  /* Subtle ambient shadow — matches ChatGPT depth */
-  filter: drop-shadow(0 8px 32px rgba(40,100,220,0.18))
-          drop-shadow(0 2px 8px rgba(40,100,220,0.10));
+  filter: drop-shadow(0 10px 40px rgba(249,149,42,0.30))
+          drop-shadow(0 2px 10px rgba(249,149,42,0.18));
   transition: filter 0.5s ease, transform 0.5s ease,
-              width 0.45s cubic-bezier(0.4,0,0.2,1),
-              height 0.45s cubic-bezier(0.4,0,0.2,1);
+              width 0.4s cubic-bezier(0.4,0,0.2,1),
+              height 0.4s cubic-bezier(0.4,0,0.2,1);
 }
 
 /* State-driven orb tweaks */
 #orb-canvas.state-idle      { transform: scale(1); }
-#orb-canvas.state-listening { transform: scale(1.04); filter: drop-shadow(0 10px 36px rgba(30,110,240,0.22)) drop-shadow(0 2px 10px rgba(30,110,240,0.14)); }
-#orb-canvas.state-thinking  { transform: scale(1.06); filter: drop-shadow(0 12px 40px rgba(60,80,220,0.28)) drop-shadow(0 4px 14px rgba(60,80,220,0.16)); }
-#orb-canvas.state-speaking  { transform: scale(1.05); filter: drop-shadow(0 10px 38px rgba(20,140,240,0.26)) drop-shadow(0 3px 12px rgba(20,140,240,0.15)); }
+#orb-canvas.state-listening { transform: scale(1.04); filter: drop-shadow(0 12px 44px rgba(249,149,42,0.38)) drop-shadow(0 2px 12px rgba(249,149,42,0.22)); }
+#orb-canvas.state-thinking  { transform: scale(1.06); filter: drop-shadow(0 14px 48px rgba(249,170,42,0.42)) drop-shadow(0 4px 16px rgba(249,170,42,0.24)); }
+#orb-canvas.state-speaking  { transform: scale(1.05); filter: drop-shadow(0 12px 46px rgba(249,194,42,0.40)) drop-shadow(0 3px 14px rgba(249,194,42,0.23)); }
 
-/* ── State label ─────────────────────────────── */
+/* ── State label — bold headline when idle,
+     small tracked label once something is happening ── */
 .state-label {
-  margin-top: 24px;
-  font-size: 13px; font-weight: 400;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--text-hint);
+  margin-top: 26px;
+  color: var(--text-secondary);
   opacity: 0; transform: translateY(4px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, font-size 0.3s ease;
   user-select: none;
+  text-align: center;
 }
 .state-label.visible { opacity: 1; transform: translateY(0); }
 
+#voice-app[data-state="idle"] .state-label {
+  font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+#voice-app:not([data-state="idle"]) .state-label {
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
 /* ── Orb docks small once chat starts ────────── */
-#voice-app.chat-active .orb-stage { height: 96px; }
-#voice-app.chat-active #orb-canvas { width: 56px; height: 56px; }
+#voice-app.chat-active .orb-stage { height: 92px; }
+#voice-app.chat-active #orb-canvas { width: 52px; height: 52px; }
 #voice-app.chat-active .state-label { opacity: 0; pointer-events: none; }
-#voice-app.chat-active .chat-log { top: 110px; }
+#voice-app.chat-active .chat-log { top: 106px; }
 
 /* ── Chat transcript ─────────────────────────── */
 .chat-log {
   position: absolute;
-  top: 90px; bottom: 150px; left: 50%; transform: translateX(-50%);
+  top: 88px; bottom: 164px; left: 50%; transform: translateX(-50%);
   width: min(640px, 88vw);
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 10px;
   padding: 8px 4px 24px;
   z-index: 5;
-  transition: top 0.45s cubic-bezier(0.4,0,0.2,1);
+  transition: top 0.4s cubic-bezier(0.4,0,0.2,1);
 }
 .chat-log:empty { display: none; }
 
 .chat-msg {
   max-width: 80%;
-  padding: 10px 16px;
+  padding: 12px 18px;
   border-radius: 18px;
-  font-size: 14.5px; line-height: 1.5;
+  font-size: 14.5px; line-height: 1.5; font-weight: 500;
   white-space: pre-wrap; word-wrap: break-word;
 }
 .chat-msg--user {
   align-self: flex-end;
-  background: var(--blue);
-  color: #fff;
-  border-bottom-right-radius: 4px;
+  background: linear-gradient(135deg, var(--amber), var(--amber-light));
+  color: #1a0e04;
+  font-weight: 700;
+  border-bottom-right-radius: 5px;
+  box-shadow: 0 4px 16px rgba(249,149,42,0.25);
 }
 .chat-msg--assistant {
   align-self: flex-start;
-  background: rgba(0,0,0,0.05);
-  color: rgba(0,0,0,0.82);
-  border-bottom-left-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-bottom-left-radius: 5px;
 }
 .chat-msg--error {
   align-self: center;
-  background: rgba(220,60,60,0.10);
-  color: rgba(180,30,30,0.90);
-  font-size: 13px;
+  background: rgba(220,70,70,0.12);
+  border: 1px solid rgba(220,70,70,0.28);
+  color: rgba(255,170,170,0.95);
+  font-size: 13px; font-weight: 600;
 }
 
-/* ── Bottom stack: text input + mic/end row ──── */
+/* ── Bottom stack: text input + dock ──────────── */
 .bottom-stack {
-  position: absolute; bottom: 36px; left: 36px; right: 36px;
-  display: flex; flex-direction: column; gap: 14px;
+  position: absolute; bottom: 30px; left: 36px; right: 36px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
   z-index: 10;
 }
 
@@ -188,77 +216,125 @@ html, body {
 .text-input-row {
   display: flex; align-items: center; gap: 10px;
   width: min(640px, 100%);
-  margin: 0 auto;
 }
 .text-input {
   flex: 1;
-  height: 46px;
-  padding: 0 18px;
-  border-radius: 23px;
-  border: 1px solid var(--glass-bdr);
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 2px 12px var(--glass-shd), inset 0 1px 0 rgba(255,255,255,0.9);
-  font-family: inherit; font-size: 14.5px; color: rgba(0,0,0,0.85);
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  font-family: inherit; font-size: 14.5px; font-weight: 500; color: var(--text-primary);
 }
 .text-input::placeholder { color: var(--text-hint); }
-.text-input:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
-.glass-btn--send { width: 46px; height: 46px; flex-shrink: 0; }
+.text-input:focus { outline: 2px solid var(--amber-light); outline-offset: 2px; }
+.glass-btn--send { width: 48px; height: 48px; flex-shrink: 0; }
 .glass-btn--send:disabled { opacity: 0.4; cursor: default; transform: none; }
 
-body.high-contrast .text-input { background: #000; border-color: #fff; color: #fff; }
-body.high-contrast .chat-msg--assistant { background: #222; color: #fff; }
-
-/* ── Bottom controls ─────────────────────────── */
-.bottom-controls {
-  display: flex; justify-content: space-between; align-items: center;
-  width: 100%;
+/* ── Bottom dock — settings / mic / end, one bar ── */
+.dock {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
 }
+
+.dock-btn {
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1),
+              background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.dock-btn svg { flex-shrink: 0; }
+.dock-btn:hover { color: var(--text-primary); background: var(--surface-2); }
+.dock-btn:active { transform: scale(0.94); }
+.dock-btn:focus-visible { outline: 2px solid var(--amber-light); outline-offset: 3px; }
+
+.dock-btn--settings, .dock-btn--end {
+  width: 44px; height: 44px;
+}
+.dock-btn--settings svg { width: 19px; height: 19px; }
+.dock-btn--end svg { width: 19px; height: 19px; }
+.dock-btn--end { color: rgba(255,140,140,0.65); }
+.dock-btn--end:hover { color: rgba(255,120,120,0.95); background: rgba(220,70,70,0.14); }
+
+.dock-btn--mic {
+  width: var(--dock-mic-size); height: var(--dock-mic-size);
+  background: linear-gradient(135deg, var(--amber), var(--amber-light));
+  color: #1a0e04;
+  box-shadow: 0 6px 18px rgba(249,149,42,0.32);
+}
+.dock-btn--mic svg { width: 23px; height: 23px; }
+.dock-btn--mic:hover { background: linear-gradient(135deg, var(--amber-light), var(--amber)); color: #1a0e04; }
+.dock-btn--mic[aria-pressed="true"] {
+  animation: mic-ring 2.2s ease-in-out infinite;
+}
+@keyframes mic-ring {
+  0%,100% { box-shadow: 0 0 0 6px rgba(249,149,42,0.14), 0 6px 18px rgba(249,149,42,0.32); }
+  50%      { box-shadow: 0 0 0 12px rgba(249,149,42,0.06), 0 8px 24px rgba(249,149,42,0.42); }
+}
+
+body.high-contrast .text-input { background: #000; border-color: #fff; color: #fff; }
+body.high-contrast .chat-msg--assistant { background: #1a1a1a; border-color: #fff; color: #fff; }
 
 /* ── Settings panel ──────────────────────────── */
 .settings-panel {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.55);
-  backdrop-filter: blur(24px) saturate(120%);
-  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  background: rgba(0,0,0,0.68);
   opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.2s ease;
 }
 .settings-panel[aria-hidden="false"] { opacity: 1; pointer-events: all; }
 
 .settings-inner {
   width: min(360px, 88vw); padding: 32px 28px 24px;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.07);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.05);
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55);
   display: flex; flex-direction: column; gap: 18px;
 }
-.settings-title { font-size: 17px; font-weight: 500; color: rgba(0,0,0,0.80); letter-spacing: -0.01em; }
-.setting-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: rgba(0,0,0,0.50); cursor: pointer; }
-.setting-row select, .setting-row input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; }
+.settings-title { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; }
+.setting-row select {
+  background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 8px;
+}
+.setting-row select, .setting-row input[type="checkbox"] { accent-color: var(--amber); cursor: pointer; }
 .settings-close-btn {
-  width: auto; height: 40px; border-radius: 10px;
-  font-size: 14px; font-weight: 500; color: var(--blue);
-  padding: 0 20px; align-self: flex-end; margin-top: 6px;
+  width: auto; height: 42px; border-radius: 999px;
+  font-size: 14px; font-weight: 700; color: #1a0e04;
+  background: linear-gradient(135deg, var(--amber), var(--amber-light));
+  border: none;
+  padding: 0 22px; align-self: flex-end; margin-top: 6px;
   letter-spacing: 0.01em;
 }
+.settings-close-btn:hover { transform: scale(1.05); }
 
 /* ── Key hints ───────────────────────────────── */
 .key-hints {
   position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 20px;
-  font-size: 11px; letter-spacing: 0.05em; color: var(--text-hint);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; color: var(--text-hint);
   pointer-events: none; white-space: nowrap; z-index: 5;
 }
 
 /* ── High contrast ───────────────────────────── */
 body.high-contrast { background: #000; }
-body.high-contrast .glass-btn { background: #000; border-color: #fff; color: #fff; }
+body.high-contrast #voice-app::before { opacity: 0.4; }
+body.high-contrast .glass-btn,
+body.high-contrast .dock { background: #000; border-color: #fff; }
+body.high-contrast .dock-btn { color: #fff; }
 body.high-contrast .state-label { color: #fff; }
-body.high-contrast .key-hints { color: rgba(255,255,255,0.5); }
+body.high-contrast .key-hints { color: rgba(255,255,255,0.6); }
 
 /* ── Reduced motion ──────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
@@ -271,7 +347,8 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 /* ── Mobile ──────────────────────────────────── */
 @media (max-width: 480px) {
   #orb-canvas { width: 140px; height: 140px; }
-  .corner-tr { top: 18px; right: 18px; }
-  .bottom-stack { bottom: 28px; left: 24px; right: 24px; }
-  .chat-log { top: 76px; bottom: 130px; }
+  .brand-badge { top: 20px; left: 20px; }
+  .bottom-stack { bottom: 22px; left: 20px; right: 20px; }
+  .chat-log { top: 74px; bottom: 144px; }
+  #voice-app[data-state="idle"] .state-label { font-size: 21px; }
 }

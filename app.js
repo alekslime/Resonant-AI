@@ -90,7 +90,7 @@ class OrbRenderer {
         // Hard crisp circular clip — exactly like ChatGPT
         if (dist > 1) {
           const i = (py * S + px) * 4;
-          d[i] = 255; d[i+1] = 255; d[i+2] = 255; d[i+3] = 255;
+          d[i] = 0; d[i+1] = 0; d[i+2] = 0; d[i+3] = 0;
           continue;
         }
 
@@ -365,6 +365,7 @@ class ResonantUI {
 
   _setState(state) {
     this.orb.setState(state);
+    this.appRoot.dataset.state = state;
     const labels = { idle: 'Ready', listening: 'Listening', thinking: 'Thinking…', speaking: 'Speaking' };
     const label  = labels[state] || state;
 
