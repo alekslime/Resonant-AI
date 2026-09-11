@@ -28,7 +28,15 @@
     <section class="orb-stage" aria-label="Voice activity">
       <canvas id="orb-canvas" aria-hidden="true" focusable="false"></canvas>
       <p id="state-label" class="state-label" aria-hidden="true">Ready</p>
+      <p id="state-sub" class="state-sub">Ask anything, or tap the mic to talk it through</p>
     </section>
+
+    <!-- Suggested prompts — hidden once chat starts -->
+    <div id="suggestions" class="suggestions" aria-label="Suggested prompts">
+      <button type="button" class="chip" data-prompt="Quiz me on this week's vocabulary">Quiz me on vocabulary</button>
+      <button type="button" class="chip" data-prompt="Explain photosynthesis like I'm 12">Explain photosynthesis</button>
+      <button type="button" class="chip" data-prompt="Help me practice for tomorrow's test">Help me practice for a test</button>
+    </div>
 
     <!-- Text chat transcript (empty until first message) -->
     <section id="chat-log" class="chat-log" aria-label="Conversation" aria-live="polite"></section>
