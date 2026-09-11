@@ -1,0 +1,367 @@
+/* ════════════════════════════════════════════════
+   RESONANT — Landing page (index.html)
+   Light, editorial, warm-amber accents.
+   This file is scoped to the marketing site only —
+   the voice app (demo.html) uses its own style.css.
+════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: auto;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  background: #fff;
+  color: #141414;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* NOTE: do not set overflow-x (or any overflow) here — any overflow
+     value on the root other than "visible" changes what position:sticky
+     children treat as their scrolling container, which silently breaks
+     the "Three steps" sticky scroll-story below. Sections that need to
+     clip their own background art use overflow:hidden locally instead. */
+}
+
+img { display: block; max-width: 100%; }
+a { color: inherit; }
+
+/* ================================
+   PAGE 1: HERO
+================================ */
+.hero {
+  position: relative;
+  height: 100vh;
+  min-height: 560px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px 64px 56px;
+}
+
+.hero .logo {
+  position: absolute;
+  top: 96px;
+  left: 64px;
+  width: 34px;
+  height: 34px;
+  z-index: 2;
+}
+
+.hero-bg {
+  position: absolute;
+  top: -12%;
+  left: 0;
+  width: 100%;
+  height: 124%;
+  object-fit: cover;
+  object-position: 30% center;
+  z-index: 0;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(255,255,255,0.97) 0%,
+    rgba(255,255,255,0.80) 22%,
+    rgba(255,255,255,0.25) 48%,
+    rgba(255,255,255,0) 70%
+  );
+  z-index: 1;
+}
+
+.hero-title {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(38px, 6vw, 84px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #141414;
+  max-width: 720px;
+  margin-bottom: 20px;
+}
+
+.hero-bottom-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 26px;
+  flex-wrap: wrap;
+}
+
+.hero-text {
+  font-size: 18px;
+  color: rgba(20,20,20,0.62);
+}
+
+.built-by {
+  position: relative;
+  z-index: 2;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: rgba(20,20,20,0.40);
+}
+
+/* Shared pill CTA button */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 30px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f9952a, #f9c22a);
+  color: #1a0e04;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(249,149,42,0.30);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease;
+}
+.button:hover { transform: scale(1.05); box-shadow: 0 10px 30px rgba(249,149,42,0.40); }
+
+/* ================================
+   PAGE 2: SCREEN READERS VS RESONANT
+================================ */
+.second-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  background: #120c07;
+  overflow: hidden;
+}
+
+.second-bg {
+  width: 46%;
+  flex-shrink: 0;
+  height: auto;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.second-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 72px;
+}
+
+.second-content h3 {
+  font-size: clamp(28px, 4vw, 46px);
+  font-weight: 600;
+  line-height: 1.18;
+  color: rgba(255,255,255,0.94);
+  margin-bottom: 26px;
+}
+
+.second-content h3 span {
+  background: linear-gradient(135deg, #f9952a, #f9c22a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.second-content .description {
+  font-size: 17px;
+  line-height: 1.75;
+  color: rgba(255,255,255,0.60);
+  max-width: 520px;
+}
+
+/* ================================
+   PAGE 4: WHO'S IT FOR
+================================ */
+.fourth-page {
+  position: relative;
+  min-height: 130vh;
+  overflow: hidden;
+  background: #fff;
+  padding: 130px 64px 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.fourth-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 62%;
+  object-fit: cover;
+  object-position: left center;
+}
+
+.fourth-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    #fff 0%,
+    #fff 28%,
+    rgba(255,255,255,0.88) 42%,
+    rgba(255,255,255,0.35) 62%,
+    rgba(255,255,255,0) 85%
+  );
+}
+
+.fourth-top {
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+}
+
+.whos-title {
+  font-size: clamp(32px, 4.5vw, 54px);
+  font-weight: 600;
+  line-height: 1.1;
+  margin-bottom: 30px;
+}
+
+.whos-title span {
+  background: linear-gradient(135deg, #f9952a, #f9c22a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.whos-text {
+  font-size: 17px;
+  line-height: 1.75;
+  color: rgba(20,20,20,0.62);
+  max-width: 520px;
+  margin-bottom: 18px;
+}
+
+.fourth-quote {
+  position: relative;
+  z-index: 2;
+  max-width: 620px;
+}
+
+.fourth-quote blockquote {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.35;
+  color: #141414;
+}
+
+.fourth-quote blockquote span {
+  font-style: normal;
+  color: #f9952a;
+}
+
+/* ================================
+   PAGE 5: READY TO LISTEN
+================================ */
+.fifth-page {
+  position: relative;
+  min-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px;
+  background: #fff;
+}
+
+.fifth-page::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 900px;
+  height: 900px;
+  transform: translate(-50%, -50%);
+  background: url('assets/grad.png') center/cover no-repeat;
+  opacity: 0.16;
+  filter: blur(70px);
+  z-index: 0;
+}
+
+.ready-title {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(34px, 5vw, 58px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 40px;
+  color: #141414;
+}
+
+.big-round-button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 56px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f9952a, #f9c22a);
+  color: #1a0e04;
+  font-size: 17px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 14px 34px rgba(249,149,42,0.35);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease;
+}
+.big-round-button:hover { transform: scale(1.05); box-shadow: 0 18px 42px rgba(249,149,42,0.45); }
+
+.footer-logo {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 64px;
+}
+.footer-logo img { height: 22px; width: auto; }
+.footer-logo span {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(20,20,20,0.55);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+@media (max-width: 900px) {
+  .second-page { flex-direction: column; min-height: 0; }
+  .second-bg { width: 100%; height: 300px; }
+  .second-content { padding: 48px 32px; }
+
+  .fourth-page { padding: 110px 28px 80px; }
+  .fourth-bg { width: 100%; opacity: 0.35; }
+  .fourth-page::before {
+    background: linear-gradient(180deg, #fff 0%, #fff 55%, rgba(255,255,255,0.4) 80%, rgba(255,255,255,0) 100%);
+  }
+}
+
+@media (max-width: 760px) {
+  .hero { padding: 40px 24px 40px; }
+  .hero .logo { top: 84px; left: 24px; }
+  .hero-bottom-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+
+  .second-content { padding: 40px 24px; }
+  .second-content h3 br { display: none; }
+
+  .fourth-top, .fourth-quote { max-width: 100%; }
+  .fourth-quote { margin-top: 64px; }
+
+  .fifth-page { padding: 90px 20px; }
+  .big-round-button { padding: 18px 42px; font-size: 15px; }
+}
