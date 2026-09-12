@@ -5,8 +5,8 @@
 
 cd "$(dirname "$0")"
 
-# Kill anything still on this port from a previous run
-fuser -k 5000/tcp 2>/dev/null
+# Kill anything still on port 5000 from a previous run (portable: lsof > fuser)
+lsof -ti:5000 | xargs kill -9 2>/dev/null || true
 
 source .venv/bin/activate 2>/dev/null || echo "No .venv found — run: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
 

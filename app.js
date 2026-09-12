@@ -17,6 +17,7 @@ class OrbRenderer {
     this.energy = 0;
     this.targetEnergy = 0;
     this.raf    = null;
+    this.paused  = false;
 
     this.PARAMS = {
       idle:      { speed: 0.005, warp: 0.20, pulse: 0.00, turbulence: 0.0 },
@@ -55,6 +56,8 @@ class OrbRenderer {
 
   _frame() {
     this.raf = requestAnimationFrame(() => this._frame());
+    // Fix 8: skip heavy pixel loop when reduce-motion is active
+    if (this.paused) return;
 
     // Smooth lerp between states
     const k = 0.04;
@@ -161,6 +164,9 @@ class OrbRenderer {
 
     ctx.putImageData(img, 0, 0);
   }
+
+  pause()  { this.paused = true; }
+  resume() { this.paused = false; }
 
   start() { if (!this.raf) this._frame(); }
 
@@ -494,7 +500,8 @@ class ResonantUI {
 
     this.chkMotion.addEventListener('change', () => {
       document.body.classList.toggle('reduce-motion', this.chkMotion.checked);
-      if (this.chkMotion.checked) this.orb.stop(); else this.orb.start();
+      // Fix 8: pause pixel loop (not full stop) so the orb canvas stays visible
+      if (this.chkMotion.checked) this.orb.pause(); else this.orb.resume();
     });
 
     document.addEventListener('keydown', e => {

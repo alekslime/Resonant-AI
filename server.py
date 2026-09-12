@@ -41,10 +41,16 @@ WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
 
 LLAMA_MODEL_PATH = os.environ.get("LLAMA_MODEL_PATH")  # path to a .gguf file
 LLAMA_CTX = int(os.environ.get("LLAMA_CTX", "4096"))
-LLAMA_N_THREADS = int(os.environ.get("LLAMA_N_THREADS", str(os.cpu_count() or 4)))
+# Fix 3: default to half of CPU cores, not all, to avoid starving Flask
+LLAMA_N_THREADS = int(os.environ.get("LLAMA_N_THREADS", str(max(1, (os.cpu_count() or 4) // 2))))
 
 PIPER_BIN = os.environ.get("PIPER_BIN", "piper")
 PIPER_MODEL_PATH = os.environ.get("PIPER_MODEL_PATH")  # path to a Piper .onnx voice
+
+# Reserve ~500 tokens for the system prompt + response headroom.
+# Each history message is roughly 1 token per 4 chars; we use a conservative
+# 3-char/token estimate so we trim before hitting the hard limit.
+_HISTORY_CHAR_BUDGET = (LLAMA_CTX - 500) * 3
 
 SYSTEM_PROMPT = """You are Resonant, a warm, patient AI tutor built to work well for blind \
 and visually impaired students as well as sighted ones.
@@ -104,10 +110,28 @@ def get_llama():
     return _llama_model
 
 
+def _trim_history(history):
+    """Fix 4: sliding-window trim so we never blow past LLAMA_CTX.
+
+    Drops the oldest turns (pairs preferred) until the total character count
+    of all message content fits within _HISTORY_CHAR_BUDGET.
+    """
+    total = sum(len(m.get("content", "")) for m in history)
+    while history and total > _HISTORY_CHAR_BUDGET:
+        dropped = history.pop(0)
+        total -= len(dropped.get("content", ""))
+        # Drop in pairs (user+assistant) to keep the conversation coherent.
+        if history and history[0].get("role") == "assistant":
+            dropped2 = history.pop(0)
+            total -= len(dropped2.get("content", ""))
+    return history
+
+
 def run_llm(history):
     """history: list of {role, content} dicts, most recent last (no system msg)."""
     llm = get_llama()
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+    trimmed = _trim_history(list(history))  # trim a copy; caller owns the original
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + trimmed
     result = llm.create_chat_completion(messages=messages, max_tokens=400, temperature=0.7)
     return result["choices"][0]["message"]["content"].strip()
 
@@ -122,14 +146,18 @@ def synthesize_speech(text):
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         out_path = tmp.name
     try:
+        # Fix 5: add timeout so a hung Piper process doesn't block forever
         subprocess.run(
             [PIPER_BIN, "--model", PIPER_MODEL_PATH, "--output_file", out_path],
             input=text.encode("utf-8"),
             check=True,
             capture_output=True,
+            timeout=30,
         )
         with open(out_path, "rb") as f:
             return f.read()
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Piper TTS timed out after 30 s — check your model path.") from exc
     finally:
         if os.path.exists(out_path):
             os.remove(out_path)

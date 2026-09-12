@@ -1,0 +1,5 @@
+# Legacy LiveKit/GPT-4o hackathon agent (not used by the current local server)
+livekit-agents
+livekit-plugins-silero
+ai-coustics
+openai
