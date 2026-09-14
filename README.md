@@ -1,310 +1,112 @@
-# Resonant
+# Resonant — Interaction Prototype
 
-## 1st Place — GDG Tirana 2026
+A native Android (Kotlin + Jetpack Compose) prototype demonstrating a
+**non-spatial interaction model**: navigate lessons, listen to content,
+answer quizzes, and get feedback without ever needing to visually locate
+a button.
 
-# Your personal AI teacher that talks, reads, sees, and remembers.
-
-Resonant is a multimodal AI learning platform designed to make education more personalized, accessible, and natural.
-
-Students can chat with Resonant through text, voice, and visual input. It understands learning materials, explains difficult concepts, tracks progress, and adapts to each student's needs.
-
-Built for every student — including blind and visually impaired learners.
+No backend, no network, no auth, no database, no AI — everything is local
+and hardcoded, and the app runs fully offline.
 
 ---
 
-# Why Resonant?
+## How to open and run it
 
-Traditional education tools provide information.
+This project was built in a sandboxed environment without network access,
+so the Gradle wrapper jar (`gradle/wrapper/gradle-wrapper.jar`) is **not**
+included — it couldn't be downloaded here. To run the project:
 
-AI assistants provide answers.
+1. Open the `Resonant/` folder in **Android Studio** (Koala/2024.1 or newer
+   recommended, since this targets AGP 8.5.2 / Kotlin 1.9.24 / compileSdk 34).
+2. When Android Studio opens a wrapper-less Gradle project, it will offer to
+   regenerate the wrapper automatically — accept that, or run
+   `gradle wrapper --gradle-version 8.7` yourself if you have a system Gradle
+   install.
+3. Let Gradle sync (it will download the AGP/Kotlin/Compose/Navigation
+   dependencies listed in `app/build.gradle.kts`).
+4. Run the `app` configuration on a device or emulator running **API 26+**.
 
-But learning requires something more:
-
-- Understanding how a student learns
-- Remembering previous struggles
-- Explaining concepts in different ways
-- Making knowledge accessible
-- Helping students build confidence
-
-Resonant is designed to be a personal AI teacher that grows with the student.
-
----
-
-# Features
-
-## Multimodal AI Learning
-
-Interact with Resonant however you learn best:
-
-### Text Chat
-A familiar ChatGPT-like experience:
-
-- Ask questions
-- Solve problems
-- Request explanations
-- Generate summaries
-- Create quizzes
-- Build study plans
+The app requests the `VIBRATE` permission only (declared in the manifest,
+no runtime prompt needed on modern Android for this permission).
 
 ---
 
-### Voice Conversations
+## The interaction model, in code
 
-Learn naturally through speech:
+| Concept | Where it lives |
+|---|---|
+| Gesture zones (LEFT_EDGE / CENTER / RIGHT_EDGE) + raw gesture detection | `gestures/InteractionZone.kt`, `gestures/GestureManager.kt` |
+| Centralized speech (semantic-unit queue, pause/resume/repeat/speed) | `audio/AudioManager.kt` |
+| Centralized haptics (named pattern vocabulary, one place to retune) | `haptics/HapticPattern.kt`, `haptics/HapticManager.kt` |
+| Hardcoded lesson / quiz / chat content | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
+| Shared gesture-surface + debug wiring used by every screen | `ui/components/GestureSurface.kt` |
+| The seven screens | `ui/home`, `ui/lessons`, `ui/quiz`, `ui/chat`, `ui/settings` |
+| Debug/developer mode | `ui/settings/DebugScreen.kt` (Settings → Debug Mode) |
 
-- Real-time spoken conversations
-- Hands-free studying
-- Voice explanations
-- Language practice
-- Accessibility support
+**Every screen attaches the same `GestureSurface`.** That's the mechanism
+that keeps the gesture grammar identical everywhere — no screen invents its
+own touch handling. `GestureManager.kt` is the only file that talks to raw
+pointer input; it classifies touches into `ResonantGesture`s (taps, double
+taps, long presses, swipes, the left-edge hold-to-adjust-speed stream, and
+the universal three-finger gestures) based on **relative** zone boundaries
+(percentage of current width), so nothing depends on fixed screen
+coordinates or a specific orientation.
 
----
+`AudioManager` treats all spoken content — lesson sections, quiz prompts
+and options, chat replies — as a queue of small `SemanticUnit`s with a
+current index. Lessons and the chat mockup auto-advance through their
+queue; quiz screens use the identical `next()`/`previous()` primitives to
+let you *explore* answer options, which is what makes "browse the home
+menu," "move through a lesson," and "explore quiz answers" all feel like
+the same underlying action.
 
-### Vision & Document Understanding
-
-Resonant understands educational materials:
-
-- Textbooks
-- PDFs
-- Homework
-- Notes
-- Images
-- Diagrams
-- Presentations
-
-Examples:
-
-"Explain this page."
-
-"Why is my answer wrong?"
-
-"Summarize this chapter."
-
-"Describe this diagram."
-
----
-
-# Personal Learning Memory
-
-Resonant is not just a chatbot.
-
-It remembers the student's learning journey.
-
-It can track:
-
-- Topics studied
-- Previous mistakes
-- Weak areas
-- Learning goals
-- Exam preparation
-- Preferred explanation styles
-
-The AI teacher improves as it learns about the student.
+`HapticManager` is the only class that touches the system `Vibrator`. Every
+pattern is a named `HapticPattern` enum value with its millisecond timing
+defined in one map (`HapticPatterns.timings`) — change a vibration by
+editing one line there, nothing else.
 
 ---
 
-# Accessibility First
+## Testing it "with the screen ignored"
 
-Resonant was originally created to support blind and visually impaired students.
+The gesture grammar is the same on every screen:
 
-Accessibility is not an extra feature. It is part of the foundation.
+- **Swipe up / down** in the center — next / previous (menu item, lesson
+  unit, quiz option, chat chunk).
+- **Swipe right** in the center — continue / submit (context-dependent).
+- **Swipe left** in the center — back (context-dependent; also jumps a
+  lesson section backward).
+- **Double-tap** in the center — select / confirm the focused item.
+- **Single tap, left edge** — pause / resume speech.
+- **Hold, left edge, then drag up/down** — adjust speech speed in six
+  steps (0.75×–2.0×), with an ascending/descending tactile pattern as
+  confirmation.
+- **Long-press, right edge** — contextual action (in the Lesson screen,
+  this exits back to the lesson list, standing in for a future contextual
+  menu).
+- **Three-finger tap, anywhere** — repeat the current semantic unit.
+- **Three-finger hold, anywhere** — "Where am I?" — speaks the current
+  screen, section/question position, and playback state.
 
-Supported experiences:
+Try the full walkthrough from the spec: open the app, start the lesson,
+pause, resume, repeat a unit, change speed, move between sections, jump
+into the quiz, explore every option by sound and touch alone, select one,
+submit it, hear whether you were right, and get back to another section —
+without looking at the screen.
 
-- Textbook reading
-- Image descriptions
-- Diagram explanations
-- Voice-first navigation
-- Audio learning
-- Accessible quizzes
-- Screen-reader compatibility
-
-Education should not depend on eyesight.
-
----
-
-# Language Learning
-
-Resonant can act as a personal language tutor.
-
-Support for:
-
-- IELTS preparation
-- DELF preparation
-- TOEFL preparation
-- Speaking practice
-- Listening exercises
-- Pronunciation feedback
-- Conversation simulations
-
-Example:
-
-"Practice a DELF B2 speaking exam with me."
+The Debug screen (Settings → Debug Mode) mirrors live state — current
+screen, semantic unit, selected option, speech state/speed, and the last
+gesture and haptic fired — which is by far the fastest way to verify the
+gesture classifier is doing what you expect while you're testing blind.
 
 ---
 
-# Private Local AI
+## Known prototype limitations
 
-The future of Resonant is local-first.
-
-Student data should remain private.
-
-Goals:
-
-- No required AI API subscriptions
-- No external processing of private learning data
-- Offline-capable AI
-- Local model inference
-
-Your education belongs to you.
-
----
-
-# Architecture
-
-Current prototype:
-
-
-Student
-|
-|
-Text / Voice / Images
-|
-|
-Resonant Interface
-|
-|
-AI Processing Pipeline
-|
-|
-Personalized Learning Response
-
-
----
-
-# Current Prototype Stack
-
-The original GDG Tirana prototype uses:
-
-- Python
-- Flask
-- HTML/CSS/JavaScript
-- LiveKit
-- GPT-4o
-- Deepgram Nova-3
-- Cartesia Sonic-3
-- Silero VAD
-- ai_coustics
-
-This prototype proved the voice-learning experience.
-
-The next generation focuses on local AI and personalization.
-
----
-
-# Planned Local AI Architecture
-
-Target stack:
-
-## Language Model
-
-Local LLM inference:
-
-- llama.cpp
-- Qwen
-- Llama
-- Mistral
-
-## Speech Recognition
-
-Local speech-to-text:
-
-- Whisper.cpp
-- Faster Whisper
-
-## Text To Speech
-
-Local voice generation:
-
-- Piper
-- Kokoro
-
-## Vision
-
-Local multimodal models:
-
-- MiniCPM-V
-- Qwen-VL
-
-## Memory
-
-Private learning database:
-
-- SQLite
-- Vector embeddings
-- Local retrieval system
-
----
-
-# Roadmap
-
-## Phase 1 — Core Platform
-
-- Text chat interface
-- Voice conversations
-- File uploads
-- Basic AI tutoring
-
-## Phase 2 — Understanding
-
-- PDF processing
-- Textbook understanding
-- Image analysis
-- Homework assistance
-
-## Phase 3 — Personal Teacher
-
-- Student profiles
-- Learning memory
-- Progress tracking
-- Personalized explanations
-
-## Phase 4 — Accessibility
-
-- Blind student workflows
-- Voice-only learning
-- Accessible exams
-- Tactile feedback integration
-
-## Phase 5 — Local AI
-
-- Remove external API dependency
-- Fully local inference
-- Offline education mode
-
----
-
-# Vision
-
-> Every student deserves a teacher that understands them.
-
----
-
-# Built At
-
-GDG Tirana 2026 — 1st Place
-
-Supported by:
-
-- Google
-- AI Hub Albania
-- Plug and Play
-- Gjirafa Mall
-- Codevider
-- B2 Tech
-
----
-
-# License
-
-MIT License
+- Only one lesson and one quiz set are included (binary search / a short
+  general-knowledge quiz) — `content/*.kt` is where you'd add more.
+- The right-edge "contextual controls" and "contextual action menu" are
+  intentionally minimal per the spec ("don't overload this area") — for
+  now they mostly just demonstrate that the zone and gesture are wired up.
+- TextToSpeech quality/voice depends entirely on the TTS engine installed
+  on the test device.
