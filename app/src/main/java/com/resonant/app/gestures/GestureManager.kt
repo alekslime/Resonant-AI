@@ -79,16 +79,24 @@ fun Modifier.resonantGestureDetector(
             val elapsed = System.currentTimeMillis() - downTimeMs
             val moved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
 
-            // Right-edge hold-to-adjust-speed
+            // Right-edge hold-to-adjust-speed.
+            // We check !moved only at activation time so the user can press and
+            // hold briefly before dragging. Once holdModeActive is true, drag is
+            // the whole point — don't cancel it because totalDrag grew.
+            val rightEdgeMoved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
             if (zone == InteractionZone.RIGHT_EDGE && maxPointerCount == 1 &&
-                !holdModeActive && elapsed > LONG_PRESS_MS && !moved
+                !holdModeActive && elapsed > LONG_PRESS_MS && !rightEdgeMoved
             ) {
                 holdModeActive = true
                 onGesture(ResonantGesture.HoldStart)
             }
             if (holdModeActive) {
-                val rawDelta = primary?.positionChange()?.y ?: 0f
-                holdAccumY += if (INVERT_VERTICAL_SWIPES) -rawDelta else rawDelta
+                // positionChange() was already consumed above for totalDrag,
+                // so re-read from the change's current vs previous position instead.
+                val rawDeltaY = primary?.let {
+                    it.position.y - it.previousPosition.y
+                } ?: 0f
+                holdAccumY += if (INVERT_VERTICAL_SWIPES) -rawDeltaY else rawDeltaY
                 if (holdAccumY <= -holdStepPx) {
                     onGesture(ResonantGesture.HoldSpeedUp)
                     holdAccumY = 0f
