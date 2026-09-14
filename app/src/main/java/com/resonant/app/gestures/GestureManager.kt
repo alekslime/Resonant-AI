@@ -34,6 +34,11 @@ private const val TAP_MAX_DURATION_MS = 300L
 private const val TAP_MAX_DRIFT_PX = 24f
 private const val SWIPE_MIN_DISTANCE_PX = 64f
 
+// Flip either of these if a swipe axis ever feels backwards on-device — nothing
+// else in the detection logic needs to change.
+private const val INVERT_VERTICAL_SWIPES = true
+private const val INVERT_HORIZONTAL_SWIPES = false
+
 private val EDGE_ZONE_WIDTH = 32.dp
 private val HOLD_SPEED_STEP = 56.dp
 
@@ -55,7 +60,12 @@ fun Modifier.resonantGestureDetector(
     }
 
     awaitEachGesture {
-        val firstDown = awaitFirstDown(pass = PointerEventPass.Initial)
+        // awaitFirstDown() from androidx.compose.foundation.gestures is `internal`
+        // and not accessible here, so the first-down wait is done manually: the
+        // very first pointer event delivered inside a fresh awaitEachGesture
+        // iteration is the down event that started this gesture.
+        val firstEvent = awaitPointerEvent(PointerEventPass.Initial)
+        val firstDown = firstEvent.changes.first { it.pressed }
         val downTimeMs = System.currentTimeMillis()
         val zone = zoneFor(firstDown.position.x, size.width)
 
@@ -90,7 +100,8 @@ fun Modifier.resonantGestureDetector(
                 onGesture(ResonantGesture.HoldStart)
             }
             if (holdModeActive) {
-                holdAccumY += (primary?.positionChange()?.y ?: 0f)
+                val rawDelta = primary?.positionChange()?.y ?: 0f
+                holdAccumY += if (INVERT_VERTICAL_SWIPES) -rawDelta else rawDelta
                 if (holdAccumY <= -holdStepPx) {
                     onGesture(ResonantGesture.HoldSpeedUp)
                     holdAccumY = 0f
@@ -130,9 +141,13 @@ fun Modifier.resonantGestureDetector(
 
             moved -> {
                 val direction = if (abs(totalDrag.x) > abs(totalDrag.y)) {
-                    if (totalDrag.x > 0) SwipeDirection.RIGHT else SwipeDirection.LEFT
+                    val movedRight = totalDrag.x > 0
+                    val right = if (INVERT_HORIZONTAL_SWIPES) !movedRight else movedRight
+                    if (right) SwipeDirection.RIGHT else SwipeDirection.LEFT
                 } else {
-                    if (totalDrag.y > 0) SwipeDirection.DOWN else SwipeDirection.UP
+                    val movedDown = totalDrag.y > 0
+                    val down = if (INVERT_VERTICAL_SWIPES) !movedDown else movedDown
+                    if (down) SwipeDirection.DOWN else SwipeDirection.UP
                 }
                 if (abs(totalDrag.x) > SWIPE_MIN_DISTANCE_PX || abs(totalDrag.y) > SWIPE_MIN_DISTANCE_PX) {
                     onGesture(ResonantGesture.Swipe(zone, direction))
