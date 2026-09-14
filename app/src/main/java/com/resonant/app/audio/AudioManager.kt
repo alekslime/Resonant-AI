@@ -10,30 +10,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 
-/**
- * The single owner of the TextToSpeech engine. No composable or screen talks to
- * android.speech.tts directly — everything goes through this class.
- *
- * Content is modeled as a queue of [SemanticUnit]s with a current index. Lessons,
- * the chat mockup, and quiz-option exploration all reuse the same queue/next/
- * previous primitives, which is what keeps navigation feeling identical across
- * every screen.
- *
- * A separate [announce] path exists for short interjections ("Correct.",
- * "Option B selected.", orientation status) that should interrupt speech
- * immediately without disturbing the queue position the user will resume from.
- */
 class AudioManager(context: Context) {
 
     companion object {
         val SPEEDS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
-        const val DEFAULT_SPEED_INDEX = 1 // 1.0x
+        const val DEFAULT_SPEED_INDEX = 1
         private const val ANNOUNCE_UTTERANCE_ID = "resonant_announce"
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var ready = false
-    private var pendingAutoAdvance = false
 
     private val _queue = MutableStateFlow<List<SemanticUnit>>(emptyList())
     val queue: StateFlow<List<SemanticUnit>> = _queue
@@ -56,7 +42,6 @@ class AudioManager(context: Context) {
     val speed: Float get() = SPEEDS[_speedIndex.value]
 
     private var autoAdvanceEnabled = false
-
     private lateinit var tts: TextToSpeech
 
     init {
@@ -64,39 +49,36 @@ class AudioManager(context: Context) {
             if (status == TextToSpeech.SUCCESS) {
                 tts.language = Locale.US
                 tts.setSpeechRate(speed)
+                // Listener registered here — inside the ready callback — so it's
+                // guaranteed to be set before any speak() call can complete.
+                tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
+                        mainHandler.post {
+                            _isSpeaking.value = true
+                            _isPaused.value = false
+                        }
+                    }
+
+                    override fun onDone(utteranceId: String?) {
+                        if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
+                        mainHandler.post {
+                            _isSpeaking.value = false
+                            if (autoAdvanceEnabled && !_isPaused.value) next()
+                        }
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {
+                        mainHandler.post { _isSpeaking.value = false }
+                    }
+                })
                 ready = true
             }
         }
-        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                if (utteranceId != ANNOUNCE_UTTERANCE_ID) {
-                    mainHandler.post {
-                        _isSpeaking.value = true
-                        _isPaused.value = false
-                    }
-                }
-            }
-
-            override fun onDone(utteranceId: String?) {
-                if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
-                mainHandler.post {
-                    _isSpeaking.value = false
-                    if (autoAdvanceEnabled && !_isPaused.value) {
-                        next()
-                    }
-                }
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                mainHandler.post { _isSpeaking.value = false }
-            }
-        })
     }
 
-    // ---------------------------------------------------------------
     // Queue management
-    // ---------------------------------------------------------------
 
     fun setQueue(units: List<SemanticUnit>, startIndex: Int = 0, autoAdvance: Boolean = false) {
         _queue.value = units
@@ -117,7 +99,6 @@ class AudioManager(context: Context) {
 
     fun repeatCurrent() = speakCurrent()
 
-    /** Moves forward in the queue and speaks the new current unit. Returns false at the end. */
     fun next(): Boolean {
         val q = _queue.value
         val newIndex = _index.value + 1
@@ -128,7 +109,6 @@ class AudioManager(context: Context) {
         return true
     }
 
-    /** Moves backward in the queue and speaks the new current unit. Returns false at the start. */
     fun previous(): Boolean {
         val q = _queue.value
         val newIndex = _index.value - 1
@@ -147,9 +127,7 @@ class AudioManager(context: Context) {
         speakCurrent()
     }
 
-    // ---------------------------------------------------------------
-    // Transport controls
-    // ---------------------------------------------------------------
+    // Transport
 
     fun pause() {
         if (!_isSpeaking.value) return
@@ -173,10 +151,7 @@ class AudioManager(context: Context) {
         _isPaused.value = false
     }
 
-    // ---------------------------------------------------------------
-    // Speed control — changing speed restarts only the current unit,
-    // never the whole lesson/chat/quiz.
-    // ---------------------------------------------------------------
+    // Speed — changing speed immediately restarts the current unit at the new rate
 
     fun increaseSpeed(): Boolean {
         val newIndex = _speedIndex.value + 1
@@ -194,9 +169,7 @@ class AudioManager(context: Context) {
         return true
     }
 
-    // ---------------------------------------------------------------
-    // One-off interjections that don't disturb queue state
-    // ---------------------------------------------------------------
+    // Announce — interrupts current speech without disturbing queue position
 
     fun announce(text: String) {
         if (!ready) return

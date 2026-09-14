@@ -25,7 +25,6 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.EdgeHints
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantGray
 import com.resonant.app.ui.theme.ResonantOrange
 
@@ -73,13 +72,24 @@ fun ChatScreen() {
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> audio.next()
-                        SwipeDirection.DOWN -> audio.previous()
+                        SwipeDirection.UP -> { audio.next(); haptics.play(HapticPattern.NEXT) }
+                        SwipeDirection.DOWN -> { audio.previous(); haptics.play(HapticPattern.PREVIOUS) }
                         else -> {}
                     }
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.CENTER -> { /* no select in chat */ }
+                    InteractionZone.RIGHT_EDGE -> {}
+                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
+                }
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
@@ -102,12 +112,6 @@ fun ChatScreen() {
                     style = MaterialTheme.typography.headlineMedium,
                     color = ResonantOrange,
                     modifier = Modifier.padding(top = 16.dp)
-                )
-                Text(
-                    "Swipe up/down to move through the reply",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantBlack,
-                    modifier = Modifier.padding(top = 24.dp)
                 )
             }
         }

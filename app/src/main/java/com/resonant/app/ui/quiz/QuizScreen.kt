@@ -32,12 +32,6 @@ import com.resonant.app.ui.theme.ResonantGray
 import com.resonant.app.ui.theme.ResonantIncorrectRed
 import com.resonant.app.ui.theme.ResonantOrange
 
-/**
- * Queue layout for a question: index 0 is the prompt, indices 1..N are the
- * options. Reusing the same next()/previous() primitives as every other
- * screen is what keeps "explore the options" feeling identical to "browse
- * the home menu" or "move through a lesson".
- */
 @Composable
 fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
     val audio = LocalAudioManager.current
@@ -45,7 +39,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
     val debug = LocalDebugState.current
 
     var questionIndex by remember { mutableIntStateOf(0) }
-    var queueIndex by remember { mutableIntStateOf(0) } // 0 = prompt, 1..N = options
+    var queueIndex by remember { mutableIntStateOf(0) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
     var submitted by remember { mutableStateOf(false) }
     var lastAnswerCorrect by remember { mutableStateOf<Boolean?>(null) }
@@ -79,16 +73,18 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
     }
 
     fun submit() {
-        val chosen = selectedOption ?: return
+        val chosen = selectedOption ?: run {
+            audio.announce("No option selected. Swipe up or down to browse options, then tap to select.")
+            haptics.play(HapticPattern.ERROR)
+            return
+        }
         submitted = true
-        haptics.play(HapticPattern.SUBMIT)
-        audio.announce("Submitting.")
         val correct = chosen == question.correctIndex
         lastAnswerCorrect = correct
         if (correct) {
             correctCount += 1
             haptics.play(HapticPattern.CORRECT)
-            audio.announce("Correct.")
+            audio.announce("Correct. ${question.explanation}")
         } else {
             haptics.play(HapticPattern.INCORRECT)
             audio.announce("Incorrect. ${question.explanation}")
@@ -96,6 +92,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
     }
 
     fun advance() {
+        haptics.play(HapticPattern.NEXT)
         if (questionIndex + 1 < quiz.questions.size) {
             loadQuestion(questionIndex + 1)
         } else {
@@ -111,35 +108,47 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> if (submitted) advance() else audio.next()
-                        SwipeDirection.DOWN -> if (!submitted) audio.previous()
+                        SwipeDirection.UP -> if (submitted) advance() else {
+                            audio.next(); haptics.play(HapticPattern.NEXT)
+                        }
+                        SwipeDirection.DOWN -> if (!submitted) {
+                            audio.previous(); haptics.play(HapticPattern.PREVIOUS)
+                        }
                         SwipeDirection.RIGHT -> if (!submitted) submit()
                         SwipeDirection.LEFT -> {}
                     }
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.CENTER && !submitted) {
-                    if (queueIndex >= 1) {
+                // CENTER tap = select current option
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.CENTER -> if (!submitted && queueIndex >= 1) {
                         val optIndex = queueIndex - 1
                         selectedOption = optIndex
                         haptics.play(HapticPattern.SELECT)
                         val letter = question.options[optIndex].letter
                         debug.setSelectedOption(letter.toString())
-                        audio.announce("Option $letter selected.")
+                        audio.announce("Option $letter selected. Swipe right to submit.")
                     }
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
+                }
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
+                    // Exit quiz — navigate back handled by caller if needed
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> {
                     val status = when {
-                        submitted -> "You have submitted this answer. ${if (lastAnswerCorrect == true) "It was correct." else "It was incorrect."}"
-                        selectedOption != null -> "You have selected option ${question.options[selectedOption!!].letter}, not yet submitted."
-                        else -> "You are exploring answer options. Swipe right to submit once you've selected one."
+                        submitted -> "You have submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe up to continue."
+                        selectedOption != null -> "Option ${question.options[selectedOption!!].letter} selected. Swipe right to submit."
+                        else -> "No option selected. Swipe up or down to browse, tap to select, swipe right to submit."
                     }
-                    audio.announce(
-                        "You are in the Quiz, question ${questionIndex + 1} of ${quiz.questions.size}. $status"
-                    )
+                    audio.announce("Quiz, question ${questionIndex + 1} of ${quiz.questions.size}. $status")
                 }
                 ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
                 ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
@@ -157,12 +166,13 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
                             submitted && i == question.correctIndex -> ResonantCorrectGreen
                             submitted && isSelected -> ResonantIncorrectRed
                             isSelected -> ResonantOrange
+                            isFocused -> ResonantOrange
                             else -> ResonantGray
                         }
                         Text(
                             "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else "",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = if (isFocused || isSelected || submitted) color else ResonantBlack,
+                            color = color,
                             modifier = Modifier.padding(vertical = 6.dp)
                         )
                     }

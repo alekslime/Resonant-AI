@@ -36,7 +36,7 @@ import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantOrange
 import com.resonant.app.ui.theme.ResonantWhite
 
-private val settingsItems = listOf("Speech speed", "Debug Mode")
+private val settingsItems = listOf("Debug Mode")
 
 @Composable
 fun SettingsScreen(onOpenDebug: () -> Unit) {
@@ -56,26 +56,42 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
         )
     }
 
-    ResonantScaffold(title = "Settings", subtitle = "Swipe to browse. Double-tap to open.") {
+    LaunchedEffect(Unit) {
+        audio.index.collect { idx ->
+            index = idx.coerceIn(0, (settingsItems.size - 1).coerceAtLeast(0))
+        }
+    }
+
+    ResonantScaffold(title = "Settings", subtitle = "Swipe to browse. Tap to open.") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> if (audio.next()) { index = audio.index.value; haptics.play(HapticPattern.NEXT) }
-                        SwipeDirection.DOWN -> if (audio.previous()) { index = audio.index.value; haptics.play(HapticPattern.PREVIOUS) }
+                        SwipeDirection.UP -> if (audio.next()) haptics.play(HapticPattern.NEXT)
+                        SwipeDirection.DOWN -> if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
                         else -> {}
                     }
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.CENTER) {
-                    haptics.play(HapticPattern.SELECT)
-                    if (settingsItems[index] == "Debug Mode") onOpenDebug()
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.CENTER -> {
+                        haptics.play(HapticPattern.SELECT)
+                        if (settingsItems[index] == "Debug Mode") onOpenDebug()
+                    }
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
+                }
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "You are in Settings. Speech speed is $speed times. Currently focused: ${settingsItems[index]}."
+                    "You are in Settings. Speech speed is ${speed}x. Currently focused: ${settingsItems[index]}."
                 )
                 ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
                 ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
@@ -88,7 +104,13 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
                     "Speech speed: ${speed}x",
                     style = MaterialTheme.typography.bodyLarge,
                     color = ResonantBlack,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+                Text(
+                    "Hold right edge, drag up/down to change speed.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ResonantBlack,
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
                     val focused = i == index
@@ -99,8 +121,8 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (focused) ResonantOrange else ResonantWhite)
                             .clickable {
-                                index = i
                                 audio.jumpTo(i)
+                                haptics.play(HapticPattern.SELECT)
                                 if (label == "Debug Mode") onOpenDebug()
                             }
                             .padding(20.dp)

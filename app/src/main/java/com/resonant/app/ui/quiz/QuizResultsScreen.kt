@@ -29,8 +29,9 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
 
     LaunchedEffect(correct, total) {
         debug.setScreen("Quiz Results")
+        haptics.play(HapticPattern.CONFIRM)
         audio.setQueue(
-            listOf(SemanticUnit("results", "You scored $correct out of $total.")),
+            listOf(SemanticUnit("results", "You scored $correct out of $total. Tap to return home.")),
             startIndex = 0,
             autoAdvance = false
         )
@@ -39,17 +40,26 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
     ResonantScaffold(title = "Results") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.CENTER) {
-                    haptics.play(HapticPattern.CONFIRM)
-                    onDone()
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.CENTER -> {
+                        haptics.play(HapticPattern.CONFIRM)
+                        onDone()
+                    }
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "You are on the Quiz Results screen. You scored $correct out of $total. Double-tap to return home."
+                    "Quiz Results. You scored $correct out of $total. Tap to return home."
                 )
+                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
+                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
                 else -> {}
             }
         }) {
@@ -60,7 +70,7 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                     color = ResonantOrange
                 )
                 Text(
-                    "Double-tap anywhere to return home.",
+                    "Tap anywhere to return home.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = ResonantBlack,
                     modifier = Modifier.padding(top = 16.dp)

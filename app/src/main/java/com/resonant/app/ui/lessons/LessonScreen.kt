@@ -53,8 +53,6 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
         audio.setQueue(flat.map { it.unit }, startIndex = 0, autoAdvance = true)
     }
 
-    // Mirror the audio manager's own index so the UI + section-change haptic
-    // logic reacts to auto-advance as well as manual swipes.
     LaunchedEffect(Unit) {
         audio.index.collect { newIndex ->
             flatIndex = newIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
@@ -85,17 +83,25 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> audio.next()
-                        SwipeDirection.DOWN -> audio.previous()
+                        SwipeDirection.UP -> { audio.next(); haptics.play(HapticPattern.NEXT) }
+                        SwipeDirection.DOWN -> { audio.previous(); haptics.play(HapticPattern.PREVIOUS) }
                         SwipeDirection.RIGHT -> jumpToSection(+1)
                         SwipeDirection.LEFT -> jumpToSection(-1)
                     }
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.CENTER -> { /* no select action in lesson — audio is auto-advancing */ }
+                    InteractionZone.RIGHT_EDGE -> {}
+                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
                 }
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
-                    // Contextual menu placeholder for this prototype: exits to Lessons.
+                    haptics.play(HapticPattern.BACK)
                     onExit()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()

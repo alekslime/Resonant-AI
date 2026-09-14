@@ -61,29 +61,46 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         )
     }
 
-    ResonantScaffold(title = "Resonant", subtitle = "Swipe to browse. Double-tap to open.") {
+    // Keep visual index in sync with audio queue
+    LaunchedEffect(Unit) {
+        audio.index.collect { idx ->
+            index = idx.coerceIn(0, (homeItems.size - 1).coerceAtLeast(0))
+        }
+    }
+
+    ResonantScaffold(title = "Resonant", subtitle = "Swipe to browse. Tap to open.") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
                         SwipeDirection.UP -> {
-                            if (audio.next()) { index = audio.index.value; haptics.play(HapticPattern.NEXT) }
+                            if (audio.next()) haptics.play(HapticPattern.NEXT)
                         }
                         SwipeDirection.DOWN -> {
-                            if (audio.previous()) { index = audio.index.value; haptics.play(HapticPattern.PREVIOUS) }
+                            if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
                         }
                         else -> {}
                     }
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.CENTER) {
-                    haptics.play(HapticPattern.SELECT)
-                    audio.announce("Opening ${homeItems[index].label}.")
-                    onNavigate(homeItems[index].route)
+                // CENTER tap = select/confirm
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.CENTER -> {
+                        haptics.play(HapticPattern.SELECT)
+                        audio.announce("Opening ${homeItems[index].label}.")
+                        onNavigate(homeItems[index].route)
+                    }
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.RIGHT_EDGE -> { /* dead zone */ }
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause()
-                    haptics.play(HapticPattern.CONFIRM)
+                // Left edge double-tap = repeat current
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
                 }
+                // Right edge long press = contextual (no-op on home)
+                is ResonantGesture.LongPress -> {}
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "You are on the Home screen. Currently focused: ${homeItems[index].label}."
@@ -95,9 +112,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         }) {
             EdgeHints()
             Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
+                Modifier.fillMaxSize().padding(24.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 homeItems.forEachIndexed { i, item ->
@@ -109,8 +124,10 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (focused) ResonantOrange else ResonantWhite)
                             .clickable {
-                                index = i
                                 audio.jumpTo(i)
+                                haptics.play(HapticPattern.SELECT)
+                                audio.announce("Opening ${item.label}.")
+                                onNavigate(item.route)
                             }
                             .padding(20.dp)
                             .semantics { contentDescription = item.label + if (focused) " focused" else "" }

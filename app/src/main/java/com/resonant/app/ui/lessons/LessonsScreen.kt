@@ -52,23 +52,39 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit) {
         )
     }
 
-    ResonantScaffold(title = "Lessons", subtitle = "Swipe to browse. Double-tap to start.") {
+    LaunchedEffect(Unit) {
+        audio.index.collect { idx ->
+            index = idx.coerceIn(0, (lessons.size - 1).coerceAtLeast(0))
+        }
+    }
+
+    ResonantScaffold(title = "Lessons", subtitle = "Swipe to browse. Tap to start.") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> if (audio.next()) { index = audio.index.value; haptics.play(HapticPattern.NEXT) }
-                        SwipeDirection.DOWN -> if (audio.previous()) { index = audio.index.value; haptics.play(HapticPattern.PREVIOUS) }
+                        SwipeDirection.UP -> if (audio.next()) haptics.play(HapticPattern.NEXT)
+                        SwipeDirection.DOWN -> if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
                         else -> {}
                     }
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.CENTER) {
-                    haptics.play(HapticPattern.SELECT)
-                    audio.announce("Starting ${lessons[index].title}.")
-                    onOpenLesson(lessons[index].id)
+                is ResonantGesture.Tap -> when (gesture.zone) {
+                    InteractionZone.CENTER -> {
+                        haptics.play(HapticPattern.SELECT)
+                        audio.announce("Starting ${lessons[index].title}.")
+                        onOpenLesson(lessons[index].id)
+                    }
+                    InteractionZone.LEFT_EDGE -> {
+                        audio.togglePause()
+                        haptics.play(HapticPattern.CONFIRM)
+                    }
+                    InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.repeatCurrent()
+                }
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    // Back to home
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
@@ -92,7 +108,12 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit) {
                             .padding(vertical = 8.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (focused) ResonantOrange else ResonantWhite)
-                            .clickable { index = i; audio.jumpTo(i) }
+                            .clickable {
+                                audio.jumpTo(i)
+                                haptics.play(HapticPattern.SELECT)
+                                audio.announce("Starting ${lesson.title}.")
+                                onOpenLesson(lesson.id)
+                            }
                             .padding(20.dp)
                     ) {
                         Text(
