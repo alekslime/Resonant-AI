@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -19,7 +20,6 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantOrange
 
 @Composable
 fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
@@ -37,23 +37,15 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
         )
     }
 
-    ResonantScaffold(title = "Results") {
+    ResonantScaffold(title = "Results", subtitle = "$correct of $total correct") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Tap -> when (gesture.zone) {
-                    InteractionZone.CENTER -> {
-                        haptics.play(HapticPattern.CONFIRM)
-                        onDone()
-                    }
-                    InteractionZone.LEFT_EDGE -> {
-                        audio.togglePause()
-                        haptics.play(HapticPattern.CONFIRM)
-                    }
+                    InteractionZone.CENTER -> { haptics.play(HapticPattern.CONFIRM); onDone() }
+                    InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
                     InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.repeatCurrent()
-                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "Quiz Results. You scored $correct out of $total. Tap to return home."
@@ -63,16 +55,16 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(24.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp)) {
                 Text(
                     "$correct / $total",
-                    style = MaterialTheme.typography.displayLarge,
-                    color = ResonantOrange
+                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
+                    color = ResonantBlack
                 )
                 Text(
                     "Tap anywhere to return home.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ResonantBlack,
+                    color = ResonantBlack.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }

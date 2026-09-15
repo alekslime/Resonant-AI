@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.resonant.app.content.ChatData
 import com.resonant.app.content.SemanticUnit
@@ -22,11 +23,9 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
-import com.resonant.app.ui.components.EdgeHints
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantGray
-import com.resonant.app.ui.theme.ResonantOrange
+import com.resonant.app.ui.theme.ResonantBlack
 
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
 
@@ -78,39 +77,33 @@ fun ChatScreen() {
                     }
                 }
                 is ResonantGesture.Tap -> when (gesture.zone) {
-                    InteractionZone.LEFT_EDGE -> {
-                        audio.togglePause()
-                        haptics.play(HapticPattern.CONFIRM)
-                    }
-                    InteractionZone.CENTER -> { /* no select in chat */ }
+                    InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
+                    InteractionZone.CENTER -> {}
                     InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.repeatCurrent()
-                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "You are in AI Chat, exchange ${lastExchangeIndex + 1} of ${script.exchanges.size}."
+                    "AI Chat, exchange ${lastExchangeIndex + 1} of ${script.exchanges.size}."
                 )
                 ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
                 ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
                 else -> {}
             }
         }) {
-            EdgeHints()
-            Column(Modifier.fillMaxSize().padding(24.dp)) {
+            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 24.dp)) {
                 Text(
                     "You: ${current?.userText ?: ""}",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = ResonantGray
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ResonantBlack.copy(alpha = 0.4f)
                 )
                 Text(
                     current?.unit?.text ?: "",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = ResonantOrange,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                    color = ResonantBlack,
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }

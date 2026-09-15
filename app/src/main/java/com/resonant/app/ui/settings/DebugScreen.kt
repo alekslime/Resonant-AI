@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.core.LocalAudioManager
@@ -17,7 +18,6 @@ import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantGray
 
 @Composable
 fun DebugScreen() {
@@ -55,12 +55,20 @@ fun DebugScreen() {
         "Current zone" to zone
     )
 
-    ResonantScaffold(title = "Debug Mode", subtitle = "Live interaction state") {
-        Column(Modifier.fillMaxSize().padding(24.dp)) {
+    ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
+        Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 32.dp)) {
             rows.forEach { (label, value) ->
-                Column(Modifier.padding(bottom = 16.dp)) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = ResonantGray)
-                    Text(value, style = MaterialTheme.typography.bodyLarge, color = ResonantBlack)
+                Column(Modifier.padding(bottom = 20.dp)) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = ResonantBlack.copy(alpha = 0.4f)
+                    )
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = ResonantBlack
+                    )
                 }
             }
         }

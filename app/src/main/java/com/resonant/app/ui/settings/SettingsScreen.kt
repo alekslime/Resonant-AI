@@ -1,13 +1,10 @@
 package com.resonant.app.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,7 +15,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.content.SemanticUnit
@@ -29,12 +26,9 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
-import com.resonant.app.ui.components.EdgeHints
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantOrange
-import com.resonant.app.ui.theme.ResonantWhite
 
 private val settingsItems = listOf("Debug Mode")
 
@@ -62,7 +56,7 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
         }
     }
 
-    ResonantScaffold(title = "Settings", subtitle = "Swipe to browse. Tap to open.") {
+    ResonantScaffold(title = "Settings", subtitle = "Speech speed: ${speed}x") {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
@@ -77,62 +71,48 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
                         haptics.play(HapticPattern.SELECT)
                         if (settingsItems[index] == "Debug Mode") onOpenDebug()
                     }
-                    InteractionZone.LEFT_EDGE -> {
-                        audio.togglePause()
-                        haptics.play(HapticPattern.CONFIRM)
-                    }
+                    InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
                     InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
-                    audio.repeatCurrent()
-                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "You are in Settings. Speech speed is ${speed}x. Currently focused: ${settingsItems[index]}."
+                    "Settings. Speech speed is ${speed}x. Hold right edge and drag to change. Currently focused: ${settingsItems[index]}."
                 )
                 ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
                 ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
                 else -> {}
             }
         }) {
-            EdgeHints()
-            Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
+            Column(
+                Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 40.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    "Speech speed: ${speed}x",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = ResonantBlack,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-                Text(
-                    "Hold right edge, drag up/down to change speed.",
+                    "Hold right edge,\ndrag to change speed.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantBlack,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    color = ResonantBlack.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(bottom = 40.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
                     val focused = i == index
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (focused) ResonantOrange else ResonantWhite)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = if (focused) FontWeight.Black else FontWeight.Normal
+                        ),
+                        color = if (focused) ResonantBlack else ResonantBlack.copy(alpha = 0.3f),
+                        modifier = Modifier
+                            .padding(vertical = 6.dp)
                             .clickable {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
                                 if (label == "Debug Mode") onOpenDebug()
                             }
-                            .padding(20.dp)
-                    ) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = if (focused) ResonantWhite else ResonantBlack
-                        )
-                    }
+                    )
                 }
             }
         }
