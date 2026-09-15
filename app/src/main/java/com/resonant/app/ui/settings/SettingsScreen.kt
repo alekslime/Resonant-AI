@@ -49,6 +49,8 @@ fun SettingsScreen(
     val speedIndex by audio.speedIndex.collectAsState()
     val speed = AudioManager.SPEEDS[speedIndex]
 
+    // Single effect: setQueue must land before collection starts, or the first
+    // collected value could be the pre-queue default instead of the real start.
     LaunchedEffect(Unit) {
         debug.setScreen("Settings")
         audio.setQueue(
@@ -56,9 +58,6 @@ fun SettingsScreen(
             startIndex = 0,
             autoAdvance = false
         )
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { idx ->
             index = idx.coerceIn(0, (settingsItems.size - 1).coerceAtLeast(0))
         }

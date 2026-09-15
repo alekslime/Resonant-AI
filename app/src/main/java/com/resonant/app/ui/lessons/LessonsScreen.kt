@@ -38,6 +38,8 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
     val lessons = LessonData.allLessons
     var index by remember { mutableIntStateOf(0) }
 
+    // Single effect: setQueue must land before collection starts, or the first
+    // collected value could be the pre-queue default instead of the real start.
     LaunchedEffect(Unit) {
         debug.setScreen("Lessons")
         audio.setQueue(
@@ -45,9 +47,6 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
             startIndex = 0,
             autoAdvance = false
         )
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { idx ->
             index = idx.coerceIn(0, (lessons.size - 1).coerceAtLeast(0))
         }

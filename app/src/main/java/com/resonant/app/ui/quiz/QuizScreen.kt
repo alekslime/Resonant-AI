@@ -58,12 +58,12 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
         audio.setQueue(units, startIndex = 0, autoAdvance = false)
     }
 
+    // Single effect keyed on quiz.id: loadQuestion(0) must land before collection
+    // starts, and if quiz.id ever changes, both setup and the collector restart
+    // together instead of the collector being left subscribed under a stale key.
     LaunchedEffect(quiz.id) {
         debug.setScreen("Quiz")
         loadQuestion(0)
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { idx ->
             queueIndex = idx
             if (idx >= 1) haptics.playOption(idx - 1)

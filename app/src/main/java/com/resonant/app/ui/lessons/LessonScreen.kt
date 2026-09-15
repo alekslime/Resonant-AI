@@ -48,12 +48,12 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
     var flatIndex by remember { mutableIntStateOf(0) }
     var lastSectionIndex by remember { mutableIntStateOf(0) }
 
+    // Single effect keyed on lesson.id: setQueue lands before collection starts,
+    // and if lesson.id ever changes, both setup and the collector restart together
+    // instead of the collector being left subscribed under a stale Unit key.
     LaunchedEffect(lesson.id) {
         debug.setScreen("Lesson: ${lesson.title}")
         audio.setQueue(flat.map { it.unit }, startIndex = 0, autoAdvance = true)
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { newIndex ->
             flatIndex = newIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
             val newSection = flat.getOrNull(flatIndex)?.sectionIndex ?: 0

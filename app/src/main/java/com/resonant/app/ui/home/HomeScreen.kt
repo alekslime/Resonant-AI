@@ -72,6 +72,8 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     val debug = LocalDebugState.current
     var index by remember { mutableIntStateOf(0) }
 
+    // Single effect: setQueue must land before collection starts, or the first
+    // collected value could be the pre-queue default instead of the real start.
     LaunchedEffect(Unit) {
         debug.setScreen("Home")
         audio.setQueue(
@@ -79,9 +81,6 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             startIndex = 0,
             autoAdvance = false
         )
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { idx ->
             index = idx.coerceIn(0, (homeItems.size - 1).coerceAtLeast(0))
         }

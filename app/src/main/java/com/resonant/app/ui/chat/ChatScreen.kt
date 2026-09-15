@@ -46,12 +46,13 @@ fun ChatScreen(onBack: () -> Unit) {
     var flatIndex by remember { mutableIntStateOf(0) }
     var lastExchangeIndex by remember { mutableIntStateOf(0) }
 
+    // Single effect: setQueue must complete before we start collecting index, so
+    // the collector's first emission is the queue's real starting position rather
+    // than a stale default. One coroutine makes that ordering guaranteed instead
+    // of implied by Compose's effect-scheduling behavior.
     LaunchedEffect(Unit) {
         debug.setScreen("AI Chat")
         audio.setQueue(flat.map { it.unit }, startIndex = 0, autoAdvance = true)
-    }
-
-    LaunchedEffect(Unit) {
         audio.index.collect { idx ->
             flatIndex = idx.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
             val exchange = flat.getOrNull(flatIndex)?.exchangeIndex ?: 0
