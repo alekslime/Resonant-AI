@@ -12,12 +12,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.resonant.app.ui.theme.ResonantDisc
 import com.resonant.app.ui.theme.ResonantGradientBottom
-import com.resonant.app.ui.theme.ResonantGradientMid
 import com.resonant.app.ui.theme.ResonantGradientTop
 
 /**
- * The Resonant surface: a diagonal gold-to-orange wash with three soft discs
- * drifting off the left edge.
+ * The Resonant surface: a plain top-to-bottom gold-to-orange wash — matching
+ * the supplied background asset exactly, colour for colour — with three soft
+ * discs drifting off the left edge as a separate decorative layer on top.
  *
  * Every screen sits on this, so moving between screens never changes the
  * background — only the content on top of it. The discs are sized and placed in
@@ -33,16 +33,8 @@ fun ResonantSurface(
         modifier
             .fillMaxSize()
             .background(
-                Brush.linearGradient(
-                    // 0.0 top-left → 1.0 bottom-right. The mid stop sits past halfway
-                    // so the top third holds its gold instead of washing orange.
-                    colorStops = arrayOf(
-                        0.0f to ResonantGradientTop,
-                        0.55f to ResonantGradientMid,
-                        1.0f to ResonantGradientBottom
-                    ),
-                    start = Offset.Zero,
-                    end = Offset.Infinite
+                Brush.verticalGradient(
+                    colors = listOf(ResonantGradientTop, ResonantGradientBottom)
                 )
             )
     ) {

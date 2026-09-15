@@ -2,17 +2,23 @@ package com.resonant.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// The Resonant surface is a single warm gradient running top-left (gold) to
-// bottom-right (deep orange). These three stops are the whole palette — every
-// screen sits on the same wash so the app reads as one continuous surface.
-val ResonantGradientTop = Color(0xFFFFC90A)
-val ResonantGradientMid = Color(0xFFF9A81B)
-val ResonantGradientBottom = Color(0xFFF68B1F)
+// The Resonant surface: a plain top-to-bottom gradient, sampled directly from
+// the supplied background asset (uniform across every row — this is a vertical
+// two-stop gradient, not diagonal). Every screen sits on the same wash so the
+// app reads as one continuous surface.
+val ResonantGradientTop = Color(0xFFF4E031)
+val ResonantGradientBottom = Color(0xFFFABB22)
 
-// The soft discs behind the content. One fixed colour over a moving gradient:
-// they read darker against the gold at the top and lighter against the orange
-// at the bottom, which is exactly the effect in the reference.
+// The soft discs sit as a decorative layer on top of the wash — not part of the
+// supplied background asset, kept as a separate design element. One fixed
+// colour over a moving gradient: they read darker against the top of the wash
+// and lighter toward the bottom.
 val ResonantDisc = Color(0xFFF2A007)
+
+// Flat midpoint of the surface gradient — used only as a Material fallback
+// (background/surface) for any default component not wrapped in
+// ResonantSurface. Every actual screen uses ResonantSurface's real gradient.
+val ResonantSurfaceFallback = Color(0xFFF7CD29)
 
 // Primary system colors — flat, confident, high-contrast.
 val ResonantOrange = Color(0xFFFF5A1F)
