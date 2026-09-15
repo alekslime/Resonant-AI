@@ -18,6 +18,7 @@ enum class HapticPattern {
     SECTION_CHANGE,
     SPEED_UP,
     SPEED_DOWN,
+    LISTENING,
     OPTION_A,
     OPTION_B,
     OPTION_C,
@@ -44,6 +45,7 @@ object HapticPatterns {
         HapticPattern.SECTION_CHANGE to longArrayOf(0, 40, 70, 160, 70, 40),
         HapticPattern.SPEED_UP to longArrayOf(0, 30, 40, 45, 40, 65),
         HapticPattern.SPEED_DOWN to longArrayOf(0, 65, 40, 45, 40, 30),
+        HapticPattern.LISTENING to longArrayOf(0, 30, 60, 30),
         // Answer-option tactile identifiers (also configurable independently of
         // the general vocabulary above, per the spec's "make these configurable").
         HapticPattern.OPTION_A to longArrayOf(0, 50),

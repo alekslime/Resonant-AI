@@ -5,8 +5,10 @@ A native Android (Kotlin + Jetpack Compose) prototype demonstrating a
 answer quizzes, and get feedback without ever needing to visually locate
 a button.
 
-No backend, no network, no auth, no database, no AI — everything is local
-and hardcoded, and the app runs fully offline.
+No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and
+Settings are still fully local and hardcoded. Chat is the one exception: it
+sends what you say to a locally-hosted Ollama server on your network and
+speaks back whatever it replies (see "Chat / voice AI setup" below).
 
 ---
 
@@ -26,8 +28,34 @@ included — it couldn't be downloaded here. To run the project:
    dependencies listed in `app/build.gradle.kts`).
 4. Run the `app` configuration on a device or emulator running **API 26+**.
 
-The app requests the `VIBRATE` permission only (declared in the manifest,
-no runtime prompt needed on modern Android for this permission).
+The app requests `VIBRATE` and `INTERNET` at install time (no runtime prompt
+needed for either), plus `RECORD_AUDIO`, which it asks for at runtime the
+first time you tap center on the Chat screen.
+
+---
+
+## Chat / voice AI setup
+
+Chat is real now, not a script: tap the center of the screen to talk, and
+it's sent to a model running on your own [Ollama](https://ollama.com) server
+— no cloud API key involved anywhere.
+
+1. On a machine on your Wi-Fi, run `ollama serve` and `ollama pull llama3.2`
+   (or any model you prefer).
+2. Edit `app/src/main/java/com/resonant/app/network/OllamaConfig.kt`:
+   - `BASE_URL` — that machine's LAN address, e.g. `"http://192.168.1.50:11434"`.
+     `10.0.2.2` (the current default) only resolves from the Android
+     *emulator*; a physical phone needs the real LAN IP.
+   - `MODEL` — must match a model you've already pulled.
+3. Speech-to-text uses Android's built-in `SpeechRecognizer` (whatever engine
+   is installed on the device, usually Google's) — nothing to configure, but
+   it does need the device to be signed in / online for most recognizers.
+   Text-to-speech for replies still goes through the same on-device
+   `AudioManager` every other screen uses.
+
+If the server is unreachable, Chat announces the error out loud rather than
+failing silently — that's the one bit of the accessibility story it needs to
+get right on day one.
 
 ---
 
@@ -38,7 +66,9 @@ no runtime prompt needed on modern Android for this permission).
 | Gesture zones (LEFT_EDGE / CENTER / RIGHT_EDGE) + raw gesture detection | `gestures/InteractionZone.kt`, `gestures/GestureManager.kt` |
 | Centralized speech (semantic-unit queue, pause/resume/repeat/speed) | `audio/AudioManager.kt` |
 | Centralized haptics (named pattern vocabulary, one place to retune) | `haptics/HapticPattern.kt`, `haptics/HapticManager.kt` |
-| Hardcoded lesson / quiz / chat content | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
+| Hardcoded lesson / quiz content, chat framing prompt | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
+| Voice input (one-shot speech-to-text) | `speech/SpeechInputManager.kt` |
+| Ollama HTTP client + config | `network/OllamaClient.kt`, `network/OllamaConfig.kt` |
 | Shared gesture-surface + debug wiring used by every screen | `ui/components/GestureSurface.kt` |
 | The seven screens | `ui/home`, `ui/lessons`, `ui/quiz`, `ui/chat`, `ui/settings` |
 | Debug/developer mode | `ui/settings/DebugScreen.kt` (Settings → Debug Mode) |

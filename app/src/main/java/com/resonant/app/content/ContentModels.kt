@@ -45,8 +45,3 @@ data class ChatExchange(
     val userText: String,
     val assistantChunks: List<SemanticUnit>
 )
-
-data class ChatScript(
-    val title: String,
-    val exchanges: List<ChatExchange>
-)
