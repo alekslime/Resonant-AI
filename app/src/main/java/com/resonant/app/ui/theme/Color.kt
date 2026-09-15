@@ -9,12 +9,6 @@ import androidx.compose.ui.graphics.Color
 val ResonantGradientTop = Color(0xFFF4E031)
 val ResonantGradientBottom = Color(0xFFFABB22)
 
-// The soft discs sit as a decorative layer on top of the wash — not part of the
-// supplied background asset, kept as a separate design element. One fixed
-// colour over a moving gradient: they read darker against the top of the wash
-// and lighter toward the bottom.
-val ResonantDisc = Color(0xFFF2A007)
-
 // Flat midpoint of the surface gradient — used only as a Material fallback
 // (background/surface) for any default component not wrapped in
 // ResonantSurface. Every actual screen uses ResonantSurface's real gradient.
