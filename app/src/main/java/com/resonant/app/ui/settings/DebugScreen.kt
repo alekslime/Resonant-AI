@@ -22,6 +22,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantWhite
 
 @Composable
 fun DebugScreen(onBack: () -> Unit) {
@@ -86,7 +87,7 @@ fun DebugScreen(onBack: () -> Unit) {
                         Text(
                             label,
                             style = MaterialTheme.typography.labelLarge,
-                            color = ResonantBlack.copy(alpha = 0.4f)
+                            color = ResonantWhite
                         )
                         Text(
                             value,

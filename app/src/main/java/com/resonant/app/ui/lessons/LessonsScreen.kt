@@ -28,6 +28,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantWhite
 
 @Composable
 fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
@@ -107,13 +108,13 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = if (focused) FontWeight.Black else FontWeight.Normal
                             ),
-                            color = if (focused) ResonantBlack else ResonantBlack.copy(alpha = 0.3f)
+                            color = if (focused) ResonantBlack else ResonantWhite
                         )
                         if (focused) {
                             Text(
                                 "${lesson.sections.size} sections",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = ResonantBlack.copy(alpha = 0.5f),
+                                color = ResonantWhite,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }

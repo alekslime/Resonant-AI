@@ -29,6 +29,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantWhite
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val DEBUG_MODE = "Debug Mode"
@@ -106,7 +107,7 @@ fun SettingsScreen(
                 Text(
                     "Hold right edge, drag up\nto speed up, down to slow.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantBlack.copy(alpha = 0.4f),
+                    color = ResonantWhite,
                     modifier = Modifier.padding(bottom = 40.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
@@ -116,7 +117,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = if (focused) FontWeight.Black else FontWeight.Normal
                         ),
-                        color = if (focused) ResonantBlack else ResonantBlack.copy(alpha = 0.3f),
+                        color = if (focused) ResonantBlack else ResonantWhite,
                         modifier = Modifier
                             .padding(vertical = 6.dp)
                             .clickable {

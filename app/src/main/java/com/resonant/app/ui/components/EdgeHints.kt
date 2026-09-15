@@ -10,7 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.ResonantWhite
 
 /**
  * The left/right edge strips are functionally invisible (they're just a zone
@@ -25,15 +25,15 @@ fun BoxScope.EdgeHints() {
             .align(Alignment.CenterStart)
             .fillMaxHeight()
             .width(3.dp)
-            .alpha(0.35f)
-            .background(ResonantYellow)
+            .alpha(0.28f)
+            .background(ResonantWhite)
     )
     Box(
         Modifier
             .align(Alignment.CenterEnd)
             .fillMaxHeight()
             .width(3.dp)
-            .alpha(0.35f)
-            .background(ResonantYellow)
+            .alpha(0.28f)
+            .background(ResonantWhite)
     )
 }

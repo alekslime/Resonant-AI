@@ -3,57 +3,77 @@ package com.resonant.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.ResonantWhite
 
+private val ScreenTitleStyle = TextStyle(
+    fontWeight = FontWeight.Black,
+    fontSize = 32.sp,
+    lineHeight = 38.sp,
+    letterSpacing = (-0.8).sp
+)
+
+private val ScreenSubtitleStyle = TextStyle(
+    fontWeight = FontWeight.Medium,
+    fontSize = 15.sp,
+    lineHeight = 20.sp
+)
+
+/**
+ * Every non-home screen. Same gradient surface and same black rule as the menu,
+ * so a screen change reads as the content moving rather than the app repainting.
+ * The old black header bar is gone — the title now sits directly on the wash,
+ * set in the same heavy face as the menu so the type is the only hierarchy.
+ */
 @Composable
 fun ResonantScaffold(
     title: String,
     subtitle: String? = null,
     content: @Composable () -> Unit
 ) {
-    Box(Modifier.fillMaxSize().background(ResonantYellow)) {
-        // Decorative left strip
-        Box(
-            Modifier
-                .fillMaxHeight()
-                .width(10.dp)
-                .background(ResonantBlack)
-        )
-
+    ResonantSurface {
         Column(Modifier.fillMaxSize()) {
-            // Black header, yellow text
-            Box(
+            Row(
                 Modifier
-                    .fillMaxWidth()
-                    .background(ResonantBlack)
-                    .padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 20.dp)
+                    .height(IntrinsicSize.Min)
+                    .padding(start = 52.dp, end = 24.dp, top = 56.dp, bottom = 28.dp)
             ) {
-                Column {
+                Spacer(
+                    Modifier
+                        .fillMaxHeight()
+                        .width(5.dp)
+                        .background(ResonantBlack)
+                )
+                Column(Modifier.padding(start = 22.dp)) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = ResonantYellow,
+                        style = ScreenTitleStyle,
+                        color = ResonantBlack,
                         modifier = Modifier.semantics { heading() }
                     )
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ResonantYellow.copy(alpha = 0.6f)
+                            style = ScreenSubtitleStyle,
+                            color = ResonantWhite
                         )
                     }
                 }

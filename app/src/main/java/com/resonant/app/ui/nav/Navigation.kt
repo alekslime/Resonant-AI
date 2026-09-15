@@ -1,6 +1,11 @@
 package com.resonant.app.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import android.app.Activity
+import android.content.ContextWrapper
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,6 +17,7 @@ import com.resonant.app.content.QuizData
 import com.resonant.app.ui.chat.ChatScreen
 import com.resonant.app.ResonantApp
 import com.resonant.app.ui.home.HomeScreen
+import com.resonant.app.ui.home.ROUTE_EXIT
 import com.resonant.app.ui.onboarding.OnboardingScreen
 import com.resonant.app.ui.lessons.LessonScreen
 import com.resonant.app.ui.lessons.LessonsScreen
@@ -60,7 +66,21 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             })
         }
         composable(Routes.HOME) {
-            HomeScreen(onNavigate = { route -> navController.navigate(route) })
+            // "Exit" is a menu item, not a destination — it closes the activity.
+            // The spoken confirmation is already playing when we get here, so the
+            // finish is deferred by a beat to let it land.
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            HomeScreen(onNavigate = { route ->
+                if (route == ROUTE_EXIT) {
+                    scope.launch {
+                        delay(900)
+                        context.findActivity()?.finish()
+                    }
+                } else {
+                    navController.navigate(route)
+                }
+            })
         }
         composable(Routes.LESSONS) {
             LessonsScreen(
@@ -126,4 +146,14 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             DebugScreen(onBack = goBack)
         }
     }
+}
+
+/** Walks the ContextWrapper chain — Compose's LocalContext is not always the Activity. */
+private fun android.content.Context.findActivity(): Activity? {
+    var ctx: android.content.Context? = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }
