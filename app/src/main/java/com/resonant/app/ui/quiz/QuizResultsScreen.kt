@@ -46,6 +46,11 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                     InteractionZone.RIGHT_EDGE -> {}
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
+                    audio.announce("Back to Home.")
+                    onDone()
+                }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "Quiz Results. You scored $correct out of $total. Tap to return home."

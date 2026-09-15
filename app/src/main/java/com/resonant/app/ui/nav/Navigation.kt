@@ -35,12 +35,25 @@ object Routes {
 fun ResonantNavHost() {
     val navController = rememberNavController()
 
+    // Single definition of "back". Pops one entry; if this is the root there is
+    // nothing to pop, so we land on Home rather than dropping out of the app.
+    val goBack: () -> Unit = {
+        if (!navController.popBackStack()) {
+            navController.navigate(Routes.HOME) {
+                popUpTo(Routes.HOME) { inclusive = true }
+            }
+        }
+    }
+
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             HomeScreen(onNavigate = { route -> navController.navigate(route) })
         }
         composable(Routes.LESSONS) {
-            LessonsScreen(onOpenLesson = { id -> navController.navigate(Routes.lesson(id)) })
+            LessonsScreen(
+                onOpenLesson = { id -> navController.navigate(Routes.lesson(id)) },
+                onBack = goBack
+            )
         }
         composable(
             Routes.LESSON,
@@ -48,7 +61,7 @@ fun ResonantNavHost() {
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("lessonId")
             val lesson = LessonData.allLessons.firstOrNull { it.id == id } ?: LessonData.binarySearchLesson
-            LessonScreen(lesson = lesson, onExit = { navController.popBackStack() })
+            LessonScreen(lesson = lesson, onExit = goBack)
         }
         composable(Routes.QUIZ) {
             QuizScreen(
@@ -57,7 +70,8 @@ fun ResonantNavHost() {
                     navController.navigate(Routes.quizResults(correct, total)) {
                         popUpTo(Routes.QUIZ) { inclusive = true }
                     }
-                }
+                },
+                onBack = goBack
             )
         }
         composable(
@@ -80,13 +94,16 @@ fun ResonantNavHost() {
             )
         }
         composable(Routes.CHAT) {
-            ChatScreen()
+            ChatScreen(onBack = goBack)
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onOpenDebug = { navController.navigate(Routes.DEBUG) })
+            SettingsScreen(
+                onOpenDebug = { navController.navigate(Routes.DEBUG) },
+                onBack = goBack
+            )
         }
         composable(Routes.DEBUG) {
-            DebugScreen()
+            DebugScreen(onBack = goBack)
         }
     }
 }

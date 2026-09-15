@@ -16,11 +16,15 @@ import com.resonant.app.audio.AudioManager
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
+import com.resonant.app.gestures.InteractionZone
+import com.resonant.app.gestures.ResonantGesture
+import com.resonant.app.haptics.HapticPattern
+import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 
 @Composable
-fun DebugScreen() {
+fun DebugScreen(onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -56,19 +60,40 @@ fun DebugScreen() {
     )
 
     ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
-        Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 32.dp)) {
-            rows.forEach { (label, value) ->
-                Column(Modifier.padding(bottom = 20.dp)) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ResonantBlack.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = ResonantBlack
-                    )
+        GestureSurface(onGesture = { gesture ->
+            when (gesture) {
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
+                    audio.announce("Back to Settings.")
+                    onBack()
+                }
+                is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+                }
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
+                ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
+                ResonantGesture.ThreeFingerHold -> audio.announce(
+                    "Debug screen. Screen $screen. Last gesture $lastGesture. Zone $zone."
+                )
+                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
+                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                else -> {}
+            }
+        }) {
+            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 32.dp)) {
+                rows.forEach { (label, value) ->
+                    Column(Modifier.padding(bottom = 20.dp)) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ResonantBlack.copy(alpha = 0.4f)
+                        )
+                        Text(
+                            value,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = ResonantBlack
+                        )
+                    }
                 }
             }
         }

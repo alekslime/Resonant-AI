@@ -31,7 +31,7 @@ import com.resonant.app.ui.theme.ResonantCorrectGreen
 import com.resonant.app.ui.theme.ResonantIncorrectRed
 
 @Composable
-fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
+fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -127,6 +127,8 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit) {
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
+                    audio.announce("Leaving the quiz. Back to Home.")
+                    onBack()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> {

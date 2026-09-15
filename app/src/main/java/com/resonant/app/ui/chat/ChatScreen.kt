@@ -30,7 +30,7 @@ import com.resonant.app.ui.theme.ResonantBlack
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
 
 @Composable
-fun ChatScreen() {
+fun ChatScreen(onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -84,6 +84,8 @@ fun ChatScreen() {
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
+                    audio.announce("Back to Home.")
+                    onBack()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(

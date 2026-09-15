@@ -123,7 +123,10 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
                         audio.repeatCurrent()
                     }
-                    is ResonantGesture.LongPress -> {}
+                    is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                        haptics.play(HapticPattern.BACK)
+                        audio.announce("You are already on the Home screen.")
+                    }
                     ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                     ResonantGesture.ThreeFingerHold -> audio.announce(
                         "You are on the Home screen. Currently focused: ${homeItems[index].label}."

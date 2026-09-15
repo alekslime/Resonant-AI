@@ -33,7 +33,7 @@ import com.resonant.app.ui.theme.ResonantBlack
 private val settingsItems = listOf("Debug Mode")
 
 @Composable
-fun SettingsScreen(onOpenDebug: () -> Unit) {
+fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -77,6 +77,8 @@ fun SettingsScreen(onOpenDebug: () -> Unit) {
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
+                    audio.announce("Back to Home.")
+                    onBack()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(

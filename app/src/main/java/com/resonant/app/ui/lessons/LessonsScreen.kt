@@ -30,7 +30,7 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 
 @Composable
-fun LessonsScreen(onOpenLesson: (String) -> Unit) {
+fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -72,7 +72,11 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit) {
                     InteractionZone.RIGHT_EDGE -> {}
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
-                is ResonantGesture.LongPress -> {}
+                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    haptics.play(HapticPattern.BACK)
+                    audio.announce("Back to Home.")
+                    onBack()
+                }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "Lessons list. Currently focused: ${lessons[index].title}."
