@@ -26,6 +26,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantWhite
 
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
@@ -102,7 +103,7 @@ fun ChatScreen(onBack: () -> Unit) {
                 Text(
                     "You: ${current?.userText ?: ""}",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ResonantWhite
+                    color = ResonantCaption
                 )
                 Text(
                     current?.unit?.text ?: "",

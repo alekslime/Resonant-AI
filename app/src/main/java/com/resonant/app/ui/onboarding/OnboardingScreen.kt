@@ -1,18 +1,11 @@
 package com.resonant.app.ui.onboarding
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,9 +29,9 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.components.ResonantSurface
+import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantWhite
+import com.resonant.app.ui.theme.ResonantCaption
 import kotlinx.coroutines.delay
 
 /**
@@ -164,28 +157,13 @@ fun OnboardingScreen(onFinished: () -> Unit) {
 
     val current = lessons.getOrNull(step)
 
-    ResonantSurface {
-        Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier
-                    .height(IntrinsicSize.Min)
-                    .padding(start = 52.dp, end = 24.dp, top = 56.dp, bottom = 28.dp)
-            ) {
-                Spacer(Modifier.fillMaxHeight().width(5.dp).background(ResonantBlack))
-                Column(Modifier.padding(start = 22.dp)) {
-                    Text(
-                        "Learn the\ngestures",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = ResonantBlack
-                    )
-                    Text(
-                        if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ResonantWhite
-                    )
-                }
-            }
-
+    // Same header every other screen uses — this used to hand-roll its own copy
+    // of the rule/title/subtitle motif, which meant two independent
+    // implementations of the same visual element that could silently drift.
+    ResonantScaffold(
+        title = "Learn the gestures",
+        subtitle = if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
+    ) {
             GestureSurface(onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
                 if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) {
@@ -229,16 +207,16 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     Text(
                         text = current?.hint ?: "Turn your volume up.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = ResonantWhite
+                        color = ResonantCaption
                     )
                     Box(Modifier.height(32.dp))
                     Text(
                         text = "Hold the left edge to skip.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = ResonantWhite.copy(alpha = 0.75f)
+                        color = ResonantCaption
                     )
                 }
             }
         }
     }
-}
+

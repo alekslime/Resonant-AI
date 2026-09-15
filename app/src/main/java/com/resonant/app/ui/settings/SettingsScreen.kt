@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -29,6 +30,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantWhite
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
@@ -106,7 +108,7 @@ fun SettingsScreen(
                 Text(
                     "Hold right edge, drag up\nto speed up, down to slow.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantWhite,
+                    color = ResonantCaption,
                     modifier = Modifier.padding(bottom = 40.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
@@ -114,7 +116,8 @@ fun SettingsScreen(
                     Text(
                         label,
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = if (focused) FontWeight.Black else FontWeight.Normal
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.6).sp
                         ),
                         color = if (focused) ResonantBlack else ResonantWhite,
                         modifier = Modifier

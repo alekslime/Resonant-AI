@@ -26,6 +26,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantWhite
 
 private data class FlatUnit(val unit: SemanticUnit, val sectionIndex: Int, val sectionTitle: String)
@@ -121,7 +122,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                 Text(
                     "Unit ${flatIndex + 1} of ${flat.size}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantWhite,
+                    color = ResonantCaption,
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }

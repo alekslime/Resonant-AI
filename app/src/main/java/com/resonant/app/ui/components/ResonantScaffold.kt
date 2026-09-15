@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantWhite
+import com.resonant.app.ui.theme.ResonantCaption
 
 private val ScreenTitleStyle = TextStyle(
     fontWeight = FontWeight.Black,
@@ -73,7 +73,7 @@ fun ResonantScaffold(
                         Text(
                             text = subtitle,
                             style = ScreenSubtitleStyle,
-                            color = ResonantWhite
+                            color = ResonantCaption
                         )
                     }
                 }

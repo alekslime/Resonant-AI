@@ -29,6 +29,7 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCorrectGreen
 import com.resonant.app.ui.theme.ResonantIncorrectRed
+import com.resonant.app.ui.theme.ResonantWhite
 
 @Composable
 fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, onBack: () -> Unit) {
@@ -158,7 +159,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                             submitted && i == question.correctIndex -> ResonantCorrectGreen
                             submitted && isSelected -> ResonantIncorrectRed
                             isSelected || isFocused -> ResonantBlack
-                            else -> ResonantBlack.copy(alpha = 0.3f)
+                            else -> ResonantWhite
                         }
                         Text(
                             "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else "",

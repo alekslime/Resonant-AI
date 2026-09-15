@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.content.LessonData
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -28,6 +29,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantWhite
 
 @Composable
@@ -105,7 +107,8 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                         Text(
                             lesson.title,
                             style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = if (focused) FontWeight.Black else FontWeight.Normal
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.6).sp
                             ),
                             color = if (focused) ResonantBlack else ResonantWhite
                         )
@@ -113,7 +116,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                             Text(
                                 "${lesson.sections.size} sections",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = ResonantWhite,
+                                color = ResonantCaption,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
