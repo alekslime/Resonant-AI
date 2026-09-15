@@ -69,6 +69,7 @@ fun Modifier.resonantGestureDetector(
         var totalDrag = Offset.Zero
         var holdModeActive = false
         var holdAccumY = 0f
+        var holdDidStep = false
         var longPressFired = false
 
         while (true) {
@@ -108,9 +109,11 @@ fun Modifier.resonantGestureDetector(
                 if (holdAccumY <= -holdStepPx) {
                     onGesture(ResonantGesture.HoldSpeedUp)
                     holdAccumY = 0f
+                    holdDidStep = true
                 } else if (holdAccumY >= holdStepPx) {
                     onGesture(ResonantGesture.HoldSpeedDown)
                     holdAccumY = 0f
+                    holdDidStep = true
                 }
             }
 
@@ -129,7 +132,18 @@ fun Modifier.resonantGestureDetector(
         val moved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
 
         when {
-            holdModeActive -> onGesture(ResonantGesture.HoldEnd)
+            // A right-edge hold that never actually stepped the speed (the user
+            // pressed and held still, without dragging past the step threshold)
+            // is not a speed adjustment — it's a long press. Only emit HoldEnd
+            // when a HoldSpeedUp/Down actually fired; otherwise resolve it as the
+            // LongPress(RIGHT_EDGE) every screen is listening for.
+            holdModeActive -> {
+                if (holdDidStep) {
+                    onGesture(ResonantGesture.HoldEnd)
+                } else {
+                    onGesture(ResonantGesture.LongPress(InteractionZone.RIGHT_EDGE))
+                }
+            }
 
             longPressFired -> { /* already emitted */ }
 
