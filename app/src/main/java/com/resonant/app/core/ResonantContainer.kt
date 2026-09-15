@@ -15,6 +15,7 @@ class ResonantContainer(context: Context) {
     val audioManager = AudioManager(context)
     val hapticManager = HapticManager(context)
     val debugState = DebugState()
+    val prefs = ResonantPrefs(context)
 }
 
 val LocalAudioManager = staticCompositionLocalOf<AudioManager> {

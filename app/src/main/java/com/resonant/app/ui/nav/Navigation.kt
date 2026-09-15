@@ -1,6 +1,7 @@
 package com.resonant.app.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,7 +10,9 @@ import androidx.navigation.navArgument
 import com.resonant.app.content.LessonData
 import com.resonant.app.content.QuizData
 import com.resonant.app.ui.chat.ChatScreen
+import com.resonant.app.ResonantApp
 import com.resonant.app.ui.home.HomeScreen
+import com.resonant.app.ui.onboarding.OnboardingScreen
 import com.resonant.app.ui.lessons.LessonScreen
 import com.resonant.app.ui.lessons.LessonsScreen
 import com.resonant.app.ui.quiz.QuizResultsScreen
@@ -26,14 +29,16 @@ object Routes {
     const val CHAT = "chat"
     const val SETTINGS = "settings"
     const val DEBUG = "debug"
+    const val ONBOARDING = "onboarding"
 
     fun lesson(id: String) = "lesson/$id"
     fun quizResults(correct: Int, total: Int) = "quiz_results/$correct/$total"
 }
 
 @Composable
-fun ResonantNavHost() {
+fun ResonantNavHost(startDestination: String = Routes.HOME) {
     val navController = rememberNavController()
+    val prefs = (LocalContext.current.applicationContext as ResonantApp).container.prefs
 
     // Single definition of "back". Pops one entry; if this is the root there is
     // nothing to pop, so we land on Home rather than dropping out of the app.
@@ -45,7 +50,15 @@ fun ResonantNavHost() {
         }
     }
 
-    NavHost(navController = navController, startDestination = Routes.HOME) {
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(onFinished = {
+                prefs.onboardingComplete = true
+                navController.navigate(Routes.HOME) {
+                    popUpTo(Routes.ONBOARDING) { inclusive = true }
+                }
+            })
+        }
         composable(Routes.HOME) {
             HomeScreen(onNavigate = { route -> navController.navigate(route) })
         }
@@ -71,7 +84,13 @@ fun ResonantNavHost() {
                         popUpTo(Routes.QUIZ) { inclusive = true }
                     }
                 },
-                onBack = goBack
+                // Item 6: leaving a quiz mid-way lands on the lessons list, which is
+                // where a user who wants to go study instead actually wants to be.
+                onBack = {
+                    navController.navigate(Routes.LESSONS) {
+                        popUpTo(Routes.QUIZ) { inclusive = true }
+                    }
+                }
             )
         }
         composable(
@@ -99,6 +118,7 @@ fun ResonantNavHost() {
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onOpenDebug = { navController.navigate(Routes.DEBUG) },
+                onReplayTutorial = { navController.navigate(Routes.ONBOARDING) },
                 onBack = goBack
             )
         }

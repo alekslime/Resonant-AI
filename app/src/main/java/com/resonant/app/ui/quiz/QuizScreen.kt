@@ -127,7 +127,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
-                    audio.announce("Leaving the quiz. Back to Home.")
+                    audio.announce("Leaving the quiz. Back to Lessons.")
                     onBack()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
@@ -139,8 +139,8 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                     }
                     audio.announce("Quiz, question ${questionIndex + 1} of ${quiz.questions.size}. $status")
                 }
-                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
-                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}
             }
         }) {

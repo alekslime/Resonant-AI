@@ -106,8 +106,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                             "Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${speedLabel}x speed."
                     )
                 }
-                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
-                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}
             }
         }) {

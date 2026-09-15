@@ -131,8 +131,8 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     ResonantGesture.ThreeFingerHold -> audio.announce(
                         "You are on the Home screen. Currently focused: ${homeItems[index].label}."
                     )
-                    ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
-                    ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                    ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                    ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                     else -> {}
                 }
             }) {

@@ -18,6 +18,7 @@ class AudioManager(context: Context) {
         private const val ANNOUNCE_UTTERANCE_ID = "resonant_announce"
     }
 
+    private val appContext: Context = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
     private var ready = false
 
@@ -42,16 +43,31 @@ class AudioManager(context: Context) {
     val speed: Float get() = SPEEDS[_speedIndex.value]
 
     private var autoAdvanceEnabled = false
-    private lateinit var tts: TextToSpeech
+    private var tts: TextToSpeech? = null
 
     init {
-        tts = TextToSpeech(context.applicationContext) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                tts.language = Locale.US
-                tts.setSpeechRate(speed)
+        initEngine()
+    }
+
+    /**
+     * Builds the TTS engine. Separate from [init] because the engine is fully
+     * released whenever the app goes to the background (see [releaseForBackground])
+     * and has to be rebuilt on return — a shut-down TextToSpeech cannot be reused.
+     */
+    private fun initEngine() {
+        if (tts != null) return
+        tts = TextToSpeech(appContext) { status ->
+            // Posted rather than run inline: the init callback can fire before the
+            // TextToSpeech constructor has returned, which would leave `tts` still
+            // null here. Posting guarantees the assignment below has landed.
+            mainHandler.post {
+                if (status != TextToSpeech.SUCCESS) return@post
+                val t = tts ?: return@post
+                t.language = Locale.US
+                t.setSpeechRate(speed)
                 // Listener registered here — inside the ready callback — so it's
                 // guaranteed to be set before any speak() call can complete.
-                tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
                         mainHandler.post {
@@ -93,8 +109,9 @@ class AudioManager(context: Context) {
         val unit = _currentUnit.value ?: return
         if (!ready) return
         _isPaused.value = false
-        tts.setSpeechRate(speed)
-        tts.speak(unit.text, TextToSpeech.QUEUE_FLUSH, null, unit.id)
+        val t = tts ?: return
+        t.setSpeechRate(speed)
+        t.speak(unit.text, TextToSpeech.QUEUE_FLUSH, null, unit.id)
     }
 
     fun repeatCurrent() = speakCurrent()
@@ -131,7 +148,7 @@ class AudioManager(context: Context) {
 
     fun pause() {
         if (!_isSpeaking.value) return
-        tts.stop()
+        tts?.stop()
         _isPaused.value = true
         _isSpeaking.value = false
     }
@@ -146,39 +163,111 @@ class AudioManager(context: Context) {
     }
 
     fun stop() {
-        tts.stop()
+        tts?.stop()
         _isSpeaking.value = false
         _isPaused.value = false
     }
 
-    // Speed — changing speed immediately restarts the current unit at the new rate
+    // Speed — every change is spoken, then the current unit resumes at the new
+    // rate. Without the spoken confirmation a non-sighted user gets a haptic tick
+    // and no idea which step they landed on.
 
     fun increaseSpeed(): Boolean {
         val newIndex = _speedIndex.value + 1
-        if (newIndex >= SPEEDS.size) return false
+        if (newIndex >= SPEEDS.size) {
+            announceSpeed(atLimit = true)
+            return false
+        }
         _speedIndex.value = newIndex
-        if (_isSpeaking.value || _isPaused.value) speakCurrent()
+        announceSpeed(atLimit = false)
         return true
     }
 
     fun decreaseSpeed(): Boolean {
         val newIndex = _speedIndex.value - 1
-        if (newIndex < 0) return false
+        if (newIndex < 0) {
+            announceSpeed(atLimit = true)
+            return false
+        }
         _speedIndex.value = newIndex
-        if (_isSpeaking.value || _isPaused.value) speakCurrent()
+        announceSpeed(atLimit = false)
         return true
+    }
+
+    /**
+     * Speaks the new rate, then re-queues the current unit behind it so playback
+     * continues at the new speed. Both utterances go out at the new rate, so the
+     * spoken number is itself a sample of what was just chosen.
+     */
+    private fun announceSpeed(atLimit: Boolean) {
+        val t = tts ?: return
+        val label = speedLabel(speed)
+        val text = when {
+            atLimit && _speedIndex.value == SPEEDS.lastIndex -> "Fastest speed, $label."
+            atLimit -> "Slowest speed, $label."
+            else -> label
+        }
+        if (!ready) return
+        t.setSpeechRate(speed)
+        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, ANNOUNCE_UTTERANCE_ID)
+
+        // Resume whatever was playing, queued behind the confirmation.
+        val unit = _currentUnit.value
+        if (unit != null && (_isSpeaking.value || _isPaused.value)) {
+            _isPaused.value = false
+            t.speak(unit.text, TextToSpeech.QUEUE_ADD, null, unit.id)
+        }
+    }
+
+    /** "1.5x" reads badly aloud; "one point five times speed" reads correctly. */
+    private fun speedLabel(value: Float): String {
+        val spoken = when (value) {
+            0.75f -> "zero point seven five"
+            1.0f -> "normal"
+            1.25f -> "one point two five"
+            1.5f -> "one point five"
+            1.75f -> "one point seven five"
+            2.0f -> "double"
+            else -> value.toString()
+        }
+        return if (value == 1.0f || value == 2.0f) "$spoken speed" else "$spoken times speed"
     }
 
     // Announce — interrupts current speech without disturbing queue position
 
     fun announce(text: String) {
+        val t = tts ?: return
         if (!ready) return
-        tts.setSpeechRate(speed)
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, ANNOUNCE_UTTERANCE_ID)
+        t.setSpeechRate(speed)
+        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, ANNOUNCE_UTTERANCE_ID)
+    }
+
+    // Lifecycle
+
+    /**
+     * Called from Activity.onStop. Fully releases the TTS engine so nothing keeps
+     * talking while the app is backgrounded. Queue position, speed and paused
+     * state all survive — only the engine goes away.
+     */
+    fun releaseForBackground() {
+        if (tts == null) return
+        ready = false
+        _isSpeaking.value = false
+        _isPaused.value = _currentUnit.value != null
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
+    }
+
+    /** Called from Activity.onStart. Rebuilds the engine released above. */
+    fun restoreFromBackground() {
+        initEngine()
     }
 
     fun shutdown() {
-        tts.stop()
-        tts.shutdown()
+        ready = false
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
     }
 }

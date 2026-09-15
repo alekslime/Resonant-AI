@@ -14,7 +14,7 @@ import kotlin.math.abs
  *
  * LEFT EDGE  — tap = pause/resume, double-tap = repeat current
  * CENTER     — swipe ↑↓←→ = navigate, tap = select/confirm
- * RIGHT EDGE — hold + drag ↑↓ = speed, long press = exit/contextual
+ * RIGHT EDGE — hold + drag ↑ = faster / ↓ = slower, long press = back
  * ANYWHERE   — three-finger tap = repeat last, three-finger hold = orientation
  *
  * No double-tap in CENTER. No hold on LEFT EDGE.
@@ -29,6 +29,14 @@ private const val SWIPE_MIN_DISTANCE_PX = 64f
 
 private const val INVERT_VERTICAL_SWIPES = true
 private const val INVERT_HORIZONTAL_SWIPES = false
+
+/**
+ * Speed drag is deliberately NOT tied to [INVERT_VERTICAL_SWIPES]. Swipe
+ * inversion is about list navigation feel; the speed drag is a physical
+ * metaphor — the finger is a slider. Drag UP = faster, drag DOWN = slower.
+ * Flip this only if user testing says the slider itself should invert.
+ */
+private const val INVERT_SPEED_DRAG = false
 
 private val LEFT_EDGE_WIDTH = 48.dp   // wider = safer from accidental center triggers
 private val RIGHT_EDGE_WIDTH = 48.dp
@@ -96,7 +104,7 @@ fun Modifier.resonantGestureDetector(
                 val rawDeltaY = primary?.let {
                     it.position.y - it.previousPosition.y
                 } ?: 0f
-                holdAccumY += if (INVERT_VERTICAL_SWIPES) -rawDeltaY else rawDeltaY
+                holdAccumY += if (INVERT_SPEED_DRAG) -rawDeltaY else rawDeltaY
                 if (holdAccumY <= -holdStepPx) {
                     onGesture(ResonantGesture.HoldSpeedUp)
                     holdAccumY = 0f

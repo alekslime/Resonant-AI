@@ -91,8 +91,8 @@ fun ChatScreen(onBack: () -> Unit) {
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "AI Chat, exchange ${lastExchangeIndex + 1} of ${script.exchanges.size}."
                 )
-                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
-                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}
             }
         }) {

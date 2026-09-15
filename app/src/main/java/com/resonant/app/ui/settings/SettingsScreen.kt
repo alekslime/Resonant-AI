@@ -30,10 +30,17 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 
-private val settingsItems = listOf("Debug Mode")
+private const val REPLAY_TUTORIAL = "Replay Tutorial"
+private const val DEBUG_MODE = "Debug Mode"
+
+private val settingsItems = listOf(REPLAY_TUTORIAL, DEBUG_MODE)
 
 @Composable
-fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    onOpenDebug: () -> Unit,
+    onReplayTutorial: () -> Unit,
+    onBack: () -> Unit
+) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -69,7 +76,10 @@ fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
                 is ResonantGesture.Tap -> when (gesture.zone) {
                     InteractionZone.CENTER -> {
                         haptics.play(HapticPattern.SELECT)
-                        if (settingsItems[index] == "Debug Mode") onOpenDebug()
+                        when (settingsItems[index]) {
+                            REPLAY_TUTORIAL -> onReplayTutorial()
+                            DEBUG_MODE -> onOpenDebug()
+                        }
                     }
                     InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
                     InteractionZone.RIGHT_EDGE -> {}
@@ -82,10 +92,10 @@ fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "Settings. Speech speed is ${speed}x. Hold right edge and drag to change. Currently focused: ${settingsItems[index]}."
+                    "Settings. Speech speed is ${speed}x. Hold the right edge and drag up to speed up, down to slow down. Currently focused: ${settingsItems[index]}."
                 )
-                ResonantGesture.HoldSpeedUp -> { audio.increaseSpeed(); haptics.play(HapticPattern.SPEED_UP) }
-                ResonantGesture.HoldSpeedDown -> { audio.decreaseSpeed(); haptics.play(HapticPattern.SPEED_DOWN) }
+                ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}
             }
         }) {
@@ -94,7 +104,7 @@ fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "Hold right edge,\ndrag to change speed.",
+                    "Hold right edge, drag up\nto speed up, down to slow.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ResonantBlack.copy(alpha = 0.4f),
                     modifier = Modifier.padding(bottom = 40.dp)
@@ -112,7 +122,10 @@ fun SettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
                             .clickable {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
-                                if (label == "Debug Mode") onOpenDebug()
+                                when (label) {
+                                    REPLAY_TUTORIAL -> onReplayTutorial()
+                                    DEBUG_MODE -> onOpenDebug()
+                                }
                             }
                     )
                 }
