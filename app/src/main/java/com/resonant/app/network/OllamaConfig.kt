@@ -13,6 +13,6 @@ package com.resonant.app.network
  * - MODEL: any model you've already pulled (`ollama pull <name>`).
  */
 object OllamaConfig {
-    const val BASE_URL = "http://10.0.2.2:11434"
+    const val BASE_URL = "http://192.168.0.7:11434"
     const val MODEL = "llama3.2"
 }
