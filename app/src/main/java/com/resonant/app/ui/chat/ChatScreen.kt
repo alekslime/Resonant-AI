@@ -125,6 +125,7 @@ fun ChatScreen(onBack: () -> Unit) {
             when (outcome) {
                 is SpeechInputManager.Outcome.Success -> {
                     haptics.play(HapticPattern.CONFIRM)
+                    audio.announce("You said: ${outcome.text}")
                     askModel(outcome.text)
                 }
                 is SpeechInputManager.Outcome.Error -> handleError(outcome.message)
