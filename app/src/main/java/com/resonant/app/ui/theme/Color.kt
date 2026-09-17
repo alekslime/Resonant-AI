@@ -2,16 +2,10 @@ package com.resonant.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// The Resonant surface: a plain top-to-bottom gradient, sampled directly from
-// the supplied background asset (uniform across every row — this is a vertical
-// two-stop gradient, not diagonal). Every screen sits on the same wash so the
-// app reads as one continuous surface.
-val ResonantGradientTop = Color(0xFFF4E031)
-val ResonantGradientBottom = Color(0xFFFABB22)
-
 // Flat midpoint of the surface gradient — used only as a Material fallback
 // (background/surface) for any default component not wrapped in
-// ResonantSurface. Every actual screen uses ResonantSurface's real gradient.
+// ResonantSurface. Every actual screen uses ResonantSurface's baked
+// background image (drawable-nodpi/resonant_background.jpg).
 val ResonantSurfaceFallback = Color(0xFFF7CD29)
 
 // Primary system colors — flat, confident, high-contrast.
