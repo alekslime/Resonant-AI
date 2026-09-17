@@ -38,7 +38,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantSurface
 import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantWhite
+import com.resonant.app.ui.theme.ResonantUnfocused
 
 private data class HomeItem(val label: String, val route: String)
 
@@ -162,7 +162,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                             Text(
                                 text = item.label,
                                 style = MenuTextStyle,
-                                color = if (focused) ResonantBlack else ResonantWhite,
+                                color = if (focused) ResonantBlack else ResonantUnfocused,
                                 modifier = Modifier
                                     .clickable {
                                         audio.jumpTo(i)

@@ -30,7 +30,7 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCaption
-import com.resonant.app.ui.theme.ResonantWhite
+import com.resonant.app.ui.theme.ResonantUnfocused
 
 @Composable
 fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
@@ -110,7 +110,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = (-0.6).sp
                             ),
-                            color = if (focused) ResonantBlack else ResonantWhite
+                            color = if (focused) ResonantBlack else ResonantUnfocused
                         )
                         if (focused) {
                             Text(

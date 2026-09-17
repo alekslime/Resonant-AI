@@ -21,7 +21,6 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCaption
-import com.resonant.app.ui.theme.ResonantWhite
 
 @Composable
 fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {

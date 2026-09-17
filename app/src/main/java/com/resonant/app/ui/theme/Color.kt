@@ -14,12 +14,18 @@ val ResonantYellow = Color(0xFFFFD400)
 val ResonantBlack = Color(0xFF0A0A0A)
 val ResonantWhite = Color(0xFFFFFFFF)
 
-// Captions, subtitles, and hints — anything secondary that sits next to a
-// full-white interactive element and needs to read as quieter than it.
-// Without this, every non-focused piece of text (a caption AND an unfocused
-// but tappable list item) was the same flat white with no way to tell "this is
-// a label" from "this is a thing you can select" at a glance.
-val ResonantCaption = Color(0xB3FFFFFF) // ResonantWhite at 70% alpha
+// Captions, subtitles, and hints — anything secondary that needs to read as
+// quieter than a focused element, without vanishing against the mostly-light
+// background image (resonant_background.jpg fades to near-white for most of
+// the screen; only translucent BLACK holds contrast there — translucent white
+// disappears).
+val ResonantCaption = Color(0x8A0A0A0A) // ResonantBlack at 54% alpha
+
+// Unfocused-but-interactive list items (a lesson, a quiz option, a menu row
+// not currently selected). Same reasoning as ResonantCaption above: this used
+// to be flat white, which read fine on the old flat yellow/orange gradient but
+// is invisible on the new background's near-white lower two-thirds.
+val ResonantUnfocused = Color(0x730A0A0A) // ResonantBlack at 45% alpha
 
 // Supporting neutrals — kept minimal on purpose.
 val ResonantGray = Color(0xFF6B6B6B)
