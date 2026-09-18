@@ -3,6 +3,7 @@ package com.resonant.app.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantSurface
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantUnfocused
+import com.resonant.app.ui.theme.ResonantYellow
 
 private data class HomeItem(val label: String, val route: String)
 
@@ -63,6 +66,15 @@ private val MenuTextStyle = TextStyle(
     fontSize = 44.sp,
     lineHeight = 56.sp,
     letterSpacing = (-1).sp
+)
+
+/** Unfocused items: smaller and Normal weight — hierarchy comes from size and
+ *  weight, not a fainter color, so it survives low contrast sensitivity. */
+private val MenuUnfocusedTextStyle = TextStyle(
+    fontWeight = FontWeight.Normal,
+    fontSize = 32.sp,
+    lineHeight = 44.sp,
+    letterSpacing = (-0.5).sp
 )
 
 @Composable
@@ -159,20 +171,31 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     ) {
                         homeItems.forEachIndexed { i, item ->
                             val focused = i == index
-                            Text(
-                                text = item.label,
-                                style = MenuTextStyle,
-                                color = if (focused) ResonantBlack else ResonantUnfocused,
-                                modifier = Modifier
-                                    .clickable {
-                                        audio.jumpTo(i)
-                                        open(i)
-                                    }
-                                    .semantics {
-                                        contentDescription =
-                                            item.label + if (focused) ", focused" else ""
-                                    }
-                            )
+                            val itemModifier = Modifier
+                                .clickable {
+                                    audio.jumpTo(i)
+                                    open(i)
+                                }
+                                .semantics {
+                                    contentDescription =
+                                        item.label + if (focused) ", focused" else ""
+                                }
+                            if (focused) {
+                                Box(
+                                    itemModifier
+                                        .background(ResonantYellow, RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 12.dp, vertical = 2.dp)
+                                ) {
+                                    Text(text = item.label, style = MenuTextStyle, color = ResonantBlack)
+                                }
+                            } else {
+                                Text(
+                                    text = item.label,
+                                    style = MenuUnfocusedTextStyle,
+                                    color = ResonantUnfocused,
+                                    modifier = itemModifier
+                                )
+                            }
                         }
                     }
                 }

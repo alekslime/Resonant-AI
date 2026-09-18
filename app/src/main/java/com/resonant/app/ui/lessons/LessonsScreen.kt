@@ -1,10 +1,13 @@
 package com.resonant.app.ui.lessons
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,7 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantUnfocused
+import com.resonant.app.ui.theme.ResonantYellow
 
 @Composable
 fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
@@ -104,20 +108,35 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                                 onOpenLesson(lesson.id)
                             }
                     ) {
-                        Text(
-                            lesson.title,
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = (-0.6).sp
-                            ),
-                            color = if (focused) ResonantBlack else ResonantUnfocused
-                        )
                         if (focused) {
+                            Box(
+                                Modifier
+                                    .background(ResonantYellow, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    lesson.title,
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = (-0.6).sp
+                                    ),
+                                    color = ResonantBlack
+                                )
+                            }
                             Text(
                                 "${lesson.sections.size} sections",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = ResonantCaption,
                                 modifier = Modifier.padding(top = 2.dp)
+                            )
+                        } else {
+                            Text(
+                                lesson.title,
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Normal,
+                                    letterSpacing = (-0.6).sp
+                                ),
+                                color = ResonantUnfocused
                             )
                         }
                     }

@@ -1,10 +1,13 @@
 package com.resonant.app.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,7 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCaption
 import com.resonant.app.ui.theme.ResonantUnfocused
+import com.resonant.app.ui.theme.ResonantYellow
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val DEBUG_MODE = "Debug Mode"
@@ -113,24 +117,42 @@ fun SettingsScreen(
                 )
                 settingsItems.forEachIndexed { i, label ->
                     val focused = i == index
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.6).sp
-                        ),
-                        color = if (focused) ResonantBlack else ResonantUnfocused,
-                        modifier = Modifier
-                            .padding(vertical = 6.dp)
-                            .clickable {
-                                audio.jumpTo(i)
-                                haptics.play(HapticPattern.SELECT)
-                                when (label) {
-                                    REPLAY_TUTORIAL -> onReplayTutorial()
-                                    DEBUG_MODE -> onOpenDebug()
-                                }
+                    val itemModifier = Modifier
+                        .padding(vertical = 6.dp)
+                        .clickable {
+                            audio.jumpTo(i)
+                            haptics.play(HapticPattern.SELECT)
+                            when (label) {
+                                REPLAY_TUTORIAL -> onReplayTutorial()
+                                DEBUG_MODE -> onOpenDebug()
                             }
-                    )
+                        }
+                    if (focused) {
+                        Box(
+                            itemModifier
+                                .background(ResonantYellow, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = (-0.6).sp
+                                ),
+                                color = ResonantBlack
+                            )
+                        }
+                    } else {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = (-0.6).sp
+                            ),
+                            color = ResonantUnfocused,
+                            modifier = itemModifier
+                        )
+                    }
                 }
             }
         }

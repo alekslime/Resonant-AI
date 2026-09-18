@@ -1,8 +1,11 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +33,7 @@ import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCorrectGreen
 import com.resonant.app.ui.theme.ResonantIncorrectRed
 import com.resonant.app.ui.theme.ResonantUnfocused
+import com.resonant.app.ui.theme.ResonantYellow
 
 @Composable
 fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, onBack: () -> Unit) {
@@ -161,14 +165,30 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                             isSelected || isFocused -> ResonantBlack
                             else -> ResonantUnfocused
                         }
-                        Text(
-                            "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else "",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = if (isFocused || isSelected) FontWeight.Bold else FontWeight.Normal
-                            ),
-                            color = color,
-                            modifier = Modifier.padding(vertical = 6.dp)
+                        val label = "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else ""
+                        val textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = if (isFocused || isSelected) FontWeight.Bold else FontWeight.Normal
                         )
+                        // Highlight only pre-submit focus/selection — post-submit the
+                        // green/red feedback color is the signal, and a yellow block
+                        // behind it would compete with that instead of reinforcing it.
+                        if (!submitted && (isFocused || isSelected)) {
+                            Box(
+                                Modifier
+                                    .padding(vertical = 4.dp)
+                                    .background(ResonantYellow, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(label, style = textStyle, color = ResonantBlack)
+                            }
+                        } else {
+                            Text(
+                                label,
+                                style = textStyle,
+                                color = color,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
                     }
                 }
                 if (submitted) {
