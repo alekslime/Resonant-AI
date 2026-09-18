@@ -3,10 +3,14 @@ package com.resonant.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
+import com.resonant.app.ui.components.TtsUnavailableBanner
 import com.resonant.app.ui.nav.ResonantNavHost
 import com.resonant.app.ui.nav.Routes
 import com.resonant.app.ui.theme.ResonantTheme
@@ -26,7 +30,10 @@ class MainActivity : ComponentActivity() {
                     LocalHapticManager provides container.hapticManager,
                     LocalDebugState provides container.debugState
                 ) {
-                    ResonantNavHost(startDestination = start)
+                    Box(Modifier.fillMaxSize()) {
+                        ResonantNavHost(startDestination = start)
+                        TtsUnavailableBanner(container.audioManager, container.hapticManager)
+                    }
                 }
             }
         }

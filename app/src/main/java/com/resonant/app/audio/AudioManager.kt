@@ -21,6 +21,11 @@ class AudioManager(context: Context) {
     private val appContext: Context = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
     private var ready = false
+    private val _isReady = MutableStateFlow(false)
+    /** True once the engine is speech-capable. False at launch, and stays false
+     *  if the device has no usable TTS engine — screens can use this to warn
+     *  the user instead of silently doing nothing when speak calls no-op. */
+    val isReady: StateFlow<Boolean> = _isReady
 
     private val _queue = MutableStateFlow<List<SemanticUnit>>(emptyList())
     val queue: StateFlow<List<SemanticUnit>> = _queue
@@ -90,6 +95,7 @@ class AudioManager(context: Context) {
                     }
                 })
                 ready = true
+                _isReady.value = true
             }
         }
     }
@@ -252,6 +258,7 @@ class AudioManager(context: Context) {
     fun releaseForBackground() {
         if (tts == null) return
         ready = false
+        _isReady.value = false
         _isSpeaking.value = false
         _isPaused.value = _currentUnit.value != null
         tts?.stop()
@@ -266,6 +273,7 @@ class AudioManager(context: Context) {
 
     fun shutdown() {
         ready = false
+        _isReady.value = false
         tts?.stop()
         tts?.shutdown()
         tts = null
