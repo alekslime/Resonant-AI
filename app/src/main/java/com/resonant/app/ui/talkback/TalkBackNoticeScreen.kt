@@ -17,13 +17,20 @@ import com.resonant.app.ui.components.ResonantSurface
 import com.resonant.app.ui.theme.ResonantBlack
 
 private const val EXPLANATION =
-    "TalkBack is turned on. Resonant has its own built-in gesture and voice " +
-    "system, designed to work without a screen reader running underneath it " +
-    "— with TalkBack active, the two fight over your touches and none of " +
-    "Resonant's gestures will work correctly. Turn off TalkBack in " +
-    "Accessibility settings, then come back to Resonant."
+    "TalkBack is turned on. While it runs, it takes over your touches before " +
+    "Resonant can see them, so Resonant's own swipes, taps and holds will not work. " +
+    "You have two choices. Turn TalkBack off and use Resonant's gestures. Or keep " +
+    "TalkBack on: on any Resonant screen, open the TalkBack actions menu to get the " +
+    "same controls — next, previous, select, continue, back, pause, repeat, where " +
+    "am I, and speech speed. With TalkBack on, Resonant's voice and TalkBack's voice " +
+    "can overlap."
 
 /**
+ * Two ways forward, not one: turn TalkBack off (full gesture grammar), or keep it
+ * on and drive the same grammar through TalkBack's Actions menu (see the custom
+ * actions GestureSurface exposes). Forcing a screen-reader user to switch their
+ * screen reader off is a heavy ask, so it must never be the only route.
+ *
  * Deliberately NOT built on GestureSurface/the custom gesture system — this
  * is the one screen in the app that has to work correctly *while TalkBack is
  * on*, so it uses plain Compose Buttons, which TalkBack already knows how to
@@ -66,7 +73,7 @@ fun TalkBackNoticeScreen(
             }
             Spacer(Modifier.height(16.dp))
             Button(onClick = onContinueAnyway) {
-                Text("Use Resonant anyway")
+                Text("Keep TalkBack on and use actions")
             }
         }
     }

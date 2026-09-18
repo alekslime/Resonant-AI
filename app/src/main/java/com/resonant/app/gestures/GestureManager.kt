@@ -1,5 +1,6 @@
 package com.resonant.app.gestures
 
+import android.os.SystemClock
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -7,25 +8,30 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.dp
-import kotlin.math.abs
 
 /**
  * RESONANT GESTURE GRAMMAR
  *
  * LEFT EDGE  — tap = pause/resume, double-tap = repeat current
  * CENTER     — swipe ↑↓←→ = navigate, tap = select/confirm
- * RIGHT EDGE — hold + drag ↑ = faster / ↓ = slower, long press = back
+ * RIGHT EDGE — hold + drag ↑ = faster / ↓ = slower, hold without dragging = back
  * ANYWHERE   — three-finger tap = repeat last, three-finger hold = orientation
  *
  * No double-tap in CENTER. No hold on LEFT EDGE.
  * Right edge tap is a dead zone (no accidental triggers).
+ *
+ * TIMING: holds are decided by a real timeout, not by waiting for the next
+ * pointer event. A perfectly still finger produces few or no events, so an
+ * event-driven check would only notice the 500 ms mark on release — which is
+ * too late for a user who is relying on the tactile "hold engaged" cue
+ * (see HapticPattern.HOLD_ENGAGED, played by GestureSurface on HoldStart).
+ * Time comes from [SystemClock.uptimeMillis], the same clock as
+ * PointerInputChange.uptimeMillis.
  */
 
 private const val LONG_PRESS_MS = 500L
 private const val DOUBLE_TAP_MAX_INTERVAL_MS = 300L
 private const val TAP_MAX_DURATION_MS = 300L
-private const val TAP_MAX_DRIFT_PX = 24f
-private const val SWIPE_MIN_DISTANCE_PX = 64f
 
 private const val INVERT_VERTICAL_SWIPES = true
 private const val INVERT_HORIZONTAL_SWIPES = false
@@ -53,83 +59,100 @@ fun Modifier.resonantGestureDetector(
     var lastTapUpTimeMs = 0L
     var lastTapZone: InteractionZone? = null
 
-    fun zoneFor(x: Float, width: Int): InteractionZone = when {
-        x <= leftEdgePx -> InteractionZone.LEFT_EDGE
-        x >= width - rightEdgePx -> InteractionZone.RIGHT_EDGE
-        else -> InteractionZone.CENTER
-    }
-
     awaitEachGesture {
         val firstEvent = awaitPointerEvent(PointerEventPass.Initial)
         val firstDown = firstEvent.changes.first { it.pressed }
-        val downTimeMs = System.currentTimeMillis()
-        val zone = zoneFor(firstDown.position.x, size.width)
+        val downTimeMs = firstDown.uptimeMillis
+        val zone = GestureClassifier.zoneFor(firstDown.position.x, size.width, leftEdgePx, rightEdgePx)
 
         var maxPointerCount = 1
+        var pressedNow = 1
         var totalDrag = Offset.Zero
+        var thresholdHandled = false
         var holdModeActive = false
         var holdAccumY = 0f
         var holdDidStep = false
         var longPressFired = false
+        var threeFingerHoldFired = false
+
+        // Runs exactly once, when the finger(s) have been down for LONG_PRESS_MS —
+        // either because a pointer event arrived after the mark or, for a
+        // perfectly still finger, because the timeout below expired.
+        fun handleHoldThreshold() {
+            thresholdHandled = true
+            val movedNow = GestureClassifier.hasMoved(totalDrag.x, totalDrag.y)
+            when {
+                pressedNow >= 3 -> {
+                    threeFingerHoldFired = true
+                    onGesture(ResonantGesture.ThreeFingerHold)
+                }
+                maxPointerCount > 1 || movedNow -> { /* not a hold */ }
+                zone == InteractionZone.RIGHT_EDGE -> {
+                    // Speed mode. Activation requires the finger to be still at the
+                    // threshold; once active, drag is the whole point.
+                    holdModeActive = true
+                    onGesture(ResonantGesture.HoldStart)
+                }
+                else -> {
+                    longPressFired = true
+                    onGesture(ResonantGesture.LongPress(zone))
+                }
+            }
+        }
 
         while (true) {
-            val event = awaitPointerEvent()
+            val event = if (thresholdHandled) {
+                awaitPointerEvent()
+            } else {
+                val wait = downTimeMs + LONG_PRESS_MS - SystemClock.uptimeMillis()
+                if (wait <= 0L) null else withTimeoutOrNull(wait) { awaitPointerEvent() }
+            }
+
+            if (event == null) {
+                // Timed out with no pointer event: the finger is holding still.
+                handleHoldThreshold()
+                continue
+            }
+
             val changes = event.changes
-            val pressedCount = changes.count { it.pressed }
-            if (pressedCount > maxPointerCount) maxPointerCount = pressedCount
+            pressedNow = changes.count { it.pressed }
+            if (pressedNow > maxPointerCount) maxPointerCount = pressedNow
 
             val primary = changes.firstOrNull { it.id == firstDown.id }
             if (primary != null && primary.pressed) {
-                val delta = primary.positionChange()
-                totalDrag += delta
+                totalDrag += primary.positionChange()
                 primary.consume()
             }
 
-            val elapsed = System.currentTimeMillis() - downTimeMs
-            val moved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
-
-            // Right-edge hold-to-adjust-speed.
-            // We check !moved only at activation time so the user can press and
-            // hold briefly before dragging. Once holdModeActive is true, drag is
-            // the whole point — don't cancel it because totalDrag grew.
-            val rightEdgeMoved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
-            if (zone == InteractionZone.RIGHT_EDGE && maxPointerCount == 1 &&
-                !holdModeActive && elapsed > LONG_PRESS_MS && !rightEdgeMoved
-            ) {
-                holdModeActive = true
-                onGesture(ResonantGesture.HoldStart)
-            }
+            // Speed drag. Re-read from position - previousPosition rather than
+            // positionChange(), which was already consumed above.
             if (holdModeActive) {
-                // positionChange() was already consumed above for totalDrag,
-                // so re-read from the change's current vs previous position instead.
-                val rawDeltaY = primary?.let {
-                    it.position.y - it.previousPosition.y
-                } ?: 0f
+                val rawDeltaY = primary?.let { it.position.y - it.previousPosition.y } ?: 0f
                 holdAccumY += if (INVERT_SPEED_DRAG) -rawDeltaY else rawDeltaY
-                if (holdAccumY <= -holdStepPx) {
-                    onGesture(ResonantGesture.HoldSpeedUp)
-                    holdAccumY = 0f
-                    holdDidStep = true
-                } else if (holdAccumY >= holdStepPx) {
-                    onGesture(ResonantGesture.HoldSpeedDown)
-                    holdAccumY = 0f
-                    holdDidStep = true
+                when (GestureClassifier.holdStep(holdAccumY, holdStepPx)) {
+                    GestureClassifier.HoldStep.UP -> {
+                        onGesture(ResonantGesture.HoldSpeedUp)
+                        holdAccumY = 0f
+                        holdDidStep = true
+                    }
+                    GestureClassifier.HoldStep.DOWN -> {
+                        onGesture(ResonantGesture.HoldSpeedDown)
+                        holdAccumY = 0f
+                        holdDidStep = true
+                    }
+                    GestureClassifier.HoldStep.NONE -> {}
                 }
             }
 
-            // Long press: CENTER and LEFT_EDGE only (right edge hold is speed mode above)
-            if (!holdModeActive && zone != InteractionZone.RIGHT_EDGE && maxPointerCount == 1 &&
-                !longPressFired && elapsed > LONG_PRESS_MS && !moved
-            ) {
-                longPressFired = true
-                onGesture(ResonantGesture.LongPress(zone))
+            if (!thresholdHandled && SystemClock.uptimeMillis() - downTimeMs >= LONG_PRESS_MS) {
+                handleHoldThreshold()
             }
 
             if (changes.all { !it.pressed }) break
         }
 
-        val durationMs = System.currentTimeMillis() - downTimeMs
-        val moved = abs(totalDrag.x) > TAP_MAX_DRIFT_PX || abs(totalDrag.y) > TAP_MAX_DRIFT_PX
+        val durationMs = SystemClock.uptimeMillis() - downTimeMs
+        val moved = GestureClassifier.hasMoved(totalDrag.x, totalDrag.y)
 
         when {
             // A right-edge hold that never actually stepped the speed (the user
@@ -145,7 +168,7 @@ fun Modifier.resonantGestureDetector(
                 }
             }
 
-            longPressFired -> { /* already emitted */ }
+            longPressFired || threeFingerHoldFired -> { /* already emitted */ }
 
             maxPointerCount >= 3 -> {
                 if (durationMs > LONG_PRESS_MS) {
@@ -156,16 +179,12 @@ fun Modifier.resonantGestureDetector(
             }
 
             moved -> {
-                val direction = if (abs(totalDrag.x) > abs(totalDrag.y)) {
-                    val movedRight = totalDrag.x > 0
-                    val right = if (INVERT_HORIZONTAL_SWIPES) !movedRight else movedRight
-                    if (right) SwipeDirection.RIGHT else SwipeDirection.LEFT
-                } else {
-                    val movedDown = totalDrag.y > 0
-                    val down = if (INVERT_VERTICAL_SWIPES) !movedDown else movedDown
-                    if (down) SwipeDirection.DOWN else SwipeDirection.UP
-                }
-                if (abs(totalDrag.x) > SWIPE_MIN_DISTANCE_PX || abs(totalDrag.y) > SWIPE_MIN_DISTANCE_PX) {
+                val direction = GestureClassifier.swipeDirection(
+                    totalDrag.x, totalDrag.y,
+                    invertVertical = INVERT_VERTICAL_SWIPES,
+                    invertHorizontal = INVERT_HORIZONTAL_SWIPES
+                )
+                if (GestureClassifier.isSwipe(totalDrag.x, totalDrag.y)) {
                     onGesture(ResonantGesture.Swipe(zone, direction))
                 }
             }
@@ -174,7 +193,7 @@ fun Modifier.resonantGestureDetector(
                 // Right edge tap is intentionally dead — no accidental triggers
                 if (zone == InteractionZone.RIGHT_EDGE) return@awaitEachGesture
 
-                val now = System.currentTimeMillis()
+                val now = SystemClock.uptimeMillis()
                 // Double-tap only valid on LEFT EDGE (repeat current)
                 if (zone == InteractionZone.LEFT_EDGE &&
                     lastTapZone == InteractionZone.LEFT_EDGE &&

@@ -19,6 +19,15 @@ enum class HapticPattern {
     SPEED_UP,
     SPEED_DOWN,
     LISTENING,
+
+    /** Right-edge hold has crossed the threshold; dragging now adjusts speed. */
+    HOLD_ENGAGED,
+
+    /** Soft repeating pulse while waiting on the AI, so silence never feels like a freeze. */
+    THINKING,
+
+    /** Bumped the start or end of a list — there is nothing further that way. */
+    EDGE,
     OPTION_A,
     OPTION_B,
     OPTION_C,
@@ -46,11 +55,18 @@ object HapticPatterns {
         HapticPattern.SPEED_UP to longArrayOf(0, 30, 40, 45, 40, 65),
         HapticPattern.SPEED_DOWN to longArrayOf(0, 65, 40, 45, 40, 30),
         HapticPattern.LISTENING to longArrayOf(0, 30, 60, 30),
+        HapticPattern.HOLD_ENGAGED to longArrayOf(0, 15, 30, 15, 30, 15),
+        HapticPattern.THINKING to longArrayOf(0, 12),
+        HapticPattern.EDGE to longArrayOf(0, 20, 50, 20),
         // Answer-option tactile identifiers (also configurable independently of
         // the general vocabulary above, per the spec's "make these configurable").
-        HapticPattern.OPTION_A to longArrayOf(0, 50),
-        HapticPattern.OPTION_B to longArrayOf(0, 40, 70, 40),
-        HapticPattern.OPTION_C to longArrayOf(0, 40, 70, 160, 70, 40),
-        HapticPattern.OPTION_D to longArrayOf(0, 40, 70, 40, 90, 160)
+        // Deliberately a separate family from every navigation pattern: LONG pulses
+        // (90 ms) counted A=1 ... D=4. The old set reused the NEXT / PREVIOUS /
+        // SECTION_CHANGE timings, so in the quiz "I moved" and "this is option B"
+        // were the same buzz. HapticPatternsTest guards against that coming back.
+        HapticPattern.OPTION_A to longArrayOf(0, 90),
+        HapticPattern.OPTION_B to longArrayOf(0, 90, 80, 90),
+        HapticPattern.OPTION_C to longArrayOf(0, 90, 80, 90, 80, 90),
+        HapticPattern.OPTION_D to longArrayOf(0, 90, 80, 90, 80, 90, 80, 90)
     )
 }

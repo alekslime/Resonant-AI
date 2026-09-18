@@ -40,22 +40,24 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ResonantBlack
 import com.resonant.app.ui.theme.ResonantCaption
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
 
-/** ". " / "? " / "! " boundaries — good enough to pace a short spoken answer. */
-private fun splitIntoUnits(exchangeIndex: Int, text: String): List<SemanticUnit> =
-    text.split(Regex("(?<=[.!?])\\s+"))
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .mapIndexed { i, sentence -> SemanticUnit("e${exchangeIndex}u$i", sentence) }
-        .ifEmpty { listOf(SemanticUnit("e${exchangeIndex}u0", text)) }
+/** Gap between the soft "still working" pulses while waiting for the model's first sentence. */
+private const val THINKING_TICK_MS = 2_000L
+
+/** Every this-many ms of waiting, say so out loud as well — a pulse alone doesn't say "cancel is possible". */
+private const val THINKING_SPOKEN_EVERY_MS = 10_000L
 
 @Composable
 fun ChatScreen(onBack: () -> Unit) {
@@ -66,12 +68,26 @@ fun ChatScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val speech = remember { SpeechInputManager(context) }
-    DisposableEffect(Unit) { onDispose { speech.stopListening() } }
+    var alive by remember { mutableStateOf(true) }
+    var requestJob by remember { mutableStateOf<Job?>(null) }
+    // Bumped every time a request is cancelled or replaced. A cancelled request's
+    // `finally` still runs later; comparing ids stops it from resetting the state of
+    // the request (or the listening session) that superseded it.
+    var requestId by remember { mutableIntStateOf(0) }
+    DisposableEffect(Unit) {
+        onDispose {
+            alive = false
+            speech.stopListening()
+            requestJob?.cancel()
+            audio.endStream()
+        }
+    }
 
     var exchanges by remember { mutableStateOf<List<ChatExchange>>(emptyList()) }
     var flatIndex by remember { mutableIntStateOf(0) }
     var lastExchangeIndex by remember { mutableIntStateOf(0) }
-    var busy by remember { mutableStateOf(false) } // listening OR waiting on the model
+    var listening by remember { mutableStateOf(false) }  // microphone open
+    var thinking by remember { mutableStateOf(false) }   // question sent, no sentence back yet
     var statusText by remember { mutableStateOf("") }
     var micPermanentlyDenied by remember { mutableStateOf(false) }
 
@@ -80,31 +96,50 @@ fun ChatScreen(onBack: () -> Unit) {
             exchange.assistantChunks.map { FlatChatUnit(it, ei, exchange.userText) }
         }
 
-    fun speakLatestAnswer(list: List<ChatExchange>) {
-        val flat = flatten(list)
-        val newAnswerStart = flat.size - (list.lastOrNull()?.assistantChunks?.size ?: 0)
-        audio.setQueue(flat.map { it.unit }, startIndex = newAnswerStart.coerceAtLeast(0), autoAdvance = true)
-    }
-
-    fun handleAnswer(userText: String, reply: String) {
-        val exchangeIndex = exchanges.size
-        val updated = exchanges + ChatExchange(userText, splitIntoUnits(exchangeIndex, reply))
-        exchanges = updated
-        speakLatestAnswer(updated)
-        busy = false
+    fun resetBusy() {
+        listening = false
+        thinking = false
         statusText = ""
     }
 
     fun handleError(message: String) {
-        busy = false
-        statusText = ""
+        resetBusy()
         haptics.play(HapticPattern.ERROR)
         audio.announce(message)
     }
 
+    /** Stop waiting for (or streaming) an answer. Safe to call when nothing is in flight. */
+    fun cancelRequest() {
+        requestId++
+        requestJob?.cancel()
+        requestJob = null
+        audio.endStream()
+        thinking = false
+        statusText = ""
+    }
+
     fun askModel(userText: String) {
+        cancelRequest()
+        val myId = requestId
+        thinking = true
         statusText = "Thinking…"
-        scope.launch {
+
+        requestJob = scope.launch {
+            // Silence reads as a frozen app to someone who can't see "Thinking…". Pulse
+            // softly, and every so often say so — including that a tap will cancel.
+            val ticker = launch {
+                var waited = 0L
+                while (true) {
+                    delay(THINKING_TICK_MS)
+                    waited += THINKING_TICK_MS
+                    if (waited % THINKING_SPOKEN_EVERY_MS == 0L) {
+                        audio.announce("Still thinking. Tap the center to cancel.")
+                    } else {
+                        haptics.play(HapticPattern.THINKING)
+                    }
+                }
+            }
+
             val history = buildList {
                 add(ChatMessage("system", ChatData.systemPrompt))
                 exchanges.forEach { ex ->
@@ -113,28 +148,84 @@ fun ChatScreen(onBack: () -> Unit) {
                 }
                 add(ChatMessage("user", userText))
             }
-            OllamaClient.chat(history).fold(
-                onSuccess = { reply -> handleAnswer(userText, reply) },
-                onFailure = { err ->
-                    handleError("I couldn't reach the AI. ${err.message ?: "Check your Ollama server is running and reachable."}")
+
+            val chunker = SentenceChunker()
+            var sentenceCount = 0
+
+            // Speak the first sentence as soon as it exists; append the rest as they land.
+            fun onSentence(sentence: String) {
+                if (sentenceCount == 0) {
+                    ticker.cancel()
+                    thinking = false
+                    statusText = ""
+                    val exchangeIndex = exchanges.size
+                    val unit = SemanticUnit("e${exchangeIndex}u0", sentence)
+                    exchanges = exchanges + ChatExchange(userText, listOf(unit))
+                    val flat = flatten(exchanges)
+                    // Queued behind "You said … Thinking." rather than cutting it off.
+                    audio.setQueue(
+                        flat.map { it.unit },
+                        startIndex = flat.size - 1,
+                        autoAdvance = true,
+                        queueBehindAnnouncement = true
+                    )
+                } else {
+                    val last = exchanges.last()
+                    val unit = SemanticUnit("e${exchanges.lastIndex}u$sentenceCount", sentence)
+                    exchanges = exchanges.dropLast(1) + last.copy(assistantChunks = last.assistantChunks + unit)
+                    audio.appendUnits(listOf(unit))
                 }
-            )
+                sentenceCount++
+            }
+
+            audio.beginStream()
+            try {
+                OllamaClient.chatStream(history).collect { delta ->
+                    chunker.feed(delta).forEach { onSentence(it) }
+                }
+                chunker.flush()?.let { onSentence(it) }
+                if (sentenceCount == 0) handleError("The AI didn't reply. Tap the center to try again.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (requestId == myId) {
+                    handleError("I couldn't reach the AI. ${e.message ?: "Check your Ollama server is running and reachable."}")
+                }
+            } finally {
+                ticker.cancel()
+                if (requestId == myId) {
+                    audio.endStream()
+                    thinking = false
+                    statusText = ""
+                }
+            }
         }
     }
 
     fun startListening() {
-        busy = true
+        // Barge-in: a new question interrupts any answer still streaming or speaking.
+        cancelRequest()
+        audio.stop()
+        listening = true
         statusText = "Listening…"
         haptics.play(HapticPattern.LISTENING)
-        audio.announce("Listening.")
-        speech.startListening { outcome ->
-            when (outcome) {
-                is SpeechInputManager.Outcome.Success -> {
-                    haptics.play(HapticPattern.CONFIRM)
-                    audio.announce("You said: ${outcome.text}")
-                    askModel(outcome.text)
+        // The microphone opens only AFTER "Listening." has finished. Started together,
+        // the recognizer can pick up the app's own voice as the user's question.
+        audio.announce("Listening.") {
+            if (alive && listening) {
+                speech.startListening { outcome ->
+                    listening = false
+                    when (outcome) {
+                        is SpeechInputManager.Outcome.Success -> {
+                            haptics.play(HapticPattern.CONFIRM)
+                            // One announcement, not two: a second announce() would flush this one,
+                            // and the reply's first sentence is queued behind it (see askModel).
+                            audio.announce("You said: ${outcome.text}. Thinking.")
+                            askModel(outcome.text)
+                        }
+                        is SpeechInputManager.Outcome.Error -> handleError(outcome.message)
+                    }
                 }
-                is SpeechInputManager.Outcome.Error -> handleError(outcome.message)
             }
         }
     }
@@ -162,7 +253,15 @@ fun ChatScreen(onBack: () -> Unit) {
     }
 
     fun onAskTapped() {
-        if (busy) return
+        // A tap while waiting for the model cancels the wait — otherwise the only
+        // way out of a slow or hung request would be sitting through the timeout.
+        if (thinking) {
+            cancelRequest()
+            haptics.play(HapticPattern.BACK)
+            audio.announce("Cancelled. Tap the center to ask again.")
+            return
+        }
+        if (listening) return
         if (micPermanentlyDenied) {
             audio.announce("Opening settings. Turn on the microphone permission for Resonant.")
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -195,7 +294,11 @@ fun ChatScreen(onBack: () -> Unit) {
 
     ResonantScaffold(
         title = ChatData.title,
-        subtitle = if (exchanges.isEmpty()) "Tap center to ask a question" else "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
+        subtitle = when {
+            thinking -> "Tap center to cancel"
+            exchanges.isEmpty() -> "Tap center to ask a question"
+            else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
+        }
     ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {

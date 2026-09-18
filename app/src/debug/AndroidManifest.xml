@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        Plain-HTTP traffic is allowed in DEBUG builds only. A home-network Ollama
+        server is normally http://<lan-ip>:11434, and Android blocks cleartext by
+        default. Release builds stay locked down: point them at an https:// URL.
+    -->
+    <application
+        android:usesCleartextTraffic="true"
+        tools:targetApi="m" />
+</manifest>

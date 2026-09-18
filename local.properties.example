@@ -1,0 +1,9 @@
+## Copy to local.properties (git-ignored) and adjust.
+## Android Studio also writes sdk.dir into that file; leave it alone.
+
+# Address of the machine running `ollama serve`, reachable from your phone.
+# 10.0.2.2 only works from the Android emulator.
+ollama.baseUrl=http://192.168.1.50:11434
+
+# Any model you've already pulled with `ollama pull`.
+ollama.model=llama3.2

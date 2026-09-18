@@ -1,7 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Ollama endpoint for the Chat screen. Read from local.properties (git-ignored) so a
+// personal LAN address never gets committed; see network/OllamaConfig.kt.
+//   ollama.baseUrl=http://192.168.1.50:11434
+//   ollama.model=llama3.2
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val ollamaBaseUrl: String = localProps.getProperty("ollama.baseUrl", "http://10.0.2.2:11434")
+val ollamaModel: String = localProps.getProperty("ollama.model", "llama3.2")
 
 android {
     namespace = "com.resonant.app"
@@ -15,6 +28,9 @@ android {
         versionName = "0.1-prototype"
 
         vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
+        buildConfigField("String", "OLLAMA_MODEL", "\"$ollamaModel\"")
     }
 
     buildTypes {
@@ -34,6 +50,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -62,4 +79,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Plain JVM unit tests (./gradlew test) — gesture classification, sentence chunking,
+    // haptic vocabulary, stream parsing. org.json is the real library because the copy in
+    // android.jar is stubs that throw under unit tests.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

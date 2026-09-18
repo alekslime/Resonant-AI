@@ -15,7 +15,8 @@ class AudioManager(context: Context) {
     companion object {
         val SPEEDS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
         const val DEFAULT_SPEED_INDEX = 1
-        private const val ANNOUNCE_UTTERANCE_ID = "resonant_announce"
+        /** Every announcement gets a unique id under this prefix (see [announce]). */
+        private const val ANNOUNCE_PREFIX = "resonant_announce_"
     }
 
     private val appContext: Context = context.applicationContext
@@ -50,6 +51,19 @@ class AudioManager(context: Context) {
     private var autoAdvanceEnabled = false
     private var tts: TextToSpeech? = null
 
+    // Announcements are tracked individually (unique ids) so the app can (a) wait for
+    // one to finish before doing something that must not overlap it — e.g. opening the
+    // microphone after "Listening." — and (b) queue a screen's content behind one instead
+    // of cutting it off. Main-thread only.
+    private var announceCounter = 0
+    private var activeAnnounceId: String? = null
+    private val announceCallbacks = mutableMapOf<String, () -> Unit>()
+
+    // Streamed content (chat replies arriving sentence by sentence). While a stream is
+    // open, running off the end of the queue means "more is coming", not "finished".
+    private var streamOpen = false
+    private var awaitingMore = false
+
     init {
         initEngine()
     }
@@ -74,7 +88,7 @@ class AudioManager(context: Context) {
                 // guaranteed to be set before any speak() call can complete.
                 t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
+                        if (isAnnouncement(utteranceId)) return
                         mainHandler.post {
                             _isSpeaking.value = true
                             _isPaused.value = false
@@ -82,16 +96,33 @@ class AudioManager(context: Context) {
                     }
 
                     override fun onDone(utteranceId: String?) {
-                        if (utteranceId == ANNOUNCE_UTTERANCE_ID) return
+                        if (isAnnouncement(utteranceId)) {
+                            settleAnnouncement(utteranceId)
+                            return
+                        }
                         mainHandler.post {
                             _isSpeaking.value = false
-                            if (autoAdvanceEnabled && !_isPaused.value) next()
+                            if (autoAdvanceEnabled && !_isPaused.value) {
+                                // Ran off the end of a stream that is still open: remember
+                                // to pick up with the next appended unit.
+                                if (!next() && streamOpen) awaitingMore = true
+                            }
                         }
                     }
 
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String?) {
+                        if (isAnnouncement(utteranceId)) {
+                            settleAnnouncement(utteranceId)
+                            return
+                        }
                         mainHandler.post { _isSpeaking.value = false }
+                    }
+
+                    // Flushed or stopped before finishing. Still settle: a caller waiting
+                    // on an announcement must never be left waiting forever.
+                    override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                        if (isAnnouncement(utteranceId)) settleAnnouncement(utteranceId)
                     }
                 })
                 ready = true
@@ -102,22 +133,64 @@ class AudioManager(context: Context) {
 
     // Queue management
 
-    fun setQueue(units: List<SemanticUnit>, startIndex: Int = 0, autoAdvance: Boolean = false) {
+    /**
+     * @param queueBehindAnnouncement when true and an announcement is still playing, the
+     * first unit waits for it instead of cutting it off. For content that arrives right
+     * after a spoken acknowledgement (chat: "You said … Thinking." → the reply). Everything
+     * the user does by touch — next, previous, repeat — still interrupts immediately.
+     */
+    fun setQueue(
+        units: List<SemanticUnit>,
+        startIndex: Int = 0,
+        autoAdvance: Boolean = false,
+        queueBehindAnnouncement: Boolean = false
+    ) {
         _queue.value = units
         autoAdvanceEnabled = autoAdvance
+        awaitingMore = false
         val clamped = startIndex.coerceIn(0, (units.size - 1).coerceAtLeast(0))
         _index.value = clamped
         _currentUnit.value = units.getOrNull(clamped)
-        if (_currentUnit.value != null) speakCurrent()
+        if (_currentUnit.value != null) speakCurrent(queueBehindAnnouncement)
     }
 
-    fun speakCurrent() {
+    /**
+     * Adds units to the end of the current queue without disturbing playback. If the
+     * queue had already played to its end while a stream was open, playback continues
+     * with the first appended unit.
+     */
+    fun appendUnits(units: List<SemanticUnit>) {
+        if (units.isEmpty()) return
+        _queue.value = _queue.value + units
+        if (awaitingMore && !_isPaused.value) {
+            awaitingMore = false
+            next()
+        }
+    }
+
+    /** Mark the queue as still being filled (see [appendUnits]). Pair with [endStream]. */
+    fun beginStream() {
+        streamOpen = true
+        awaitingMore = false
+    }
+
+    fun endStream() {
+        streamOpen = false
+        awaitingMore = false
+    }
+
+    fun speakCurrent(queueBehindAnnouncement: Boolean = false) {
         val unit = _currentUnit.value ?: return
         if (!ready) return
         _isPaused.value = false
         val t = tts ?: return
         t.setSpeechRate(speed)
-        t.speak(unit.text, TextToSpeech.QUEUE_FLUSH, null, unit.id)
+        val mode = if (queueBehindAnnouncement && activeAnnounceId != null) {
+            TextToSpeech.QUEUE_ADD
+        } else {
+            TextToSpeech.QUEUE_FLUSH
+        }
+        t.speak(unit.text, mode, null, unit.id)
     }
 
     fun repeatCurrent() = speakCurrent()
@@ -215,7 +288,7 @@ class AudioManager(context: Context) {
         }
         if (!ready) return
         t.setSpeechRate(speed)
-        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, ANNOUNCE_UTTERANCE_ID)
+        speakAnnouncement(t, text, null)
 
         // Resume whatever was playing, queued behind the confirmation.
         val unit = _currentUnit.value
@@ -241,11 +314,50 @@ class AudioManager(context: Context) {
 
     // Announce — interrupts current speech without disturbing queue position
 
-    fun announce(text: String) {
-        val t = tts ?: return
-        if (!ready) return
+    /**
+     * Speaks [text] immediately, interrupting whatever is playing.
+     *
+     * @param onFinished invoked exactly once, on the main thread, when the announcement
+     * finishes, is interrupted by other speech, or fails — and immediately if speech is
+     * unavailable, so a caller waiting on it (e.g. before opening the microphone, which
+     * would otherwise hear the app's own voice) can never be left waiting.
+     */
+    fun announce(text: String, onFinished: (() -> Unit)? = null) {
+        val t = tts
+        if (t == null || !ready) {
+            onFinished?.let { mainHandler.post(it) }
+            return
+        }
         t.setSpeechRate(speed)
-        t.speak(text, TextToSpeech.QUEUE_FLUSH, null, ANNOUNCE_UTTERANCE_ID)
+        speakAnnouncement(t, text, onFinished)
+    }
+
+    private fun isAnnouncement(utteranceId: String?): Boolean =
+        utteranceId?.startsWith(ANNOUNCE_PREFIX) == true
+
+    private fun speakAnnouncement(t: TextToSpeech, text: String, onFinished: (() -> Unit)?) {
+        val id = ANNOUNCE_PREFIX + (++announceCounter)
+        activeAnnounceId = id
+        if (onFinished != null) announceCallbacks[id] = onFinished
+        val result = t.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        // speak() can fail outright (engine died); no progress callback will ever come.
+        if (result == TextToSpeech.ERROR) settleAnnouncement(id)
+    }
+
+    /** Safe to call from any thread; the state change and callback run on main. */
+    private fun settleAnnouncement(id: String?) {
+        if (id == null) return
+        mainHandler.post {
+            if (activeAnnounceId == id) activeAnnounceId = null
+            announceCallbacks.remove(id)?.invoke()
+        }
+    }
+
+    private fun settleAllAnnouncements() {
+        activeAnnounceId = null
+        val pending = announceCallbacks.values.toList()
+        announceCallbacks.clear()
+        pending.forEach { it.invoke() }
     }
 
     // Lifecycle
@@ -261,9 +373,11 @@ class AudioManager(context: Context) {
         _isReady.value = false
         _isSpeaking.value = false
         _isPaused.value = _currentUnit.value != null
+        awaitingMore = false
         tts?.stop()
         tts?.shutdown()
         tts = null
+        settleAllAnnouncements()
     }
 
     /** Called from Activity.onStart. Rebuilds the engine released above. */
@@ -277,5 +391,6 @@ class AudioManager(context: Context) {
         tts?.stop()
         tts?.shutdown()
         tts = null
+        settleAllAnnouncements()
     }
 }

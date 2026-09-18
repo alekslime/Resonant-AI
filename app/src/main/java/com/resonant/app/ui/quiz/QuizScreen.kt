@@ -111,8 +111,19 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> if (submitted) advance() else { audio.next(); haptics.play(HapticPattern.NEXT) }
-                        SwipeDirection.DOWN -> if (!submitted) { audio.previous(); haptics.play(HapticPattern.PREVIOUS) }
+                        // While browsing, the option's own tactile identifier (played by the
+                        // index collector above) IS the feedback for a successful move —
+                        // playing NEXT/PREVIOUS on top of it just replaced one buzz with
+                        // another. Only the edges need an explicit cue here.
+                        SwipeDirection.UP -> if (submitted) advance() else if (!audio.next()) haptics.play(HapticPattern.EDGE)
+                        SwipeDirection.DOWN -> if (!submitted) {
+                            if (!audio.previous()) {
+                                haptics.play(HapticPattern.EDGE)
+                            } else if (audio.index.value == 0) {
+                                // Back on the question itself — no option identifier for that.
+                                haptics.play(HapticPattern.PREVIOUS)
+                            }
+                        }
                         SwipeDirection.RIGHT -> if (!submitted) submit()
                         SwipeDirection.LEFT -> {}
                     }
