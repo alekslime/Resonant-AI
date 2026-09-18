@@ -1,19 +1,19 @@
 package com.resonant.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -26,9 +26,9 @@ import com.resonant.app.ui.theme.ResonantCaption
 
 private val ScreenTitleStyle = TextStyle(
     fontWeight = FontWeight.Black,
-    fontSize = 32.sp,
-    lineHeight = 38.sp,
-    letterSpacing = (-0.8).sp
+    fontSize = 24.sp,
+    lineHeight = 28.sp,
+    letterSpacing = (-0.4).sp
 )
 
 private val ScreenSubtitleStyle = TextStyle(
@@ -38,10 +38,13 @@ private val ScreenSubtitleStyle = TextStyle(
 )
 
 /**
- * Every non-home screen. Same gradient surface and same black rule as the menu,
- * so a screen change reads as the content moving rather than the app repainting.
- * The old black header bar is gone — the title now sits directly on the wash,
- * set in the same heavy face as the menu so the type is the only hierarchy.
+ * Every non-home screen. Same background image as the menu, so a screen
+ * change reads as the content moving rather than the app repainting.
+ *
+ * Header is deliberately minimal — just a wordmark-weight title and the
+ * three-dot mark, no boxed rule bar — matching the reference look (soft
+ * background wash, plain header, generous whitespace) rather than the
+ * earlier boxed/bar-based header treatment.
  */
 @Composable
 fun ResonantScaffold(
@@ -53,16 +56,12 @@ fun ResonantScaffold(
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier
-                    .height(IntrinsicSize.Min)
-                    .padding(start = 52.dp, end = 24.dp, top = 56.dp, bottom = 28.dp)
+                    .fillMaxWidth()
+                    .padding(start = 32.dp, end = 28.dp, top = 48.dp, bottom = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Spacer(
-                    Modifier
-                        .fillMaxHeight()
-                        .width(5.dp)
-                        .background(ResonantBlack)
-                )
-                Column(Modifier.padding(start = 22.dp)) {
+                Column {
                     Text(
                         text = title,
                         style = ScreenTitleStyle,
@@ -77,11 +76,32 @@ fun ResonantScaffold(
                         )
                     }
                 }
+                DotMenuMark()
             }
 
             Box(Modifier.fillMaxSize()) {
                 content()
             }
+        }
+    }
+}
+
+/** The three-stacked-dots mark from the reference design — visual only for
+ *  now, not wired to a tap action (the app's real navigation is gesture-
+ *  driven; this exists to match the reference's header language). */
+@Composable
+private fun DotMenuMark() {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(top = 4.dp)
+    ) {
+        repeat(3) {
+            Box(
+                Modifier
+                    .size(5.dp)
+                    .background(ResonantBlack, CircleShape)
+            )
         }
     }
 }
