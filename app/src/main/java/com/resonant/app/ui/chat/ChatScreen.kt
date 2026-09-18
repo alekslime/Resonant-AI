@@ -1,9 +1,14 @@
 package com.resonant.app.ui.chat
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -68,6 +73,7 @@ fun ChatScreen(onBack: () -> Unit) {
     var lastExchangeIndex by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) } // listening OR waiting on the model
     var statusText by remember { mutableStateOf("") }
+    var micPermanentlyDenied by remember { mutableStateOf(false) }
 
     fun flatten(list: List<ChatExchange>): List<FlatChatUnit> =
         list.flatMapIndexed { ei, exchange ->
@@ -136,11 +142,35 @@ fun ChatScreen(onBack: () -> Unit) {
     val micPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startListening() else handleError("Microphone permission is needed to ask a question.")
+        if (granted) {
+            startListening()
+        } else {
+            val activity = context as? Activity
+            val canAskAgain = activity == null ||
+                ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
+            if (canAskAgain) {
+                handleError("Microphone permission is needed to ask a question.")
+            } else {
+                // "Don't ask again" was chosen (or the system otherwise won't
+                // show the dialog anymore) — re-requesting from here on would
+                // silently no-op forever with no way out. Route future taps to
+                // the app's Settings page instead of repeating a dead end.
+                micPermanentlyDenied = true
+                handleError("Microphone permission was denied. Tap center again to open Settings and allow it.")
+            }
+        }
     }
 
     fun onAskTapped() {
         if (busy) return
+        if (micPermanentlyDenied) {
+            audio.announce("Opening settings. Turn on the microphone permission for Resonant.")
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(intent)
+            return
+        }
         val hasMic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         if (hasMic) startListening() else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
