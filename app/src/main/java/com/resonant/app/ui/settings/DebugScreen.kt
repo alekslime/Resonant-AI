@@ -91,7 +91,7 @@ fun DebugScreen(onBack: () -> Unit) {
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = ScreenHorizontalPadding, top = 24.dp, bottom = 32.dp)
+                    .padding(start = ScreenHorizontalPadding, end = ScreenHorizontalPadding, top = 24.dp, bottom = 32.dp)
             ) {
                 rows.forEach { (label, value) ->
                     Column(Modifier.padding(bottom = 24.dp)) {

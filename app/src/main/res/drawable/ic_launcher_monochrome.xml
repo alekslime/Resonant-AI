@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 13+ themed-icon layer: the OS re-tints this to match the user's
+    wallpaper/theme, so fill color here is a placeholder the system
+    overrides. Same braille-R geometry as ic_launcher_foreground.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M41.89,31.62 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M41.88,54.00 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M66.06,54.00 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M41.89,76.38 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+</vector>

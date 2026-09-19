@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive icon foreground: the actual brand mark (LogoBlack_NOBG.png) —
+    the braille cell for "R" (dots 1, 2, 3, 5) — traced as four circles
+    rather than an invented shape. Coordinates were derived by measuring the
+    source PNG's dot centers/radii directly (script, not eyeballed) and
+    mapping that bounding box into the 108x108dp canvas:
+
+      source (2000x2000px): bbox x 697-1379, y 497-1502
+      dot centers (px): (847.8,648.1) (847.7,999.5) (1227.4,999.5) (847.8,1350.9)
+      dot radius (px): ~151
+
+    Scaled so the mark's bounding box is 64dp tall (well inside the ~66dp
+    safe zone that survives circular/squircle/rounded-square masking) and
+    centered in the canvas.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- dot 1 (top-left) -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M41.89,31.62 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <!-- dot 2 (mid-left) -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M41.88,54.00 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <!-- dot 3 (mid-right) -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M66.06,54.00 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+    <!-- dot 4 (bottom-left) -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M41.89,76.38 m-9.61,0 a9.61,9.61 0 1,0 19.22,0 a9.61,9.61 0 1,0 -19.22,0" />
+</vector>

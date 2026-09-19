@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive icon background layer (108x108dp canvas; the launcher masks the
+    outer ~18dp on every edge). Same stops as GradientLight in
+    ui/theme/Color.kt, so the icon reads as the same surface as the app.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#FFE14D"
+        android:centerColor="#FFC12E"
+        android:endColor="#FF8A1E" />
+</shape>
