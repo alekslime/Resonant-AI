@@ -3,7 +3,6 @@ package com.resonant.app.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,23 +58,17 @@ private val homeItems = listOf(
  * negative so the words read as one stacked block rather than five separate
  * labels. Bumped up from the original scale as part of the low-vision pass —
  * this is the single biggest, most important text in the app.
+ *
+ * Used for every item, focused or not — no separate smaller/lighter
+ * "unfocused" style. Matches the Figma reference, where every line is the
+ * same size and weight; the only prior version distinguished focus by size,
+ * which the reference doesn't do.
  */
 private val MenuTextStyle = TextStyle(
     fontWeight = FontWeight.Black,
     fontSize = 52.sp,
     lineHeight = 62.sp,
     letterSpacing = (-1).sp
-)
-
-/** Unfocused items: smaller and Normal weight — hierarchy comes from size and
- *  weight, never from a fainter color (see Color.kt), so it survives low
- *  contrast sensitivity and stays readable regardless of where it sits on
- *  the gradient. */
-private val MenuUnfocusedTextStyle = TextStyle(
-    fontWeight = FontWeight.Normal,
-    fontSize = 38.sp,
-    lineHeight = 50.sp,
-    letterSpacing = (-0.5).sp
 )
 
 @Composable
@@ -178,33 +170,20 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     ) {
                         homeItems.forEachIndexed { i, item ->
                             val focused = i == index
-                            val itemModifier = Modifier
-                                .clickable {
-                                    audio.jumpTo(i)
-                                    open(i)
-                                }
-                                .semantics {
-                                    contentDescription =
-                                        item.label + if (focused) ", focused" else ""
-                                }
-                            if (focused) {
-                                // Solid filled chip, not a color swap on the text — stays
-                                // ~19.8:1 contrast no matter where it lands on the gradient.
-                                Box(
-                                    itemModifier
-                                        .background(colors.focusedFill, RoundedCornerShape(10.dp))
-                                        .padding(horizontal = 14.dp, vertical = 4.dp)
-                                ) {
-                                    Text(text = item.label, style = MenuTextStyle, color = colors.focusedText)
-                                }
-                            } else {
-                                Text(
-                                    text = item.label,
-                                    style = MenuUnfocusedTextStyle,
-                                    color = colors.text,
-                                    modifier = itemModifier
-                                )
-                            }
+                            Text(
+                                text = item.label,
+                                style = MenuTextStyle,
+                                color = colors.text,
+                                modifier = Modifier
+                                    .clickable {
+                                        audio.jumpTo(i)
+                                        open(i)
+                                    }
+                                    .semantics {
+                                        contentDescription =
+                                            item.label + if (focused) ", focused" else ""
+                                    }
+                            )
                         }
                     }
                 }

@@ -8,9 +8,9 @@ import androidx.compose.ui.graphics.Color
 // harsher, more confident palette. Every text/fill color below is checked
 // against WCAG 2.1 contrast — and against BOTH ends of its gradient, not
 // just wherever it happens to render.
-val GradientLightTop = Color(0xFFFFE14D)
-val GradientLightMid = Color(0xFFFFC12E)
-val GradientLightBottom = Color(0xFFFF8A1E)
+val GradientLightTop = Color(0xFFF4E031)
+val GradientLightMid = Color(0xFFF8CE2A)
+val GradientLightBottom = Color(0xFFFBBC23)
 
 val GradientDarkTop = Color(0xFF0A0A0A)
 val GradientDarkMid = Color(0xFF1A0E06)
