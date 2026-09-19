@@ -30,8 +30,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.delay
 
 /**
@@ -107,6 +107,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
 
     var step by remember { mutableIntStateOf(-1) }   // -1 = intro still playing
     var misses by remember { mutableIntStateOf(0) }
@@ -192,28 +193,28 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 40.dp),
+                        .padding(horizontal = ScreenHorizontalPadding, vertical = 40.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = current?.label ?: "Welcome",
                         style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black),
-                        color = ResonantBlack,
+                        color = colors.text,
                         modifier = Modifier.semantics {
                             contentDescription = current?.spoken ?: INTRO
                         }
                     )
-                    Box(Modifier.height(16.dp))
+                    Box(Modifier.height(20.dp))
                     Text(
                         text = current?.hint ?: "Turn your volume up.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = ResonantCaption
+                        color = colors.text
                     )
-                    Box(Modifier.height(32.dp))
+                    Box(Modifier.height(36.dp))
                     Text(
                         text = "Hold the left edge to skip.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = ResonantCaption
+                        color = colors.text
                     )
                 }
             }

@@ -25,8 +25,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private data class FlatUnit(val unit: SemanticUnit, val sectionIndex: Int, val sectionTitle: String)
 
@@ -43,6 +43,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
     val flat = remember(lesson) { flatten(lesson) }
 
     var flatIndex by remember { mutableIntStateOf(0) }
@@ -112,17 +113,17 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 24.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
                 Text(
                     current?.unit?.text ?: "",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                    color = ResonantBlack
+                    color = colors.text
                 )
                 Text(
                     "Unit ${flatIndex + 1} of ${flat.size}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantCaption,
-                    modifier = Modifier.padding(top = 16.dp)
+                    color = colors.text,
+                    modifier = Modifier.padding(top = 20.dp)
                 )
             }
         }

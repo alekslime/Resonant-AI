@@ -6,17 +6,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Sizes below are baseline (1x font scale). Because they're defined in `sp`,
- * they scale automatically with the user's system font size setting —
- * required per the accessibility section (dynamic font scaling).
+ * Sizes below are baseline (1x font scale) and deliberately generous — this
+ * pass is tuned for low-vision readability, not just visual weight. Defined
+ * in `sp`, so they still scale with the user's system font size setting on
+ * top of this already-large baseline.
+ *
+ * Line heights are ~1.3-1.55x font size (up from ~1.15-1.44x previously) —
+ * tight leading gets hard to track line-to-line at these sizes for anyone
+ * with central or peripheral field loss.
+ *
+ * There is no separate "small caption" role: the smallest text role
+ * (labelMedium) is still 20sp, because nothing in this app should read as a
+ * disposable caption to its actual audience.
  */
 val ResonantTypography = Typography(
-    displayLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 46.sp),
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 18.sp, lineHeight = 26.sp),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp)
+    displayLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 56.sp, lineHeight = 64.sp),
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 52.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 42.sp),
+    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 36.sp),
+    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 38.sp),
+    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 32.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 26.sp)
 )

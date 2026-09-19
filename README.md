@@ -116,6 +116,59 @@ test enforces it.
 
 ---
 
+## Visual design
+
+The visual layer is a secondary concern to speech/haptics for the actual
+target user, but it matters for low-vision users, sighted family members
+helping set up the app, and anyone using system dark mode — so it gets the
+same rigor as everything else.
+
+**Flat, harsh gradient — no grain, no blur.** `ResonantSurface.kt` renders a
+two/three-stop `Brush.verticalGradient` (yellow → orange in light mode,
+near-black → burnt orange in dark mode) instead of a baked image asset.
+Every screen shares it, read from `LocalResonantColors` so it switches with
+system dark mode automatically — screens never branch on `isSystemInDarkTheme()`
+themselves.
+
+**No text color ever depends on where it sits on the gradient.** The
+previous design swapped text to white in some spots and used alpha-faded
+black for "unfocused" items; both measured as low as ~1.3:1 and ~2:1 against
+this background — a real WCAG failure, not just a style note. The fix:
+- All body text is one solid, full-opacity color per theme
+  (`ResonantTextOnLight` / `ResonantTextOnDark`), never alpha-blended.
+  Focused-vs-unfocused hierarchy comes entirely from size and weight now.
+- The "current item" indicator (menu, lessons, settings) is a **solid filled
+  chip** behind the text, not a color swap — `ResonantFocusedFillLight/Dark`
+  + `ResonantFocusedTextLight/Dark`, always ~19.8:1 regardless of gradient
+  position.
+- Quiz correct/incorrect feedback is the same solid-chip pattern, not colored
+  text directly on the gradient (plain green/red text there measured under
+  2.5:1). Light and dark theme use different chip colors, since a fill that
+  reads against the light gradient nearly vanishes against the dark one.
+
+Every color pairing the app actually uses is contrast-checked against WCAG
+2.1 in `ui/theme/Color.kt`'s comments, and enforced by
+`ContrastTest.kt` so a future edit can't silently reintroduce a low-contrast
+pairing.
+
+**Type scale is tuned for low vision, not just visual weight**
+(`ui/theme/Type.kt`): body text starts at 26sp/22sp rather than 18sp/16sp,
+line heights are ~1.3–1.55× font size (generous leading, since tight leading
+is hard to track for anyone with field loss), and there is no small
+"caption" role — the smallest text on screen is still 20sp. All sizes are in
+`sp`, so the system font-scale setting still stacks on top of this baseline.
+
+**Spacing is symmetric.** `ui/theme/Dimens.kt` defines one horizontal margin
+(`ScreenHorizontalPadding`, 40.dp) used on both edges of every screen — the
+previous per-screen values (32.dp/24.dp, or 52.dp/24.dp on Home) were left
+over from a background image with visual weight on one side; the flat
+gradient has none, so there's no reason for margins to be lopsided anymore.
+The left/right gesture zones (`EdgeZoneWidth`, also in `Dimens.kt`) were
+bumped from 48.dp to 64.dp at the same time, and the visual margin now
+matches the actual touch target.
+
+---
+
 ## The gesture grammar
 
 The same on every screen:

@@ -44,8 +44,8 @@ import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -65,6 +65,7 @@ fun ChatScreen(onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
     val scope = rememberCoroutineScope()
 
     val speech = remember { SpeechInputManager(context) }
@@ -330,25 +331,25 @@ fun ChatScreen(onBack: () -> Unit) {
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 24.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
                 if (statusText.isNotEmpty()) {
                     Text(
                         statusText,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = ResonantCaption
+                        color = colors.text
                     )
                 } else if (current != null) {
                     Text(
                         "You: ${current.userText}",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = ResonantCaption
+                        color = colors.text
                     )
                 }
                 Text(
                     current?.unit?.text ?: "",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                    color = ResonantBlack,
-                    modifier = Modifier.padding(top = 16.dp)
+                    color = colors.text,
+                    modifier = Modifier.padding(top = 20.dp)
                 )
             }
         }

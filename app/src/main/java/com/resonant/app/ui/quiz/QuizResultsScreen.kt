@@ -19,14 +19,15 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
 fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
 
     LaunchedEffect(correct, total) {
         debug.setScreen("Quiz Results")
@@ -61,17 +62,17 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 40.dp)) {
                 Text(
                     "$correct / $total",
                     style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
-                    color = ResonantBlack
+                    color = colors.text
                 )
                 Text(
                     "Tap anywhere to return home.",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ResonantCaption,
-                    modifier = Modifier.padding(top = 16.dp)
+                    color = colors.text,
+                    modifier = Modifier.padding(top = 20.dp)
                 )
             }
         }

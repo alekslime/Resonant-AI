@@ -14,7 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.resonant.app.ui.components.ResonantSurface
-import com.resonant.app.ui.theme.ResonantBlack
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private const val EXPLANATION =
     "TalkBack is turned on. While it runs, it takes over your touches before " +
@@ -45,23 +46,28 @@ fun TalkBackNoticeScreen(
     // TalkBack will announce this screen's own text via its normal reading
     // order — we deliberately do NOT also call our own TTS here, to avoid two
     // voices talking over each other.
+    val colors = LocalResonantColors.current
+    // Dark mode matters here too: with the old hardcoded ResonantBlack, this
+    // screen would render black text on a black gradient in dark mode — one
+    // of the few screens a sighted person setting the phone up actually
+    // needs to read before TalkBack takes over.
     ResonantSurface {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .padding(ScreenHorizontalPadding),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 "TalkBack is on",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                color = ResonantBlack
+                color = colors.text
             )
             Spacer(Modifier.height(20.dp))
             Text(
                 EXPLANATION,
                 style = MaterialTheme.typography.bodyLarge,
-                color = ResonantBlack
+                color = colors.text
             )
             Spacer(Modifier.height(40.dp))
             Button(onClick = onOpenAccessibilitySettings) {

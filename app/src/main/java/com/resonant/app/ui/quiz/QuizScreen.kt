@@ -29,17 +29,15 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCorrectGreen
-import com.resonant.app.ui.theme.ResonantIncorrectRed
-import com.resonant.app.ui.theme.ResonantUnfocused
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
 fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
 
     var questionIndex by remember { mutableIntStateOf(0) }
     var queueIndex by remember { mutableIntStateOf(0) }
@@ -160,56 +158,66 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 24.dp)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
                 Text(
                     question.prompt.text,
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                    color = ResonantBlack
+                    color = colors.text
                 )
-                Column(Modifier.padding(top = 32.dp)) {
+                Column(Modifier.padding(top = 36.dp)) {
                     question.options.forEachIndexed { i, opt ->
                         val isFocused = queueIndex == i + 1
                         val isSelected = selectedOption == i
-                        val color = when {
-                            submitted && i == question.correctIndex -> ResonantCorrectGreen
-                            submitted && isSelected -> ResonantIncorrectRed
-                            isSelected || isFocused -> ResonantBlack
-                            else -> ResonantUnfocused
-                        }
                         val label = "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else ""
                         val textStyle = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = if (isFocused || isSelected) FontWeight.Bold else FontWeight.Normal
                         )
-                        // Highlight only pre-submit focus/selection — post-submit the
-                        // green/red feedback color is the signal, and a yellow block
-                        // behind it would compete with that instead of reinforcing it.
-                        if (!submitted && (isFocused || isSelected)) {
+                        // Every state below is a solid filled chip, never colored text
+                        // directly on the gradient — plain green/red text there measured
+                        // under 2.5:1 contrast (see Color.kt). Chip colors are also
+                        // theme-specific: the light-theme fills would nearly vanish
+                        // against the dark gradient, and vice versa.
+                        val fill = when {
+                            submitted && i == question.correctIndex -> colors.correctFill
+                            submitted && isSelected -> colors.incorrectFill
+                            !submitted && (isFocused || isSelected) -> colors.focusedFill
+                            else -> null
+                        }
+                        if (fill != null) {
+                            val fillText = if (!submitted) colors.focusedText else colors.feedbackText
                             Box(
                                 Modifier
-                                    .padding(vertical = 4.dp)
-                                    .background(ResonantYellow, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .padding(vertical = 5.dp)
+                                    .background(fill, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Text(label, style = textStyle, color = ResonantBlack)
+                                Text(label, style = textStyle, color = fillText)
                             }
                         } else {
                             Text(
                                 label,
                                 style = textStyle,
-                                color = color,
-                                modifier = Modifier.padding(vertical = 6.dp)
+                                color = colors.text,
+                                modifier = Modifier.padding(vertical = 9.dp)
                             )
                         }
                     }
                 }
                 if (submitted) {
-                    Text(
-                        if (lastAnswerCorrect == true) "Correct — swipe up to continue."
-                        else "Incorrect — swipe up to continue.",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = if (lastAnswerCorrect == true) ResonantCorrectGreen else ResonantIncorrectRed,
-                        modifier = Modifier.padding(top = 32.dp)
-                    )
+                    val feedbackFill = if (lastAnswerCorrect == true) colors.correctFill else colors.incorrectFill
+                    Box(
+                        Modifier
+                            .padding(top = 32.dp)
+                            .background(feedbackFill, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            if (lastAnswerCorrect == true) "Correct — swipe up to continue."
+                            else "Incorrect — swipe up to continue.",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                            color = colors.feedbackText
+                        )
+                    }
                 }
             }
         }

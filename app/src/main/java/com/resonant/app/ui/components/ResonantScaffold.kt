@@ -11,40 +11,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
-
-private val ScreenTitleStyle = TextStyle(
-    fontWeight = FontWeight.Black,
-    fontSize = 24.sp,
-    lineHeight = 28.sp,
-    letterSpacing = (-0.4).sp
-)
-
-private val ScreenSubtitleStyle = TextStyle(
-    fontWeight = FontWeight.Medium,
-    fontSize = 15.sp,
-    lineHeight = 20.sp
-)
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
+import com.resonant.app.ui.theme.ScreenTopPadding
 
 /**
- * Every non-home screen. Same background image as the menu, so a screen
- * change reads as the content moving rather than the app repainting.
+ * Every non-home screen. Same flat gradient as the menu, so a screen change
+ * reads as the content moving rather than the app repainting.
  *
- * Header is deliberately minimal — just a wordmark-weight title and the
- * three-dot mark, no boxed rule bar — matching the reference look (soft
- * background wash, plain header, generous whitespace) rather than the
- * earlier boxed/bar-based header treatment.
+ * Header uses the same type scale as the rest of the app (headlineMedium /
+ * bodyMedium) rather than its own bespoke sizes, and the same solid text
+ * color as everything else — no separate faded "caption" tone. Horizontal
+ * margins match [ScreenHorizontalPadding] used everywhere else, so the
+ * header and the body content below it line up on both edges instead of
+ * the header sitting slightly narrower/off-center against its own content.
  */
 @Composable
 fun ResonantScaffold(
@@ -52,31 +41,38 @@ fun ResonantScaffold(
     subtitle: String? = null,
     content: @Composable () -> Unit
 ) {
+    val colors = LocalResonantColors.current
     ResonantSurface {
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = 32.dp, end = 28.dp, top = 48.dp, bottom = 20.dp),
+                    .padding(
+                        start = ScreenHorizontalPadding,
+                        end = ScreenHorizontalPadding,
+                        top = ScreenTopPadding,
+                        bottom = 24.dp
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
                 Column {
                     Text(
                         text = title,
-                        style = ScreenTitleStyle,
-                        color = ResonantBlack,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = colors.text,
                         modifier = Modifier.semantics { heading() }
                     )
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
-                            style = ScreenSubtitleStyle,
-                            color = ResonantCaption
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
-                DotMenuMark()
+                DotMenuMark(color = colors.text)
             }
 
             Box(Modifier.fillMaxSize()) {
@@ -86,24 +82,25 @@ fun ResonantScaffold(
     }
 }
 
-/** The three-stacked-dots mark from the reference design — visual only for
- *  now, not wired to a tap action (the app's real navigation is gesture-
- *  driven; this exists to match the reference's header language). */
+/** The three-stacked-dots mark — visual only, matches the header's text
+ *  color so it stays visible in both light and dark theme (it used to be
+ *  hardcoded black, which vanished against a dark background). Sized up
+ *  slightly to match the bigger type scale around it. */
 @Composable
-private fun DotMenuMark() {
+private fun DotMenuMark(color: Color) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(top = 4.dp)
+        modifier = Modifier.padding(top = 8.dp)
     ) {
         repeat(3) {
             Box(
                 Modifier
-                    .size(5.dp)
-                    .background(ResonantBlack, CircleShape)
+                    .size(7.dp)
+                    .background(color, CircleShape)
             )
         }
     }
 }
 
-val ScreenPadding = PaddingValues(24.dp)
+val ScreenPadding = PaddingValues(horizontal = ScreenHorizontalPadding, vertical = ScreenTopPadding)

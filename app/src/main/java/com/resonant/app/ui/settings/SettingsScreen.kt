@@ -32,10 +32,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
-import com.resonant.app.ui.theme.ResonantUnfocused
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val DEBUG_MODE = "Debug Mode"
@@ -51,6 +49,7 @@ fun SettingsScreen(
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
     var index by remember { mutableIntStateOf(0) }
     val speedIndex by audio.speedIndex.collectAsState()
     val speed = AudioManager.SPEEDS[speedIndex]
@@ -106,19 +105,19 @@ fun SettingsScreen(
             }
         }) {
             Column(
-                Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 40.dp),
+                Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 40.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     "Hold right edge, drag up\nto speed up, down to slow.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = ResonantCaption,
-                    modifier = Modifier.padding(bottom = 40.dp)
+                    color = colors.text,
+                    modifier = Modifier.padding(bottom = 44.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
                     val focused = i == index
                     val itemModifier = Modifier
-                        .padding(vertical = 6.dp)
+                        .padding(vertical = 10.dp)
                         .clickable {
                             audio.jumpTo(i)
                             haptics.play(HapticPattern.SELECT)
@@ -130,8 +129,8 @@ fun SettingsScreen(
                     if (focused) {
                         Box(
                             itemModifier
-                                .background(ResonantYellow, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 2.dp)
+                                .background(colors.focusedFill, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 label,
@@ -139,7 +138,7 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = (-0.6).sp
                                 ),
-                                color = ResonantBlack
+                                color = colors.focusedText
                             )
                         }
                     } else {
@@ -149,7 +148,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Normal,
                                 letterSpacing = (-0.6).sp
                             ),
-                            color = ResonantUnfocused,
+                            color = colors.text,
                             modifier = itemModifier
                         )
                     }

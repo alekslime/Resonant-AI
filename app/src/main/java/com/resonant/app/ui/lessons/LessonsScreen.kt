@@ -31,10 +31,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantCaption
-import com.resonant.app.ui.theme.ResonantUnfocused
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
 fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
@@ -42,6 +40,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val lessons = LessonData.allLessons
+    val colors = LocalResonantColors.current
     var index by remember { mutableIntStateOf(0) }
 
     // Single effect: setQueue must land before collection starts, or the first
@@ -93,14 +92,14 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
             }
         }) {
             Column(
-                Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp, top = 40.dp, bottom = 40.dp),
+                Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 40.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 lessons.forEachIndexed { i, lesson ->
                     val focused = i == index
                     Column(
                         Modifier
-                            .padding(vertical = 6.dp)
+                            .padding(vertical = 10.dp)
                             .clickable {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
@@ -109,10 +108,13 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                             }
                     ) {
                         if (focused) {
+                            // Solid filled chip — see Color.kt: a color swap on the text
+                            // measured as low as 1.3:1 depending on gradient position; a
+                            // solid fill is always ~19.8:1 regardless of where it sits.
                             Box(
                                 Modifier
-                                    .background(ResonantYellow, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 2.dp)
+                                    .background(colors.focusedFill, RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 14.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     lesson.title,
@@ -120,14 +122,14 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                                         fontWeight = FontWeight.Black,
                                         letterSpacing = (-0.6).sp
                                     ),
-                                    color = ResonantBlack
+                                    color = colors.focusedText
                                 )
                             }
                             Text(
                                 "${lesson.sections.size} sections",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = ResonantCaption,
-                                modifier = Modifier.padding(top = 2.dp)
+                                color = colors.text,
+                                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
                             )
                         } else {
                             Text(
@@ -136,7 +138,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                                     fontWeight = FontWeight.Normal,
                                     letterSpacing = (-0.6).sp
                                 ),
-                                color = ResonantUnfocused
+                                color = colors.text
                             )
                         }
                     }

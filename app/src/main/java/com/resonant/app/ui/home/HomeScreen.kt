@@ -39,9 +39,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantSurface
-import com.resonant.app.ui.theme.ResonantBlack
-import com.resonant.app.ui.theme.ResonantUnfocused
-import com.resonant.app.ui.theme.ResonantYellow
+import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private data class HomeItem(val label: String, val route: String)
 
@@ -59,21 +58,24 @@ private val homeItems = listOf(
 /**
  * The menu type: very heavy, very tight, set large. Letter spacing is pulled in
  * negative so the words read as one stacked block rather than five separate
- * labels.
+ * labels. Bumped up from the original scale as part of the low-vision pass —
+ * this is the single biggest, most important text in the app.
  */
 private val MenuTextStyle = TextStyle(
     fontWeight = FontWeight.Black,
-    fontSize = 44.sp,
-    lineHeight = 56.sp,
+    fontSize = 52.sp,
+    lineHeight = 62.sp,
     letterSpacing = (-1).sp
 )
 
 /** Unfocused items: smaller and Normal weight — hierarchy comes from size and
- *  weight, not a fainter color, so it survives low contrast sensitivity. */
+ *  weight, never from a fainter color (see Color.kt), so it survives low
+ *  contrast sensitivity and stays readable regardless of where it sits on
+ *  the gradient. */
 private val MenuUnfocusedTextStyle = TextStyle(
     fontWeight = FontWeight.Normal,
-    fontSize = 32.sp,
-    lineHeight = 44.sp,
+    fontSize = 38.sp,
+    lineHeight = 50.sp,
     letterSpacing = (-0.5).sp
 )
 
@@ -82,6 +84,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
+    val colors = LocalResonantColors.current
     var index by remember { mutableIntStateOf(0) }
 
     // Single effect: setQueue must land before collection starts, or the first
@@ -149,10 +152,14 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 else -> {}
             }
         }) {
+            // Symmetric margins matching every other screen (ScreenHorizontalPadding on
+            // both sides) — the rule bar and label column sit inside that, rather than
+            // the old setup where the left margin (52.dp) and right margin (24.dp) were
+            // two unrelated numbers with no shared basis.
             Row(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = 52.dp, end = 24.dp),
+                    .padding(horizontal = ScreenHorizontalPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // The rule is a sibling of the label column inside a Row measured
@@ -162,11 +169,11 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     Spacer(
                         Modifier
                             .fillMaxHeight()
-                            .width(5.dp)
-                            .background(ResonantBlack)
+                            .width(6.dp)
+                            .background(colors.text)
                     )
                     Column(
-                        Modifier.padding(start = 22.dp),
+                        Modifier.padding(start = 24.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
                         homeItems.forEachIndexed { i, item ->
@@ -181,18 +188,20 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                                         item.label + if (focused) ", focused" else ""
                                 }
                             if (focused) {
+                                // Solid filled chip, not a color swap on the text — stays
+                                // ~19.8:1 contrast no matter where it lands on the gradient.
                                 Box(
                                     itemModifier
-                                        .background(ResonantYellow, RoundedCornerShape(10.dp))
-                                        .padding(horizontal = 12.dp, vertical = 2.dp)
+                                        .background(colors.focusedFill, RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 14.dp, vertical = 4.dp)
                                 ) {
-                                    Text(text = item.label, style = MenuTextStyle, color = ResonantBlack)
+                                    Text(text = item.label, style = MenuTextStyle, color = colors.focusedText)
                                 }
                             } else {
                                 Text(
                                     text = item.label,
                                     style = MenuUnfocusedTextStyle,
-                                    color = ResonantUnfocused,
+                                    color = colors.text,
                                     modifier = itemModifier
                                 )
                             }

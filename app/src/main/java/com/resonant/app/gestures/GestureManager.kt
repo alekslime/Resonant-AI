@@ -8,6 +8,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.dp
+import com.resonant.app.ui.theme.EdgeZoneWidth
 
 /**
  * RESONANT GESTURE GRAMMAR
@@ -44,8 +45,10 @@ private const val INVERT_HORIZONTAL_SWIPES = false
  */
 private const val INVERT_SPEED_DRAG = false
 
-private val LEFT_EDGE_WIDTH = 48.dp   // wider = safer from accidental center triggers
-private val RIGHT_EDGE_WIDTH = 48.dp
+// Matches ScreenHorizontalPadding's visual margin, and wider than the old
+// 48.dp — more forgiving to hit reliably without precise aim.
+private val LEFT_EDGE_WIDTH = EdgeZoneWidth
+private val RIGHT_EDGE_WIDTH = EdgeZoneWidth
 private val HOLD_SPEED_STEP = 56.dp
 
 fun Modifier.resonantGestureDetector(
