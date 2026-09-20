@@ -1,13 +1,10 @@
 package com.resonant.app.ui.lessons
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -96,7 +93,6 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 lessons.forEachIndexed { i, lesson ->
-                    val focused = i == index
                     Column(
                         Modifier
                             .padding(vertical = 10.dp)
@@ -107,40 +103,24 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                                 onOpenLesson(lesson.id)
                             }
                     ) {
-                        if (focused) {
-                            // Solid filled chip — see Color.kt: a color swap on the text
-                            // measured as low as 1.3:1 depending on gradient position; a
-                            // solid fill is always ~19.8:1 regardless of where it sits.
-                            Box(
-                                Modifier
-                                    .background(colors.focusedFill, RoundedCornerShape(10.dp))
-                                    .padding(horizontal = 14.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    lesson.title,
-                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = (-0.6).sp
-                                    ),
-                                    color = colors.focusedText
-                                )
-                            }
-                            Text(
-                                "${lesson.sections.size} sections",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.text,
-                                modifier = Modifier.padding(top = 6.dp, start = 4.dp)
-                            )
-                        } else {
-                            Text(
-                                lesson.title,
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontWeight = FontWeight.Normal,
-                                    letterSpacing = (-0.6).sp
-                                ),
-                                color = colors.text
-                            )
-                        }
+                        // Flat: no chip, no color swap, no size/weight split between
+                        // focused and unfocused — matches the Home screen's menu.
+                        // "focused" still exists for audio/haptic navigation and the
+                        // ThreeFingerHold announcement below; it's just not shown visually.
+                        Text(
+                            lesson.title,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.6).sp
+                            ),
+                            color = colors.text
+                        )
+                        Text(
+                            "${lesson.sections.size} sections",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+                        )
                     }
                 }
             }

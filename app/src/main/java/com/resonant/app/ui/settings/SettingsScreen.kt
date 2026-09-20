@@ -1,13 +1,10 @@
 package com.resonant.app.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -115,43 +112,24 @@ fun SettingsScreen(
                     modifier = Modifier.padding(bottom = 44.dp)
                 )
                 settingsItems.forEachIndexed { i, label ->
-                    val focused = i == index
-                    val itemModifier = Modifier
-                        .padding(vertical = 10.dp)
-                        .clickable {
-                            audio.jumpTo(i)
-                            haptics.play(HapticPattern.SELECT)
-                            when (label) {
-                                REPLAY_TUTORIAL -> onReplayTutorial()
-                                DEBUG_MODE -> onOpenDebug()
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.6).sp
+                        ),
+                        color = colors.text,
+                        modifier = Modifier
+                            .padding(vertical = 10.dp)
+                            .clickable {
+                                audio.jumpTo(i)
+                                haptics.play(HapticPattern.SELECT)
+                                when (label) {
+                                    REPLAY_TUTORIAL -> onReplayTutorial()
+                                    DEBUG_MODE -> onOpenDebug()
+                                }
                             }
-                        }
-                    if (focused) {
-                        Box(
-                            itemModifier
-                                .background(colors.focusedFill, RoundedCornerShape(10.dp))
-                                .padding(horizontal = 14.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = (-0.6).sp
-                                ),
-                                color = colors.focusedText
-                            )
-                        }
-                    } else {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Normal,
-                                letterSpacing = (-0.6).sp
-                            ),
-                            color = colors.text,
-                            modifier = itemModifier
-                        )
-                    }
+                    )
                 }
             }
         }

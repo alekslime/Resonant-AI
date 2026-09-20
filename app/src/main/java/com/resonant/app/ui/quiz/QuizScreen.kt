@@ -169,29 +169,28 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                         val isFocused = queueIndex == i + 1
                         val isSelected = selectedOption == i
                         val label = "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else ""
+                        // Pre-submit: flat, matches the Home/Lessons/Settings direction —
+                        // no chip, always colors.text. "isSelected" (the option the person
+                        // actually tapped as their answer, not just where audio-focus
+                        // happens to be) is still bold: that's a real committed choice, not
+                        // a cosmetic focus indicator, so it stays visually distinct even
+                        // after the person swipes focus elsewhere pre-submit.
                         val textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = if (isFocused || isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
-                        // Every state below is a solid filled chip, never colored text
-                        // directly on the gradient — plain green/red text there measured
-                        // under 2.5:1 contrast (see Color.kt). Chip colors are also
-                        // theme-specific: the light-theme fills would nearly vanish
-                        // against the dark gradient, and vice versa.
-                        val fill = when {
-                            submitted && i == question.correctIndex -> colors.correctFill
-                            submitted && isSelected -> colors.incorrectFill
-                            !submitted && (isFocused || isSelected) -> colors.focusedFill
-                            else -> null
-                        }
-                        if (fill != null) {
-                            val fillText = if (!submitted) colors.focusedText else colors.feedbackText
+                        if (submitted && (i == question.correctIndex || isSelected)) {
+                            // Solid filled chip, never colored text directly on the gradient —
+                            // plain green/red text there measured under 2.5:1 contrast (see
+                            // Color.kt). Chip colors are theme-specific: the light-theme fills
+                            // would nearly vanish against the dark gradient, and vice versa.
+                            val fill = if (i == question.correctIndex) colors.correctFill else colors.incorrectFill
                             Box(
                                 Modifier
                                     .padding(vertical = 5.dp)
                                     .background(fill, RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Text(label, style = textStyle, color = fillText)
+                                Text(label, style = textStyle, color = colors.feedbackText)
                             }
                         } else {
                             Text(
