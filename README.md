@@ -16,8 +16,8 @@ speaks the reply back as it is generated (see "Chat / voice AI setup").
 
 1. Open this folder in **Android Studio** (Koala/2024.1 or newer; the project
    targets AGP 8.5.2 / Kotlin 1.9.24 / compileSdk 34).
-2. The Gradle wrapper files are not committed. When Android Studio offers to
-   generate the wrapper, accept — or run `gradle wrapper` yourself.
+2. The Gradle wrapper is committed, so `./gradlew` works from the command line
+   and Android Studio uses it as is.
 3. Copy `local.properties.example` to `local.properties` (Android Studio may
    already have created that file for `sdk.dir` — just add the two Ollama lines
    to it) and set them for your network. See the next section.

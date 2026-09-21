@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // ---------------------------------------------------------------------------
 // Background gradient. Flat, solid color bands — no grain, no blur. Replaces
-// the earlier soft blurred-blob image (resonant_background.jpg) with a
+// the earlier soft blurred-blob background image with a
 // harsher, more confident palette. Every text/fill color below is checked
 // against WCAG 2.1 contrast — and against BOTH ends of its gradient, not
 // just wherever it happens to render.

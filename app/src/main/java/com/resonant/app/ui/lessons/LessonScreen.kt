@@ -103,13 +103,10 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                     onExit()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
-                ResonantGesture.ThreeFingerHold -> {
-                    val speedLabel = com.resonant.app.audio.AudioManager.SPEEDS[audio.speedIndex.value]
-                    audio.announce(
-                        "You are in ${lesson.title}, section ${lastSectionIndex + 1} of ${lesson.sections.size}. " +
-                            "Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${speedLabel}x speed."
-                    )
-                }
+                ResonantGesture.ThreeFingerHold -> audio.announce(
+                    "You are in ${lesson.title}, section ${lastSectionIndex + 1} of ${lesson.sections.size}. " +
+                        "Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${audio.speedLabel()}."
+                )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}

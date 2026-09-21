@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
  */
 val ScreenHorizontalPadding = 40.dp
 val ScreenTopPadding = 48.dp
-val ScreenBottomPadding = 40.dp
 
 /** Left/right gesture-zone width. Matches [com.resonant.app.gestures]' edge
  *  widths, so the visual margin and the actual touch target line up — and

@@ -319,8 +319,11 @@ class AudioManager(context: Context) {
         }
     }
 
-    /** "1.5x" reads badly aloud; "one point five times speed" reads correctly. */
-    private fun speedLabel(value: Float): String {
+    /**
+     * "1.5x" reads badly aloud; "one point five times speed" reads correctly. Anything
+     * that speaks the current speed should go through this, not print the raw float.
+     */
+    fun speedLabel(value: Float = speed): String {
         val spoken = when (value) {
             0.75f -> "zero point seven five"
             1.0f -> "normal"
