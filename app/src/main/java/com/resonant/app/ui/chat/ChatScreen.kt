@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.resonant.app.content.ChatData
 import com.resonant.app.content.ChatExchange
+import com.resonant.app.content.OfflineAnswers
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -41,6 +42,7 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.network.isServerUnreachable
 import com.resonant.app.network.spokenErrorFor
 import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
@@ -195,7 +197,18 @@ fun ChatScreen(onBack: () -> Unit) {
                     // The exception's own text can be an HTTP body or a raw socket error:
                     // log that, and speak something a person can act on.
                     Log.w("ResonantChat", "Chat request failed", e)
-                    handleError(spokenErrorFor(e))
+                    if (sentenceCount == 0 && isServerUnreachable(e)) {
+                        // The server isn't just erroring, it's not there — running the
+                        // request again right now would hit the same wall. Rather than
+                        // leave a demo sitting on "couldn't reach the AI server", answer
+                        // from the lesson content bundled in the app. onSentence's
+                        // sentenceCount == 0 branch is exactly "post the first reply",
+                        // so this rides the same path a real answer would.
+                        haptics.play(HapticPattern.ERROR)
+                        onSentence(OfflineAnswers.answerFor(userText))
+                    } else {
+                        handleError(spokenErrorFor(e))
+                    }
                 }
             } finally {
                 ticker.cancel()
