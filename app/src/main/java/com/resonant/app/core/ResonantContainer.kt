@@ -5,6 +5,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
 import com.resonant.app.network.OllamaConfig
+import com.resonant.app.sound.SoundCueManager
 
 /**
  * Resonant deliberately has no backend, database, or DI framework — this
@@ -22,7 +23,10 @@ class ResonantContainer(context: Context) {
         audio.restoreSpeedIndex(prefs.speedIndex)
         audio.onSpeedIndexChanged = { index -> prefs.speedIndex = index }
     }
-    val hapticManager = HapticManager(context)
+    val soundCues = SoundCueManager(prefs)
+
+    // Every haptic pattern also sounds its cue. See HapticManager.onPlay.
+    val hapticManager = HapticManager(context).also { it.onPlay = soundCues::play }
     val debugState = DebugState()
 
     init {

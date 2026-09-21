@@ -101,6 +101,7 @@ defaults** clears it. The Debug screen always shows the address in use.
 | Gesture vocabulary | `gestures/InteractionZone.kt` |
 | Centralized speech (semantic-unit queue, pause/resume/repeat/speed, streamed append, announcements with completion callbacks) | `audio/AudioManager.kt` |
 | Centralized haptics (named pattern vocabulary, one place to retune) | `haptics/HapticPattern.kt`, `haptics/HapticManager.kt` |
+| Sound cues (a tone per haptic pattern, synthesized in code, one place to retune) | `sound/SoundCues.kt`, `sound/SoundCueManager.kt` |
 | Hardcoded lesson / quiz content, chat framing prompt | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
 | Voice input (one-shot speech-to-text) | `speech/SpeechInputManager.kt` |
 | Streamed reply → speakable sentences | `speech/SentenceChunker.kt` |
@@ -131,6 +132,19 @@ pattern is a named `HapticPattern` with its timing in one map
 (`HapticPatterns.timings`). Quiz options A–D are a separate, counted family of
 long pulses (1–4) that shares nothing with the navigation patterns — a unit
 test enforces it.
+
+**Sound cues.** Every haptic pattern also has a short tone (`SoundCues.specs`),
+played by `SoundCueManager` because `HapticManager.play` calls it — so no screen
+knows sound exists, and a screen that buzzes also sounds. Several patterns buzz
+almost alike (a 50 ms pulse is both "next" and "confirm"); their tones do not:
+direction is pitch contour (rising = forward / faster / correct, falling = back /
+slower / wrong), quiz options are 1–4 beeps, and the repeating Chat "thinking"
+tick is much quieter than the rest. Tones are generated in code (no audio files),
+kept above 300 Hz because phone speakers can't reproduce lower notes, and follow
+the media volume like speech does. They are silent while the app is off-screen.
+Toggle them in **Settings → Sound cues** (on by default, remembered). A unit test
+checks that no two patterns share a cue, so the set can't drift back to
+duplicates.
 
 ---
 

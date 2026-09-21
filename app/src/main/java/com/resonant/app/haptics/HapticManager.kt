@@ -27,8 +27,16 @@ class HapticManager(context: Context) {
     private val _lastPattern = MutableStateFlow<HapticPattern?>(null)
     val lastPattern: StateFlow<HapticPattern?> = _lastPattern
 
+    /**
+     * Told about every pattern played, whether or not this device can vibrate. Used to
+     * sound the matching cue (see [com.resonant.app.sound.SoundCueManager]) so that no
+     * screen has to know sound exists, and cues still work on a phone with no vibrator.
+     */
+    var onPlay: ((HapticPattern) -> Unit)? = null
+
     fun play(pattern: HapticPattern) {
         _lastPattern.value = pattern
+        onPlay?.invoke(pattern)
         val timings = HapticPatterns.timings[pattern] ?: return
         if (!vibrator.hasVibrator()) return
         val effect = VibrationEffect.createWaveform(timings, -1)

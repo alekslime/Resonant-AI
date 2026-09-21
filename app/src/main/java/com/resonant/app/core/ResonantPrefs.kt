@@ -5,8 +5,8 @@ import com.resonant.app.audio.AudioManager
 
 /**
  * The only persisted state in Resonant: whether the user has been through the
- * gesture tutorial, their chosen speech speed, and an optional Ollama server
- * address/model that overrides the build-time default. Deliberately a plain
+ * gesture tutorial, their chosen speech speed, whether sound cues are on, and an
+ * optional Ollama server address/model that overrides the build-time default. Deliberately a plain
  * SharedPreferences wrapper — there is no database here and adding DataStore for
  * a handful of values would be overkill.
  */
@@ -23,6 +23,11 @@ class ResonantPrefs(context: Context) {
     var speedIndex: Int
         get() = prefs.getInt(KEY_SPEED_INDEX, AudioManager.DEFAULT_SPEED_INDEX)
         set(value) = prefs.edit().putInt(KEY_SPEED_INDEX, value).apply()
+
+    /** Whether navigation/feedback tones play alongside the haptics. On by default. */
+    var soundCuesEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SOUND_CUES, true)
+        set(value) = prefs.edit().putBoolean(KEY_SOUND_CUES, value).apply()
 
     /** Null means "use the build-time default". */
     var ollamaBaseUrl: String?
@@ -42,6 +47,7 @@ class ResonantPrefs(context: Context) {
     private companion object {
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
+        const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"
         const val KEY_OLLAMA_MODEL = "ollama_model"
     }

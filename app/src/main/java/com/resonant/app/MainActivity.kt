@@ -93,7 +93,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        (application as ResonantApp).container.audioManager.restoreFromBackground()
+        val container = (application as ResonantApp).container
+        container.audioManager.restoreFromBackground()
+        container.soundCues.inForeground = true
     }
 
     /**
@@ -103,7 +105,10 @@ class MainActivity : ComponentActivity() {
      */
     override fun onStop() {
         super.onStop()
-        (application as ResonantApp).container.audioManager.releaseForBackground()
+        val container = (application as ResonantApp).container
+        container.audioManager.releaseForBackground()
+        // Chat's thinking tick keeps running off-screen; it must not keep sounding.
+        container.soundCues.inForeground = false
     }
 
     override fun onDestroy() {
