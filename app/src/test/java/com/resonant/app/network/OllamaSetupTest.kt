@@ -154,4 +154,54 @@ class OllamaSetupTest {
         val text = describeFailure(IllegalStateException("weird"))
         assertTrue(text.contains("weird"))
     }
+
+    // ---- deciding when the server can't be used
+
+    @Test
+    fun the_server_is_usable_only_when_it_answers_and_has_the_model() {
+        assertTrue(serverIsUsable(ConnectionCheck.Reachable(listOf("llama3.2:latest"), modelInstalled = true)))
+        assertFalse(serverIsUsable(ConnectionCheck.Reachable(listOf("qwen2.5:7b"), modelInstalled = false)))
+        assertFalse(serverIsUsable(ConnectionCheck.Unreachable(ConnectException("refused"))))
+    }
+
+    @Test
+    fun connection_failures_mean_the_server_is_unavailable() {
+        assertTrue(isServerUnavailable(ConnectException("refused")))
+        assertTrue(isServerUnavailable(UnknownHostException("nope")))
+        assertTrue(isServerUnavailable(java.net.NoRouteToHostException("no route")))
+        assertTrue(isServerUnavailable(SocketTimeoutException("timed out")))
+    }
+
+    @Test
+    fun a_connection_that_is_reset_before_anything_is_said_means_unavailable() {
+        assertTrue(isServerUnavailable(java.net.SocketException("Connection reset")))
+        assertTrue(isServerUnavailable(java.net.SocketException("Broken pipe")))
+    }
+
+    @Test
+    fun a_missing_model_or_a_broken_server_means_unavailable_but_a_bad_request_does_not() {
+        assertTrue(isServerUnavailable(OllamaHttpException(404, "model not found")))
+        assertTrue(isServerUnavailable(OllamaHttpException(500, null)))
+        assertTrue(isServerUnavailable(OllamaHttpException(502, null)))
+        assertTrue(isServerUnavailable(OllamaHttpException(503, null)))
+        // Our own fault: answering from the lessons would hide a real bug.
+        assertFalse(isServerUnavailable(OllamaHttpException(400, "bad request")))
+        assertFalse(isServerUnavailable(OllamaHttpException(401, null)))
+    }
+
+    @Test
+    fun unrelated_failures_are_not_treated_as_the_server_being_down() {
+        assertFalse(isServerUnavailable(IllegalStateException("bug")))
+        assertFalse(isServerUnavailable(JSONException("bad json")))
+    }
+
+    @Test
+    fun the_spoken_notice_says_why_and_what_happens_next() {
+        val down = serverNotice(ConnectionCheck.Unreachable(ConnectException("x")))
+        assertTrue(down.contains("can't reach the AI server"))
+        assertTrue(down.contains("lessons"))
+        val noModel = serverNotice(ConnectionCheck.Reachable(emptyList(), modelInstalled = false))
+        assertTrue(noModel.contains("doesn't have the model"))
+        assertTrue(noModel.contains("lessons"))
+    }
 }

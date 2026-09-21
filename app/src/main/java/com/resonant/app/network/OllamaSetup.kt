@@ -5,9 +5,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
+import java.io.OutputStreamWriter
 import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.NoRouteToHostException
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URISyntaxException
@@ -23,6 +25,9 @@ import java.net.UnknownHostException
 
 private const val DEFAULT_OLLAMA_PORT = 11434
 private const val CHECK_TIMEOUT_MS = 5_000
+
+/** Loading a cold model into memory can take a while; the reply only comes once it is loaded. */
+private const val WARM_UP_READ_TIMEOUT_MS = 120_000
 
 /**
  * Turns whatever was typed into a base URL the client can use, or null if it can't
@@ -96,13 +101,17 @@ internal sealed interface ConnectionCheck {
  * Asks the server at [baseUrl] which models it has. Cheap and read-only — it does not
  * load a model or generate anything, so it is safe to run on every "Test" tap.
  */
-internal suspend fun checkOllamaConnection(baseUrl: String, model: String): ConnectionCheck =
+internal suspend fun checkOllamaConnection(
+    baseUrl: String,
+    model: String,
+    timeoutMs: Int = CHECK_TIMEOUT_MS
+): ConnectionCheck =
     withContext(Dispatchers.IO) {
         try {
             val connection = (URL("$baseUrl/api/tags").openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = CHECK_TIMEOUT_MS
-                readTimeout = CHECK_TIMEOUT_MS
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
             }
             try {
                 val status = connection.responseCode
@@ -153,3 +162,64 @@ internal fun describeFailure(e: Throwable): String = when {
         "This build blocks plain HTTP. Use an https address, or a debug build."
     else -> "Couldn't connect (${e.javaClass.simpleName}: ${e.message ?: "no details"})."
 }
+
+/** True when the server answered AND has the model: the only state in which asking is worth it. */
+internal fun serverIsUsable(check: ConnectionCheck): Boolean =
+    check is ConnectionCheck.Reachable && check.modelInstalled
+
+/**
+ * Whether a failed chat request means "the server can't serve us" (down, unreachable, no
+ * such model, gateway error) rather than "this one request was bad". Only the former is
+ * worth answering from the lessons instead; anything else keeps its normal spoken error.
+ */
+internal fun isServerUnavailable(e: Throwable): Boolean = when {
+    // 404 is what Ollama answers when the model isn't installed. 5xx: server or proxy is broken.
+    e is OllamaHttpException -> e.status == 404 || e.status >= 500
+    e is ConnectException || e is NoRouteToHostException || e is UnknownHostException -> true
+    e is SocketTimeoutException -> true
+    // A reset or broken pipe: the connection was made and then the server went away, which is
+    // what a server that dies right after a question is sent looks like.
+    e is SocketException -> true
+    else -> false
+}
+
+/** What Chat says, once, when it opens and finds the server unusable. */
+internal fun serverNotice(check: ConnectionCheck): String = when {
+    check is ConnectionCheck.Reachable ->
+        "The AI server is running but doesn't have the model installed, so I'll answer from the lessons instead."
+    else ->
+        "I can't reach the AI server right now, so I'll answer from the lessons instead."
+}
+
+/**
+ * Asks the server to load [model] into memory now, so the first real question isn't the
+ * one that pays for it (a cold load is often 10 to 30 seconds of silence). An empty
+ * request is Ollama's documented way to load a model without generating anything.
+ * Best effort: returns whether the server accepted it, and never throws.
+ */
+internal suspend fun warmUpModel(baseUrl: String, model: String): Boolean =
+    withContext(Dispatchers.IO) {
+        try {
+            val connection = (URL("$baseUrl/api/generate").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = CHECK_TIMEOUT_MS
+                readTimeout = WARM_UP_READ_TIMEOUT_MS
+                setRequestProperty("Content-Type", "application/json")
+            }
+            try {
+                val body = JSONObject().put("model", model).put("keep_alive", OllamaClient.KEEP_ALIVE)
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body.toString()) }
+                val ok = connection.responseCode == HttpURLConnection.HTTP_OK
+                // Read it to the end so the connection closes cleanly.
+                (if (ok) connection.inputStream else connection.errorStream)?.use { it.readBytes() }
+                ok
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: IOException) {
+            false
+        } catch (e: JSONException) {
+            false
+        }
+    }

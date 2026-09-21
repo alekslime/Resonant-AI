@@ -16,14 +16,7 @@ object LessonData {
                     unit("s1u2", "Instead of checking every item one by one, it repeatedly cuts the search area in half."),
                     unit("s1u3", "This makes it dramatically faster than a simple linear scan for large lists.")
                 ),
-<<<<<<< HEAD
-                // No question words here ("what", "about", "explain"): OfflineAnswers
-                // drops them as stopwords, so they'd score nothing and only suggest
-                // this section is reachable by a word that can't reach it.
-                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "introduction", "basics", "beginner")
-=======
-                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "introduction", "about", "explain", "what")
->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
+                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "basics", "beginner")
             ),
             LessonSection(
                 id = "s2",

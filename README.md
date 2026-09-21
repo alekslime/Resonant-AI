@@ -79,14 +79,9 @@ What Chat does so that silence never looks like a crash:
   (barge-in) and stops the old stream.
 - Every failure is announced out loud in one plain sentence — no HTTP bodies or
   socket errors, which are logged instead (`OllamaErrors.kt`).
-- If the server can't be reached **at all** (refused, timed out, wrong Wi-Fi),
-  Chat doesn't just report the error: it answers from the binary-search lesson
-  bundled in the app, prefaced with "I can't reach the AI server right now, so
-  here's what the lesson says." It picks the closest section by word overlap and
-  reads it back — it never composes new text, so nothing invented can come out of
-  the offline path. A question it can't match gets a spoken list of the topics it
-  *can* answer. A server that answered badly (wrong model, malformed reply) is
-  left alone, since retrying that can actually help.
+- If the AI server can't be used (down, unreachable, or missing the model), Chat
+  answers from the bundled lesson instead of only reporting the error — see
+  "When the AI server is down" below.
 
 ### Changing the server on the phone
 
@@ -98,6 +93,28 @@ middle of the screen** to open *Server setup*: type the server's address
 (it tells you the `ollama pull` command if not), then **Save**. The change
 applies to the next Chat question and survives restarts. **Use build
 defaults** clears it. The Debug screen always shows the address in use.
+
+### When the AI server is down
+
+A dead server shouldn't end a demo. When Chat opens it checks the server (after
+the greeting, never over it):
+
+- **Reachable, with the model** — the model is loaded into memory in the
+  background, so the first question isn't the slow one (a cold load is often
+  10–30 s of silence).
+- **Unreachable, or missing the model** — it says so once, and from then on
+  answers **from the built-in lesson** instead: it picks the lesson section that
+  best matches the question and reads it, saying "this is from the lesson". It is
+  a keyword match, not understanding, and it admits when nothing fits ("I don't
+  have a lesson on that. Try asking about Binary Search") rather than reading out
+  something unrelated.
+
+If the server dies mid-demo the same thing happens on the next question, and a
+server that has come back is noticed on the next question too (a 2-second look,
+not the full connect timeout). A server that drops *part-way through* an answer
+still gets the spoken "connection dropped" error, since something was already
+said. Add keywords to a lesson section (`LessonSection.keywords`) if people ask
+for it in words the text doesn't use.
 
 ---
 

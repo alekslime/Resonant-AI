@@ -42,8 +42,13 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
 import com.resonant.app.network.OllamaClient
-import com.resonant.app.network.isServerUnreachable
+import com.resonant.app.network.OllamaConfig
+import com.resonant.app.network.checkOllamaConnection
+import com.resonant.app.network.isServerUnavailable
+import com.resonant.app.network.serverIsUsable
+import com.resonant.app.network.serverNotice
 import com.resonant.app.network.spokenErrorFor
+import com.resonant.app.network.warmUpModel
 import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
 import com.resonant.app.ui.components.GestureSurface
@@ -51,9 +56,11 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
 
@@ -62,6 +69,15 @@ private const val THINKING_TICK_MS = 2_000L
 
 /** Every this-many ms of waiting, say so out loud as well — a pulse alone doesn't say "cancel is possible". */
 private const val THINKING_SPOKEN_EVERY_MS = 10_000L
+
+/**
+ * A look at a server we already think is down, taken when a question is asked. Short on
+ * purpose: a dead server should cost a couple of seconds, not the full connect timeout.
+ */
+private const val RECHECK_TIMEOUT_MS = 2_000
+
+/** How long the check made on entry waits for the greeting to finish before it stays quiet. */
+private const val NOTICE_WAIT_MS = 20_000L
 
 @Composable
 fun ChatScreen(onBack: () -> Unit) {
@@ -95,6 +111,9 @@ fun ChatScreen(onBack: () -> Unit) {
     var thinking by remember { mutableStateOf(false) }   // question sent, no sentence back yet
     var statusText by remember { mutableStateOf("") }
     var micPermanentlyDenied by remember { mutableStateOf(false) }
+    // What we last learned about the AI server: null = not known yet, false = unusable, so
+    // questions go to the lessons (after a quick look), true = fine.
+    var serverUp by remember { mutableStateOf<Boolean?>(null) }
 
     fun flatten(list: List<ChatExchange>): List<FlatChatUnit> =
         list.flatMapIndexed { ei, exchange ->
@@ -183,13 +202,47 @@ fun ChatScreen(onBack: () -> Unit) {
                 sentenceCount++
             }
 
+            // When the AI server can't answer, the lesson text does: a degraded demo, not a dead one.
+            fun answerFromLessons() {
+                OfflineAnswers.answer(userText).sentences.forEach { onSentence(it) }
+            }
+
+            suspend fun serverCameBack(): Boolean {
+                val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL, RECHECK_TIMEOUT_MS)
+                val usable = serverIsUsable(check)
+                if (usable) serverUp = true
+                return usable
+            }
+
             audio.beginStream()
             try {
-                OllamaClient.chatStream(history).collect { delta ->
-                    chunker.feed(delta).forEach { onSentence(it) }
+                // We already believe the server is down (the check made when Chat opened, or an
+                // earlier failure). Take a quick look instead of waiting out a long connect
+                // timeout for an answer that is probably not coming.
+                val skipNetwork = serverUp == false && !serverCameBack()
+                if (skipNetwork) {
+                    answerFromLessons()
+                } else {
+                    try {
+                        OllamaClient.chatStream(history).collect { delta ->
+                            chunker.feed(delta).forEach { onSentence(it) }
+                        }
+                        chunker.flush()?.let { onSentence(it) }
+                        if (sentenceCount == 0) handleError("The AI didn't reply. Tap the center to try again.")
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Nothing has been said yet and the server can't serve us: answer from the
+                        // lessons instead of only reporting the failure.
+                        if (sentenceCount == 0 && isServerUnavailable(e) && requestId == myId) {
+                            Log.w("ResonantChat", "AI server unavailable, answering from the lessons", e)
+                            serverUp = false
+                            answerFromLessons()
+                        } else {
+                            throw e
+                        }
+                    }
                 }
-                chunker.flush()?.let { onSentence(it) }
-                if (sentenceCount == 0) handleError("The AI didn't reply. Tap the center to try again.")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -197,34 +250,9 @@ fun ChatScreen(onBack: () -> Unit) {
                     // The exception's own text can be an HTTP body or a raw socket error:
                     // log that, and speak something a person can act on.
                     Log.w("ResonantChat", "Chat request failed", e)
-                    if (sentenceCount == 0 && isServerUnreachable(e)) {
-                        // The server isn't just erroring, it's not there — running the
-                        // request again right now would hit the same wall. Rather than
-                        // leave a demo sitting on "couldn't reach the AI server", answer
-                        // from the lesson content bundled in the app. onSentence's
-                        // sentenceCount == 0 branch is exactly "post the first reply",
-                        // so this rides the same path a real answer would.
-<<<<<<< HEAD
-                        //
-                        // Chunk it the same way a streamed answer is chunked: every
-                        // other reply in the app is one SemanticUnit per sentence, and
-                        // pause / repeat / step-back all work on units. Handing the
-                        // whole section over as a single unit would quietly make the
-                        // offline reply the one thing you can't navigate. A fresh
-                        // chunker, because the streaming one may hold a partial delta
-                        // from the request that just died.
-                        haptics.play(HapticPattern.ERROR)
-                        val offlineChunker = SentenceChunker()
-                        val offlineText = OfflineAnswers.answerFor(userText)
-                        offlineChunker.feed(offlineText).forEach { onSentence(it) }
-                        offlineChunker.flush()?.let { onSentence(it) }
-=======
-                        haptics.play(HapticPattern.ERROR)
-                        onSentence(OfflineAnswers.answerFor(userText))
->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
-                    } else {
-                        handleError(spokenErrorFor(e))
-                    }
+                    // It broke part-way through an answer. Next question looks before it leaps.
+                    if (isServerUnavailable(e)) serverUp = false
+                    handleError(spokenErrorFor(e))
                 }
             } finally {
                 ticker.cancel()
@@ -316,7 +344,27 @@ fun ChatScreen(onBack: () -> Unit) {
         // this next/previous/repeat here would walk the previous screen's items (Home's
         // menu) until the first reply arrives.
         audio.setQueue(emptyList(), autoAdvance = true)
-        audio.announce(ChatData.greeting)
+        val greetingDone = CompletableDeferred<Unit>()
+        audio.announce(ChatData.greeting) { greetingDone.complete(Unit) }
+
+        // Find out now, not after someone has asked a question and waited, whether the server is
+        // usable. If it is, load the model in the background so the first answer isn't the slow
+        // one; if not, say so once and answer from the lessons instead.
+        launch {
+            val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL)
+            if (serverIsUsable(check)) {
+                serverUp = true
+                warmUpModel(OllamaConfig.BASE_URL, OllamaConfig.MODEL)
+            } else {
+                serverUp = false
+                // Never talk over the greeting, and stay quiet if the person has already begun.
+                withTimeoutOrNull(NOTICE_WAIT_MS) { greetingDone.await() }
+                if (alive && exchanges.isEmpty() && !listening && !thinking) {
+                    audio.announce(serverNotice(check))
+                }
+            }
+        }
+
         audio.index.collect { idx ->
             val flat = flatten(exchanges)
             flatIndex = idx.coerceIn(0, (flat.size - 1).coerceAtLeast(0))

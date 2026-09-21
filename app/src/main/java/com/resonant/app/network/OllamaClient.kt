@@ -64,7 +64,7 @@ object OllamaClient {
     private const val READ_TIMEOUT_MS = 90_000
 
     /** Ask the server to keep the model loaded, so only the first question pays the load cost. */
-    private const val KEEP_ALIVE = "10m"
+    internal const val KEEP_ALIVE = "10m"
 
     /**
      * Emits the reply as it is generated, as small text deltas (typically a token or

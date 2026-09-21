@@ -15,11 +15,10 @@ data class LessonSection(
     val title: String,
     val units: List<SemanticUnit>,
     /**
-     * Extra words a person might use when asking about this section, beyond the ones
-     * already in its title and unit text ("steps" for the algorithm, "instance" for
-     * the example). Used only by [com.resonant.app.content.OfflineAnswers] to pick a
-     * section when the AI server is unreachable. Leave question words (what / how / why)
-     * out of these lists — they'd match every section equally and add nothing.
+     * Extra words a person might use when asking about this section, beyond the ones in
+     * its title and text ("steps" for an algorithm, "instance" for an example). Used only
+     * by [OfflineAnswers] to pick a section when the AI server is unreachable. Leave
+     * question words (what / how / why) out: they match every section equally.
      */
     val keywords: List<String> = emptyList()
 )

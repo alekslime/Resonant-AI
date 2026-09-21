@@ -1,0 +1,1023 @@
+diff --git a/README.md b/README.md
+index 14cda36..4a2e556 100644
+--- a/README.md
++++ b/README.md
+@@ -79,14 +79,9 @@ What Chat does so that silence never looks like a crash:
+   (barge-in) and stops the old stream.
+ - Every failure is announced out loud in one plain sentence — no HTTP bodies or
+   socket errors, which are logged instead (`OllamaErrors.kt`).
+-- If the server can't be reached **at all** (refused, timed out, wrong Wi-Fi),
+-  Chat doesn't just report the error: it answers from the binary-search lesson
+-  bundled in the app, prefaced with "I can't reach the AI server right now, so
+-  here's what the lesson says." It picks the closest section by word overlap and
+-  reads it back — it never composes new text, so nothing invented can come out of
+-  the offline path. A question it can't match gets a spoken list of the topics it
+-  *can* answer. A server that answered badly (wrong model, malformed reply) is
+-  left alone, since retrying that can actually help.
++- If the AI server can't be used (down, unreachable, or missing the model), Chat
++  answers from the bundled lesson instead of only reporting the error — see
++  "When the AI server is down" below.
+ 
+ ### Changing the server on the phone
+ 
+@@ -99,6 +94,28 @@ middle of the screen** to open *Server setup*: type the server's address
+ applies to the next Chat question and survives restarts. **Use build
+ defaults** clears it. The Debug screen always shows the address in use.
+ 
++### When the AI server is down
++
++A dead server shouldn't end a demo. When Chat opens it checks the server (after
++the greeting, never over it):
++
++- **Reachable, with the model** — the model is loaded into memory in the
++  background, so the first question isn't the slow one (a cold load is often
++  10–30 s of silence).
++- **Unreachable, or missing the model** — it says so once, and from then on
++  answers **from the built-in lesson** instead: it picks the lesson section that
++  best matches the question and reads it, saying "this is from the lesson". It is
++  a keyword match, not understanding, and it admits when nothing fits ("I don't
++  have a lesson on that. Try asking about Binary Search") rather than reading out
++  something unrelated.
++
++If the server dies mid-demo the same thing happens on the next question, and a
++server that has come back is noticed on the next question too (a 2-second look,
++not the full connect timeout). A server that drops *part-way through* an answer
++still gets the spoken "connection dropped" error, since something was already
++said. Add keywords to a lesson section (`LessonSection.keywords`) if people ask
++for it in words the text doesn't use.
++
+ ---
+ 
+ ## The interaction model, in code
+diff --git a/app/src/main/java/com/resonant/app/content/ContentModels.kt b/app/src/main/java/com/resonant/app/content/ContentModels.kt
+index 7c52e20..5e4c7e3 100644
+--- a/app/src/main/java/com/resonant/app/content/ContentModels.kt
++++ b/app/src/main/java/com/resonant/app/content/ContentModels.kt
+@@ -15,11 +15,10 @@ data class LessonSection(
+     val title: String,
+     val units: List<SemanticUnit>,
+     /**
+-     * Extra words a person might use when asking about this section, beyond the ones
+-     * already in its title and unit text ("steps" for the algorithm, "instance" for
+-     * the example). Used only by [com.resonant.app.content.OfflineAnswers] to pick a
+-     * section when the AI server is unreachable. Leave question words (what / how / why)
+-     * out of these lists — they'd match every section equally and add nothing.
++     * Extra words a person might use when asking about this section, beyond the ones in
++     * its title and text ("steps" for an algorithm, "instance" for an example). Used only
++     * by [OfflineAnswers] to pick a section when the AI server is unreachable. Leave
++     * question words (what / how / why) out: they match every section equally.
+      */
+     val keywords: List<String> = emptyList()
+ )
+diff --git a/app/src/main/java/com/resonant/app/content/LessonData.kt b/app/src/main/java/com/resonant/app/content/LessonData.kt
+index 43c917e..a86cb27 100644
+--- a/app/src/main/java/com/resonant/app/content/LessonData.kt
++++ b/app/src/main/java/com/resonant/app/content/LessonData.kt
+@@ -16,14 +16,7 @@ object LessonData {
+                     unit("s1u2", "Instead of checking every item one by one, it repeatedly cuts the search area in half."),
+                     unit("s1u3", "This makes it dramatically faster than a simple linear scan for large lists.")
+                 ),
+-<<<<<<< HEAD
+-                // No question words here ("what", "about", "explain"): OfflineAnswers
+-                // drops them as stopwords, so they'd score nothing and only suggest
+-                // this section is reachable by a word that can't reach it.
+-                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "introduction", "basics", "beginner")
+-=======
+-                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "introduction", "about", "explain", "what")
+->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
++                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "basics", "beginner")
+             ),
+             LessonSection(
+                 id = "s2",
+diff --git a/app/src/main/java/com/resonant/app/content/OfflineAnswers.kt b/app/src/main/java/com/resonant/app/content/OfflineAnswers.kt
+index 1e4da0f..7ba24b7 100644
+--- a/app/src/main/java/com/resonant/app/content/OfflineAnswers.kt
++++ b/app/src/main/java/com/resonant/app/content/OfflineAnswers.kt
+@@ -1,114 +1,159 @@
+ package com.resonant.app.content
+ 
+ /**
+- * What Chat says when [com.resonant.app.network.OllamaClient] can't be reached at all —
+- * server off, wrong Wi-Fi, phone offline. A demo that just goes silent there is worse
+- * than one that visibly falls back, so instead of only playing [ERROR][com.resonant.app.haptics.HapticPattern.ERROR]
+- * and stopping, Chat still answers from the one lesson bundled in the app.
++ * What Chat says when the AI server can't be used: an answer taken from the lessons
++ * that ship inside the app, so a dead server or the wrong Wi-Fi degrades the demo
++ * instead of ending it.
+  *
+- * This is not a model. It picks the [LessonSection] whose title, keywords, and spoken
+- * text share the most words with the question, and reads that section back. It only
+- * ever repeats existing lesson content — it does not compose new sentences — so a
+- * fabricated-sounding "AI" answer never comes out of an offline path.
++ * Deliberately simple and honest. This is a keyword match over lesson text, not
++ * understanding: it finds the section that shares the most words with the question and
++ * reads it out, and it says so ("this is from the lesson"). When nothing matches well
++ * enough it admits that, rather than reading out something unrelated, and tells the
++ * person what it CAN answer about.
++ *
++ * Pure Kotlin, no Android, so all of it is unit tested on the JVM.
+  */
+ object OfflineAnswers {
+ 
+-    /** Said once per offline reply, so nobody mistakes canned lesson text for a live model. */
+-    const val PREFACE = "I can't reach the AI server right now, so here's what the lesson says. "
++    /** Sentences to speak, in order, and whether a lesson section was actually found. */
++    data class Answer(val sentences: List<String>, val matched: Boolean)
+ 
+-    /** Read when no section scores above [MIN_SCORE] — points at what can still be asked. */
+-    private val fallbackText: String by lazy {
+-        val topics = LessonData.binarySearchLesson.sections.joinToString(", ") { it.title.lowercase() }
+-        "I can't reach the AI server right now, and I couldn't match that to the lesson. " +
+-            "Try asking about one of these: $topics."
+-    }
++    // A word counts more the more deliberately it points at a section: an author-chosen
++    // keyword beats a word in the title, which beats a word somewhere in the body.
++    private const val KEYWORD_WEIGHT = 4
++    private const val TITLE_WEIGHT = 3
++    private const val BODY_WEIGHT = 1
+ 
+     /**
+-     * Question words and other glue that would otherwise match every section equally.
+-     * Deliberately small: this is word overlap, not real language understanding, so
+-     * over-filtering just throws away signal.
++     * Added per word of the lesson's own title that the question uses, so with several
++     * lessons the one the question names beats one it merely brushes against. Only ever
++     * added to a section that already has a real hit: topic words alone match nothing.
+      */
+-    private val stopwords = setOf(
+-        "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+-        "do", "does", "did", "can", "could", "would", "should", "will",
+-        "what", "why", "when", "where", "which", "who", "whom", "how",
+-        "of", "in", "on", "at", "to", "for", "and", "or", "but", "if",
+-        "it", "its", "this", "that", "these", "those",
+-        "you", "your", "yours", "me", "my", "i", "we", "us",
+-        "please", "tell", "explain", "about", "so", "just", "again"
+-    )
++    private const val TOPIC_BONUS = 1
+ 
+     /**
+-     * Splits [text] into lowercase word tokens and strips a few common suffixes so
+-     * "sorting"/"sorted"/"sorts" all collapse to the same key as "sort". Cheap on
+-     * purpose — this only has to line up with the small, hand-written keyword lists
+-     * in [LessonData], not do general stemming.
++     * Below this the match is a coincidence: one title word alone ("matters") is not
++     * enough, one keyword ("example") is.
+      */
+-    private fun tokenize(text: String): List<String> =
+-        Regex("[a-zA-Z']+").findAll(text)
+-            .map { it.value.lowercase() }
+-            .filter { it.length > 1 && it !in stopwords }
+-            .map { stem(it) }
+-            .toList()
++    private const val MIN_SCORE = 4
+ 
+-    private fun stem(word: String): String = when {
+-        word.endsWith("ing") && word.length > 5 -> word.dropLast(3)
+-        word.endsWith("ed") && word.length > 4 -> word.dropLast(2)
+-        word.endsWith("es") && word.length > 4 -> word.dropLast(2)
+-        word.endsWith("s") && !word.endsWith("ss") && word.length > 3 -> word.dropLast(1)
+-        else -> word
+-    }
++    private const val PREFACE = "I can't reach the AI server, so this is from the lesson."
++
++    // Question and request words are dropped: "what", "how" and "explain" are in almost
++    // every question, so they say nothing about WHICH section is wanted.
++    private val STOPWORDS = setOf(
++        "a", "an", "the", "is", "are", "was", "were", "be", "been", "am",
++        "do", "does", "did", "of", "to", "in", "on", "for", "and", "or",
++        "it", "its", "this", "that", "these", "those", "me", "my", "i", "you", "your",
++        "can", "could", "would", "should", "will", "please", "let", "lets", "us",
++        "with", "at", "by", "from", "as", "so", "if", "then", "than", "there", "here",
++        "some", "any", "just", "also", "very", "much",
++        "what", "how", "why", "when", "where", "who", "which", "about",
++        "tell", "give", "explain", "describe", "talk", "say", "know", "want", "like"
++    )
++
++    fun answer(question: String, lessons: List<Lesson> = LessonData.allLessons): Answer {
++        val wanted = tokens(question).toSet()
++
++        var best: LessonSection? = null
++        var bestScore = 0
++        var topicLesson: Lesson? = null
++
++        if (wanted.isNotEmpty()) {
++            for (lesson in lessons) {
++                // The lesson title's own words ("binary", "search") appear all through the
++                // lesson, so they can't say which section is wanted. Score on everything else.
++                val topic = tokens(lesson.title).toSet()
++                val shared = wanted.count { it in topic }
++                val distinct = wanted - topic
++
++                if (distinct.isEmpty() && shared > 0 && topicLesson == null) topicLesson = lesson
++
++                for (section in lesson.sections) {
++                    val raw = score(section, distinct)
++                    val score = if (raw > 0) raw + shared * TOPIC_BONUS else 0
++                    // Strictly better only, so on a tie the earlier section wins.
++                    if (score > bestScore) {
++                        best = section
++                        bestScore = score
++                    }
++                }
++            }
++        }
+ 
+-    /** [LessonSection]'s own vocabulary, pre-stemmed once: title (weighted) + keywords + body. */
+-    private data class SectionIndex(val section: LessonSection, val titleWords: Set<String>, val otherWords: Set<String>)
++        val section = when {
++            best != null && bestScore >= MIN_SCORE -> best
++            // A question made only of the lesson's own words ("binary search", "tell me
++            // about binary search") is asking for the lesson itself: start at the top.
++            topicLesson != null -> topicLesson.sections.firstOrNull()
++            else -> null
++        }
+ 
+-    private val index: List<SectionIndex> by lazy {
+-        LessonData.binarySearchLesson.sections.map { section ->
+-            SectionIndex(
+-                section = section,
+-                titleWords = tokenize(section.title).toSet(),
+-                otherWords = (tokenize(section.keywords.joinToString(" ")) +
+-                    section.units.flatMap { tokenize(it.text) }).toSet()
++        if (section == null) {
++            return Answer(
++                sentences = listOf(
++                    "I can't reach the AI server, and I don't have a lesson on that.",
++                    topicsLine(lessons)
++                ),
++                matched = false
+             )
+         }
++        return Answer(
++            sentences = listOf(PREFACE, asSentence(section.title)) + section.units.map { it.text },
++            matched = true
++        )
+     }
+ 
+-    /** A title word is a more deliberate signal ("sorting?") than an incidental body word. */
+-    private const val TITLE_WORD_WEIGHT = 2
+-    private const val OTHER_WORD_WEIGHT = 1
++    private fun score(section: LessonSection, wanted: Set<String>): Int {
++        val weights = HashMap<String, Int>()
++        fun add(words: List<String>, weight: Int) {
++            for (w in words) if ((weights[w] ?: 0) < weight) weights[w] = weight
++        }
++        add(section.units.flatMap { tokens(it.text) }, BODY_WEIGHT)
++        add(tokens(section.title), TITLE_WEIGHT)
++        add(section.keywords.flatMap { tokens(it) }, KEYWORD_WEIGHT)
++        return wanted.sumOf { weights[it] ?: 0 }
++    }
++
++    private fun topicsLine(lessons: List<Lesson>): String {
++        val topics = lessons.map { it.title.removePrefix("Introduction to ") }
++        return when (topics.size) {
++            0 -> "There are no lessons to answer from yet."
++            1 -> "Try asking about ${topics[0]}."
++            else -> "Try asking about ${topics.dropLast(1).joinToString(", ")} or ${topics.last()}."
++        }
++    }
+ 
+-    /** Below this, a "best" section is really just noise — send the fallback instead. */
+-    private const val MIN_SCORE = 2
++    /** Titles are spoken as a sentence of their own; give them closing punctuation. */
++    private fun asSentence(title: String): String =
++        if (title.last() in ".?!") title else "$title."
+ 
+-    /** The section body read out when [answerFor] finds a confident match. */
+-    private fun spokenTextFor(section: LessonSection): String =
+-        section.units.joinToString(" ") { it.text }
++    /** Lowercased words with the boring ones dropped and plurals/tenses folded together. */
++    internal fun tokens(text: String): List<String> =
++        Regex("[a-z0-9]+").findAll(text.lowercase())
++            .map { it.value }
++            .filter { it.length > 1 && it !in STOPWORDS }
++            .map { stem(it) }
++            .toList()
+ 
+     /**
+-     * Picks a section for [question] and returns the full spoken reply, including
+-     * [PREFACE]. Always returns something sayable — a generic pointer at the lesson's
+-     * topics when nothing scores highly enough to trust.
++     * A light stemmer, just enough that "sorted", "sorting" and "sorts" all meet at
++     * "sort". It only strips when at least three letters remain, and it does not touch
++     * "-es" except after ch/sh/ss/x/z, because "examples" must become "example", not
++     * "exampl".
+      */
+-    fun answerFor(question: String): String {
+-        val words = tokenize(question)
+-        if (words.isEmpty()) return fallbackText
++    internal fun stem(word: String): String {
++        fun strip(suffix: String): String? =
++            if (word.endsWith(suffix) && word.length - suffix.length >= 3) word.dropLast(suffix.length) else null
+ 
+-        var best: SectionIndex? = null
+-        var bestScore = 0
+-        for (candidate in index) {
+-            var score = 0
+-            for (word in words) {
+-                if (word in candidate.titleWords) score += TITLE_WORD_WEIGHT
+-                else if (word in candidate.otherWords) score += OTHER_WORD_WEIGHT
+-            }
+-            if (score > bestScore) {
+-                bestScore = score
+-                best = candidate
+-            }
++        strip("ing")?.let { return it }
++        strip("ed")?.let { return it }
++        if (word.endsWith("ches") || word.endsWith("shes") || word.endsWith("sses") ||
++            word.endsWith("xes") || word.endsWith("zes")
++        ) {
++            strip("es")?.let { return it }
+         }
+-
+-        val section = best?.section ?: return fallbackText
+-        if (bestScore < MIN_SCORE) return fallbackText
+-        return PREFACE + spokenTextFor(section)
++        if (!word.endsWith("ss")) strip("s")?.let { return it }
++        return word
+     }
+ }
+diff --git a/app/src/main/java/com/resonant/app/network/OllamaClient.kt b/app/src/main/java/com/resonant/app/network/OllamaClient.kt
+index 61fc3be..fa174b8 100644
+--- a/app/src/main/java/com/resonant/app/network/OllamaClient.kt
++++ b/app/src/main/java/com/resonant/app/network/OllamaClient.kt
+@@ -64,7 +64,7 @@ object OllamaClient {
+     private const val READ_TIMEOUT_MS = 90_000
+ 
+     /** Ask the server to keep the model loaded, so only the first question pays the load cost. */
+-    private const val KEEP_ALIVE = "10m"
++    internal const val KEEP_ALIVE = "10m"
+ 
+     /**
+      * Emits the reply as it is generated, as small text deltas (typically a token or
+diff --git a/app/src/main/java/com/resonant/app/network/OllamaErrors.kt b/app/src/main/java/com/resonant/app/network/OllamaErrors.kt
+index 6f2679e..b4ee4ed 100644
+--- a/app/src/main/java/com/resonant/app/network/OllamaErrors.kt
++++ b/app/src/main/java/com/resonant/app/network/OllamaErrors.kt
+@@ -10,24 +10,6 @@ import java.net.UnknownHostException
+ 
+ private const val RETRY = " Tap the center to try again."
+ 
+-/**
+- * True when [e] means the server was never reached at all — refused the connection,
+- * timed out, or the address doesn't resolve — as opposed to the server answering with
+- * an error (bad HTTP status, a stream error, an unreadable body). That distinction is
+- * what [com.resonant.app.content.OfflineAnswers] keys off of: retrying an unreachable
+- * server right away won't help, so Chat falls back to lesson content instead of just
+- * repeating [spokenErrorFor]. A server that *did* answer, just badly, is left alone —
+- * a wrong model name or a malformed reply says nothing about whether the network is up.
+- */
+-internal fun isServerUnreachable(e: Throwable): Boolean = when (e) {
+-    is ConnectException, is NoRouteToHostException, is UnknownHostException -> true
+-    // A connect timeout and a read timeout are both SocketTimeoutException; either way
+-    // nothing came back, which is the same situation as a refused connection.
+-    is SocketTimeoutException -> true
+-    is SocketException -> true
+-    else -> false
+-}
+-
+ /**
+  * What to SAY when a chat request fails.
+  *
+diff --git a/app/src/main/java/com/resonant/app/network/OllamaSetup.kt b/app/src/main/java/com/resonant/app/network/OllamaSetup.kt
+index 7249c04..0d75e6c 100644
+--- a/app/src/main/java/com/resonant/app/network/OllamaSetup.kt
++++ b/app/src/main/java/com/resonant/app/network/OllamaSetup.kt
+@@ -5,9 +5,11 @@ import kotlinx.coroutines.withContext
+ import org.json.JSONException
+ import org.json.JSONObject
+ import java.io.IOException
++import java.io.OutputStreamWriter
+ import java.net.ConnectException
+ import java.net.HttpURLConnection
+ import java.net.NoRouteToHostException
++import java.net.SocketException
+ import java.net.SocketTimeoutException
+ import java.net.URI
+ import java.net.URISyntaxException
+@@ -24,6 +26,9 @@ import java.net.UnknownHostException
+ private const val DEFAULT_OLLAMA_PORT = 11434
+ private const val CHECK_TIMEOUT_MS = 5_000
+ 
++/** Loading a cold model into memory can take a while; the reply only comes once it is loaded. */
++private const val WARM_UP_READ_TIMEOUT_MS = 120_000
++
+ /**
+  * Turns whatever was typed into a base URL the client can use, or null if it can't
+  * be one. Forgiving on purpose, because this gets typed on a phone keyboard in a hurry:
+@@ -96,13 +101,17 @@ internal sealed interface ConnectionCheck {
+  * Asks the server at [baseUrl] which models it has. Cheap and read-only — it does not
+  * load a model or generate anything, so it is safe to run on every "Test" tap.
+  */
+-internal suspend fun checkOllamaConnection(baseUrl: String, model: String): ConnectionCheck =
++internal suspend fun checkOllamaConnection(
++    baseUrl: String,
++    model: String,
++    timeoutMs: Int = CHECK_TIMEOUT_MS
++): ConnectionCheck =
+     withContext(Dispatchers.IO) {
+         try {
+             val connection = (URL("$baseUrl/api/tags").openConnection() as HttpURLConnection).apply {
+                 requestMethod = "GET"
+-                connectTimeout = CHECK_TIMEOUT_MS
+-                readTimeout = CHECK_TIMEOUT_MS
++                connectTimeout = timeoutMs
++                readTimeout = timeoutMs
+             }
+             try {
+                 val status = connection.responseCode
+@@ -153,3 +162,64 @@ internal fun describeFailure(e: Throwable): String = when {
+         "This build blocks plain HTTP. Use an https address, or a debug build."
+     else -> "Couldn't connect (${e.javaClass.simpleName}: ${e.message ?: "no details"})."
+ }
++
++/** True when the server answered AND has the model: the only state in which asking is worth it. */
++internal fun serverIsUsable(check: ConnectionCheck): Boolean =
++    check is ConnectionCheck.Reachable && check.modelInstalled
++
++/**
++ * Whether a failed chat request means "the server can't serve us" (down, unreachable, no
++ * such model, gateway error) rather than "this one request was bad". Only the former is
++ * worth answering from the lessons instead; anything else keeps its normal spoken error.
++ */
++internal fun isServerUnavailable(e: Throwable): Boolean = when {
++    // 404 is what Ollama answers when the model isn't installed. 5xx: server or proxy is broken.
++    e is OllamaHttpException -> e.status == 404 || e.status >= 500
++    e is ConnectException || e is NoRouteToHostException || e is UnknownHostException -> true
++    e is SocketTimeoutException -> true
++    // A reset or broken pipe: the connection was made and then the server went away, which is
++    // what a server that dies right after a question is sent looks like.
++    e is SocketException -> true
++    else -> false
++}
++
++/** What Chat says, once, when it opens and finds the server unusable. */
++internal fun serverNotice(check: ConnectionCheck): String = when {
++    check is ConnectionCheck.Reachable ->
++        "The AI server is running but doesn't have the model installed, so I'll answer from the lessons instead."
++    else ->
++        "I can't reach the AI server right now, so I'll answer from the lessons instead."
++}
++
++/**
++ * Asks the server to load [model] into memory now, so the first real question isn't the
++ * one that pays for it (a cold load is often 10 to 30 seconds of silence). An empty
++ * request is Ollama's documented way to load a model without generating anything.
++ * Best effort: returns whether the server accepted it, and never throws.
++ */
++internal suspend fun warmUpModel(baseUrl: String, model: String): Boolean =
++    withContext(Dispatchers.IO) {
++        try {
++            val connection = (URL("$baseUrl/api/generate").openConnection() as HttpURLConnection).apply {
++                requestMethod = "POST"
++                doOutput = true
++                connectTimeout = CHECK_TIMEOUT_MS
++                readTimeout = WARM_UP_READ_TIMEOUT_MS
++                setRequestProperty("Content-Type", "application/json")
++            }
++            try {
++                val body = JSONObject().put("model", model).put("keep_alive", OllamaClient.KEEP_ALIVE)
++                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body.toString()) }
++                val ok = connection.responseCode == HttpURLConnection.HTTP_OK
++                // Read it to the end so the connection closes cleanly.
++                (if (ok) connection.inputStream else connection.errorStream)?.use { it.readBytes() }
++                ok
++            } finally {
++                connection.disconnect()
++            }
++        } catch (e: IOException) {
++            false
++        } catch (e: JSONException) {
++            false
++        }
++    }
+diff --git a/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt b/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
+index 29544c0..6aa3f8b 100644
+--- a/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
++++ b/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
+@@ -42,8 +42,13 @@ import com.resonant.app.gestures.SwipeDirection
+ import com.resonant.app.haptics.HapticPattern
+ import com.resonant.app.network.ChatMessage
+ import com.resonant.app.network.OllamaClient
+-import com.resonant.app.network.isServerUnreachable
++import com.resonant.app.network.OllamaConfig
++import com.resonant.app.network.checkOllamaConnection
++import com.resonant.app.network.isServerUnavailable
++import com.resonant.app.network.serverIsUsable
++import com.resonant.app.network.serverNotice
+ import com.resonant.app.network.spokenErrorFor
++import com.resonant.app.network.warmUpModel
+ import com.resonant.app.speech.SentenceChunker
+ import com.resonant.app.speech.SpeechInputManager
+ import com.resonant.app.ui.components.GestureSurface
+@@ -51,9 +56,11 @@ import com.resonant.app.ui.components.ResonantScaffold
+ import com.resonant.app.ui.theme.LocalResonantColors
+ import com.resonant.app.ui.theme.ScreenHorizontalPadding
+ import kotlinx.coroutines.CancellationException
++import kotlinx.coroutines.CompletableDeferred
+ import kotlinx.coroutines.Job
+ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.launch
++import kotlinx.coroutines.withTimeoutOrNull
+ 
+ private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
+ 
+@@ -63,6 +70,15 @@ private const val THINKING_TICK_MS = 2_000L
+ /** Every this-many ms of waiting, say so out loud as well — a pulse alone doesn't say "cancel is possible". */
+ private const val THINKING_SPOKEN_EVERY_MS = 10_000L
+ 
++/**
++ * A look at a server we already think is down, taken when a question is asked. Short on
++ * purpose: a dead server should cost a couple of seconds, not the full connect timeout.
++ */
++private const val RECHECK_TIMEOUT_MS = 2_000
++
++/** How long the check made on entry waits for the greeting to finish before it stays quiet. */
++private const val NOTICE_WAIT_MS = 20_000L
++
+ @Composable
+ fun ChatScreen(onBack: () -> Unit) {
+     val context = LocalContext.current
+@@ -95,6 +111,9 @@ fun ChatScreen(onBack: () -> Unit) {
+     var thinking by remember { mutableStateOf(false) }   // question sent, no sentence back yet
+     var statusText by remember { mutableStateOf("") }
+     var micPermanentlyDenied by remember { mutableStateOf(false) }
++    // What we last learned about the AI server: null = not known yet, false = unusable, so
++    // questions go to the lessons (after a quick look), true = fine.
++    var serverUp by remember { mutableStateOf<Boolean?>(null) }
+ 
+     fun flatten(list: List<ChatExchange>): List<FlatChatUnit> =
+         list.flatMapIndexed { ei, exchange ->
+@@ -183,13 +202,47 @@ fun ChatScreen(onBack: () -> Unit) {
+                 sentenceCount++
+             }
+ 
++            // When the AI server can't answer, the lesson text does: a degraded demo, not a dead one.
++            fun answerFromLessons() {
++                OfflineAnswers.answer(userText).sentences.forEach { onSentence(it) }
++            }
++
++            suspend fun serverCameBack(): Boolean {
++                val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL, RECHECK_TIMEOUT_MS)
++                val usable = serverIsUsable(check)
++                if (usable) serverUp = true
++                return usable
++            }
++
+             audio.beginStream()
+             try {
+-                OllamaClient.chatStream(history).collect { delta ->
+-                    chunker.feed(delta).forEach { onSentence(it) }
++                // We already believe the server is down (the check made when Chat opened, or an
++                // earlier failure). Take a quick look instead of waiting out a long connect
++                // timeout for an answer that is probably not coming.
++                val skipNetwork = serverUp == false && !serverCameBack()
++                if (skipNetwork) {
++                    answerFromLessons()
++                } else {
++                    try {
++                        OllamaClient.chatStream(history).collect { delta ->
++                            chunker.feed(delta).forEach { onSentence(it) }
++                        }
++                        chunker.flush()?.let { onSentence(it) }
++                        if (sentenceCount == 0) handleError("The AI didn't reply. Tap the center to try again.")
++                    } catch (e: CancellationException) {
++                        throw e
++                    } catch (e: Exception) {
++                        // Nothing has been said yet and the server can't serve us: answer from the
++                        // lessons instead of only reporting the failure.
++                        if (sentenceCount == 0 && isServerUnavailable(e) && requestId == myId) {
++                            Log.w("ResonantChat", "AI server unavailable, answering from the lessons", e)
++                            serverUp = false
++                            answerFromLessons()
++                        } else {
++                            throw e
++                        }
++                    }
+                 }
+-                chunker.flush()?.let { onSentence(it) }
+-                if (sentenceCount == 0) handleError("The AI didn't reply. Tap the center to try again.")
+             } catch (e: CancellationException) {
+                 throw e
+             } catch (e: Exception) {
+@@ -197,34 +250,9 @@ fun ChatScreen(onBack: () -> Unit) {
+                     // The exception's own text can be an HTTP body or a raw socket error:
+                     // log that, and speak something a person can act on.
+                     Log.w("ResonantChat", "Chat request failed", e)
+-                    if (sentenceCount == 0 && isServerUnreachable(e)) {
+-                        // The server isn't just erroring, it's not there — running the
+-                        // request again right now would hit the same wall. Rather than
+-                        // leave a demo sitting on "couldn't reach the AI server", answer
+-                        // from the lesson content bundled in the app. onSentence's
+-                        // sentenceCount == 0 branch is exactly "post the first reply",
+-                        // so this rides the same path a real answer would.
+-<<<<<<< HEAD
+-                        //
+-                        // Chunk it the same way a streamed answer is chunked: every
+-                        // other reply in the app is one SemanticUnit per sentence, and
+-                        // pause / repeat / step-back all work on units. Handing the
+-                        // whole section over as a single unit would quietly make the
+-                        // offline reply the one thing you can't navigate. A fresh
+-                        // chunker, because the streaming one may hold a partial delta
+-                        // from the request that just died.
+-                        haptics.play(HapticPattern.ERROR)
+-                        val offlineChunker = SentenceChunker()
+-                        val offlineText = OfflineAnswers.answerFor(userText)
+-                        offlineChunker.feed(offlineText).forEach { onSentence(it) }
+-                        offlineChunker.flush()?.let { onSentence(it) }
+-=======
+-                        haptics.play(HapticPattern.ERROR)
+-                        onSentence(OfflineAnswers.answerFor(userText))
+->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
+-                    } else {
+-                        handleError(spokenErrorFor(e))
+-                    }
++                    // It broke part-way through an answer. Next question looks before it leaps.
++                    if (isServerUnavailable(e)) serverUp = false
++                    handleError(spokenErrorFor(e))
+                 }
+             } finally {
+                 ticker.cancel()
+@@ -316,7 +344,27 @@ fun ChatScreen(onBack: () -> Unit) {
+         // this next/previous/repeat here would walk the previous screen's items (Home's
+         // menu) until the first reply arrives.
+         audio.setQueue(emptyList(), autoAdvance = true)
+-        audio.announce(ChatData.greeting)
++        val greetingDone = CompletableDeferred<Unit>()
++        audio.announce(ChatData.greeting) { greetingDone.complete(Unit) }
++
++        // Find out now, not after someone has asked a question and waited, whether the server is
++        // usable. If it is, load the model in the background so the first answer isn't the slow
++        // one; if not, say so once and answer from the lessons instead.
++        launch {
++            val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL)
++            if (serverIsUsable(check)) {
++                serverUp = true
++                warmUpModel(OllamaConfig.BASE_URL, OllamaConfig.MODEL)
++            } else {
++                serverUp = false
++                // Never talk over the greeting, and stay quiet if the person has already begun.
++                withTimeoutOrNull(NOTICE_WAIT_MS) { greetingDone.await() }
++                if (alive && exchanges.isEmpty() && !listening && !thinking) {
++                    audio.announce(serverNotice(check))
++                }
++            }
++        }
++
+         audio.index.collect { idx ->
+             val flat = flatten(exchanges)
+             flatIndex = idx.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
+diff --git a/app/src/test/java/com/resonant/app/content/OfflineAnswersTest.kt b/app/src/test/java/com/resonant/app/content/OfflineAnswersTest.kt
+index fcaae77..b24aa0c 100644
+--- a/app/src/test/java/com/resonant/app/content/OfflineAnswersTest.kt
++++ b/app/src/test/java/com/resonant/app/content/OfflineAnswersTest.kt
+@@ -1,97 +1,190 @@
+ package com.resonant.app.content
+ 
+-<<<<<<< HEAD
+-import com.resonant.app.speech.SentenceChunker
+ import org.junit.Assert.assertEquals
+-=======
+->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
+ import org.junit.Assert.assertFalse
+ import org.junit.Assert.assertTrue
+ import org.junit.Test
+ 
+ class OfflineAnswersTest {
+ 
++    private val lesson = LessonData.binarySearchLesson
++
++    /** The section a question was answered from, by the title that is spoken second. */
++    private fun sectionFor(question: String): String? {
++        val answer = OfflineAnswers.answer(question)
++        return if (answer.matched) answer.sentences[1] else null
++    }
++
++    // ---- routing: each kind of question finds the section a person would expect
++
++    @Test
++    fun a_what_is_question_gets_the_introduction() {
++        assertEquals("What is binary search?", sectionFor("What is binary search?"))
++        assertEquals("What is binary search?", sectionFor("what does binary search mean"))
++    }
++
+     @Test
+-    fun every_reply_starts_with_the_offline_preface() {
+-        assertTrue(OfflineAnswers.answerFor("What is binary search?").startsWith(OfflineAnswers.PREFACE))
+-        assertTrue(OfflineAnswers.answerFor("banana kayak umbrella").startsWith("I can't reach the AI server right now"))
++    fun a_how_does_it_work_question_gets_the_algorithm_not_the_introduction() {
++        // The words "binary search" appear all through the lesson; only "work" says which part.
++        assertEquals("The algorithm.", sectionFor("How does binary search work?"))
++        assertEquals("The algorithm.", sectionFor("What are the steps?"))
+     }
+ 
+     @Test
+-    fun a_question_matching_a_titles_words_returns_that_section() {
+-        val spoken = OfflineAnswers.answerFor("What is binary search?")
+-        assertTrue(spoken, spoken.contains("method for finding an item"))
++    fun a_why_sorted_question_gets_the_sorting_section() {
++        assertEquals("Why sorting matters.", sectionFor("Why does the list need to be sorted?"))
++        assertEquals("Why sorting matters.", sectionFor("does it work on an unsorted list"))
+     }
+ 
+     @Test
+-    fun matching_is_case_insensitive() {
+-        val spoken = OfflineAnswers.answerFor("BINARY SEARCH")
+-        assertTrue(spoken, spoken.contains("method for finding an item"))
++    fun an_example_request_gets_the_example() {
++        assertEquals("Example.", sectionFor("Give me an example"))
+     }
+ 
+     @Test
+-    fun a_sections_own_keywords_are_enough_to_match_it() {
+-        // "show" and "instance" only appear in section 4's keyword list, not its
+-        // title, so this exercises the keyword half of the index specifically.
+-        val spoken = OfflineAnswers.answerFor("Can you show an instance of this?")
+-        assertTrue(spoken, spoken.contains("searching for the number seven"))
++    fun a_summary_request_gets_the_takeaway() {
++        assertEquals("Key takeaway.", sectionFor("Can you summarize it?"))
+     }
+ 
+     @Test
+-    fun stemming_matches_a_different_inflection_of_a_keyword() {
+-        // The section title says "sorting"; asking about the list being "sorted"
+-        // should still land on it because both stem to the same root.
+-        val spoken = OfflineAnswers.answerFor("Does the list need to be sorted first?")
+-        assertTrue(spoken, spoken.contains("only works if the list is already sorted"))
++    fun a_question_made_only_of_the_lessons_own_words_gets_the_start_of_the_lesson() {
++        assertEquals("What is binary search?", sectionFor("Tell me about binary search"))
++        assertEquals("What is binary search?", sectionFor("explain binary search"))
++        assertEquals("What is binary search?", sectionFor("binary search"))
+     }
+ 
+     @Test
+-    fun an_unrelated_question_gets_the_fallback_with_topic_list() {
+-        val spoken = OfflineAnswers.answerFor("Tell me about your favorite color")
+-        assertTrue(spoken, spoken.contains("couldn't match that to the lesson"))
+-        assertTrue(spoken, spoken.contains("what is binary search?"))
+-        assertTrue(spoken, spoken.contains("key takeaway"))
+-        assertFalse(spoken, spoken.startsWith(OfflineAnswers.PREFACE))
++    fun casing_punctuation_and_plurals_do_not_matter() {
++        assertEquals("Example.", sectionFor("GIVE ME AN EXAMPLE!!!"))
++        assertEquals("Example.", sectionFor("any examples?"))
++        assertEquals("Why sorting matters.", sectionFor("sorting, sorted, sorts"))
+     }
+ 
++    // ---- honesty: no match means saying so, not reading out something unrelated
++
+     @Test
+-    fun a_question_of_only_stopwords_gets_the_fallback() {
+-        val spoken = OfflineAnswers.answerFor("What is this?")
+-        assertTrue(spoken, spoken.contains("couldn't match that to the lesson"))
++    fun off_topic_questions_are_not_answered_with_the_lesson() {
++        assertEquals(null, sectionFor("How do I bake bread?"))
++        assertEquals(null, sectionFor("hello"))
++        assertEquals(null, sectionFor(""))
++        assertEquals(null, sectionFor("   ?!  "))
+     }
+ 
+     @Test
+-    fun raw_server_style_text_never_appears() {
+-        // OfflineAnswers only ever plays back lesson content, so nothing here should
+-        // look like it came from a model or a server response.
+-        val spoken = OfflineAnswers.answerFor("What is binary search?")
+-        assertFalse(spoken, spoken.contains("{"))
++    fun a_question_that_shares_only_a_topic_word_with_the_lesson_is_not_answered_with_it() {
++        // "binary" is in the lesson's title, but a binary TREE is not binary SEARCH.
++        assertEquals(null, sectionFor("Tell me about binary trees"))
++        assertEquals(null, sectionFor("What is the time complexity?"))
+     }
+ 
+     @Test
+-<<<<<<< HEAD
+-    fun a_matched_answer_splits_into_several_speakable_sentences() {
+-        // ChatScreen feeds the offline reply through SentenceChunker so it becomes one
+-        // SemanticUnit per sentence, like a streamed answer — that's what makes pause,
+-        // repeat and step-back work on it. If the reply ever stopped splitting, the
+-        // offline path would silently become the one answer you can't navigate.
+-        val chunker = SentenceChunker()
+-        val text = OfflineAnswers.answerFor("What is binary search?")
+-        val sentences = chunker.feed(text) + listOfNotNull(chunker.flush())
++    fun a_miss_says_what_it_can_answer_about() {
++        val answer = OfflineAnswers.answer("How do I bake bread?")
++        assertFalse(answer.matched)
++        assertTrue(answer.sentences.first().contains("don't have a lesson on that"))
++        assertTrue(answer.sentences.last().contains("Binary Search"))
++        assertFalse("must not read the prefix twice", answer.sentences.last().contains("Introduction to"))
++    }
++
++    @Test
++    fun a_miss_with_no_lessons_at_all_still_says_something() {
++        val answer = OfflineAnswers.answer("anything", lessons = emptyList())
++        assertFalse(answer.matched)
++        assertTrue(answer.sentences.last().contains("no lessons"))
++    }
++
++    // ---- what is spoken
++
++    @Test
++    fun a_match_says_where_it_comes_from_then_the_title_then_the_section() {
++        val answer = OfflineAnswers.answer("Give me an example")
++        val section = lesson.sections.first { it.title == "Example" }
++        assertTrue(answer.matched)
++        assertEquals("I can't reach the AI server, so this is from the lesson.", answer.sentences[0])
++        assertEquals("Example.", answer.sentences[1])
++        assertEquals(section.units.map { it.text }, answer.sentences.drop(2))
++    }
++
++    @Test
++    fun a_title_that_is_already_a_question_is_not_given_a_full_stop() {
++        assertEquals("What is binary search?", OfflineAnswers.answer("what is binary search").sentences[1])
++    }
+ 
+-        assertTrue(sentences.toString(), sentences.size >= 3)
+-        assertTrue(sentences.toString(), sentences.first().startsWith("I can't reach"))
+-        assertEquals(text.replace(Regex("\\s+"), " ").trim(), sentences.joinToString(" "))
++    @Test
++    fun nothing_spoken_contains_symbols_that_read_badly_aloud() {
++        val questions = listOf("What is binary search?", "How does it work", "example", "summary", "bread")
++        for (q in questions) for (s in OfflineAnswers.answer(q).sentences) {
++            assertFalse("\"$s\" has markdown", s.contains('*') || s.contains('#') || s.contains('`') || s.contains('_'))
++            assertTrue("\"$s\" is empty", s.isNotBlank())
++        }
++    }
++
++    // ---- ties, several lessons, and the stemmer
++
++    @Test
++    fun the_same_question_always_gets_the_same_answer() {
++        val first = OfflineAnswers.answer("How does binary search work?")
++        repeat(20) { assertEquals(first, OfflineAnswers.answer("How does binary search work?")) }
++    }
++
++    @Test
++    fun with_several_lessons_the_one_the_question_names_wins() {
++        fun unit(t: String) = SemanticUnit("u", t)
++        val bubble = Lesson(
++            "l2", "Introduction to Bubble Sort",
++            listOf(LessonSection("b1", "The algorithm", listOf(unit("Swap neighbours that are out of order.")), listOf("steps", "work")))
++        )
++        val both = listOf(lesson, bubble)
++        assertEquals("The algorithm.", OfflineAnswers.answer("how does bubble sort work", both).sentences[1])
++        // ...and the binary search lesson's algorithm, when that is what is named.
++        val answer = OfflineAnswers.answer("how does binary search work", both)
++        assertEquals("Start by looking at the middle item of the list.", answer.sentences[2])
++    }
++
++    @Test
++    fun the_stemmer_folds_word_forms_together_without_mangling_short_words() {
++        assertEquals("sort", OfflineAnswers.stem("sorted"))
++        assertEquals("sort", OfflineAnswers.stem("sorting"))
++        assertEquals("sort", OfflineAnswers.stem("sorts"))
++        assertEquals("example", OfflineAnswers.stem("examples"))
++        assertEquals("example", OfflineAnswers.stem("example"))
++        assertEquals("search", OfflineAnswers.stem("searches"))
++        assertEquals("process", OfflineAnswers.stem("process"))
++        assertEquals("red", OfflineAnswers.stem("red"))
++        assertEquals("bed", OfflineAnswers.stem("bed"))
++        assertEquals("bus", OfflineAnswers.stem("bus"))
++    }
++
++    @Test
++    fun question_words_and_filler_are_not_search_terms() {
++        assertEquals(listOf("binary", "search"), OfflineAnswers.tokens("What is the binary search?"))
++        assertEquals(emptyList<String>(), OfflineAnswers.tokens("How do I tell me please"))
++    }
++
++    // ---- the content itself
++
++    @Test
++    fun every_section_of_every_lesson_can_be_reached_by_some_question() {
++        // Guards the keyword lists: a section nobody can ask for is dead content.
++        val asks = mapOf(
++            "What is binary search?" to "define it",
++            "The algorithm." to "what are the steps",
++            "Why sorting matters." to "why sorted",
++            "Example." to "an example please",
++            "Key takeaway." to "give me the summary"
++        )
++        val reached = asks.values.mapNotNull { sectionFor(it) }.toSet()
++        for (section in lesson.sections) {
++            val spoken = if (section.title.last() in ".?!") section.title else section.title + "."
++            assertTrue("no question reaches \"${section.title}\"", spoken in reached)
++        }
+     }
+ 
+     @Test
+-=======
+->>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
+-    fun a_single_incidental_word_is_not_enough_to_match() {
+-        // "show" alone is worth one OTHER_WORD_WEIGHT point (it's a keyword on the
+-        // Example section), which sits below MIN_SCORE, so it should not be trusted
+-        // as a real match on its own.
+-        val spoken = OfflineAnswers.answerFor("show")
+-        assertTrue(spoken, spoken.contains("couldn't match that to the lesson"))
++    fun keywords_do_not_contain_question_words_that_would_match_everything() {
++        val banned = setOf("what", "how", "why", "when", "where", "who", "which")
++        for (l in LessonData.allLessons) for (s in l.sections) for (k in s.keywords) {
++            assertFalse("\"$k\" in ${s.id}", k.lowercase() in banned)
++        }
+     }
+ }
+diff --git a/app/src/test/java/com/resonant/app/network/OllamaErrorsTest.kt b/app/src/test/java/com/resonant/app/network/OllamaErrorsTest.kt
+index 7cd2f8c..aee65b5 100644
+--- a/app/src/test/java/com/resonant/app/network/OllamaErrorsTest.kt
++++ b/app/src/test/java/com/resonant/app/network/OllamaErrorsTest.kt
+@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
+ import org.junit.Test
+ import java.io.IOException
+ import java.net.ConnectException
+-import java.net.NoRouteToHostException
+ import java.net.SocketException
+ import java.net.SocketTimeoutException
+ import java.net.UnknownHostException
+@@ -73,30 +72,4 @@ class OllamaErrorsTest {
+             IOException("Cleartext"), IllegalStateException()
+         ).forEach { assertTrue(spokenErrorFor(it).endsWith("Tap the center to try again.")) }
+     }
+-
+-    @Test
+-    fun unreachable_covers_connection_and_resolution_failures() {
+-        listOf(
+-            ConnectException("refused"),
+-            NoRouteToHostException("no route"),
+-            UnknownHostException("nope"),
+-            SocketTimeoutException("Read timed out"),
+-            SocketException("Connection reset")
+-        ).forEach { assertTrue(it.toString(), isServerUnreachable(it)) }
+-    }
+-
+-    @Test
+-    fun unreachable_is_false_once_the_server_has_answered() {
+-        // A response the server actually sent back - even an error one - is a
+-        // different situation from never getting through, and retrying makes
+-        // sense here in a way it doesn't for a dead connection.
+-        listOf(
+-            OllamaHttpException(404, body),
+-            OllamaHttpException(500, null),
+-            OllamaStreamException(body),
+-            JSONException("bad"),
+-            IOException("Cleartext HTTP traffic to 192.168.1.50 not permitted"),
+-            IllegalStateException("boom")
+-        ).forEach { assertFalse(it.toString(), isServerUnreachable(it)) }
+-    }
+ }
+diff --git a/app/src/test/java/com/resonant/app/network/OllamaSetupTest.kt b/app/src/test/java/com/resonant/app/network/OllamaSetupTest.kt
+index 92f7881..16df691 100644
+--- a/app/src/test/java/com/resonant/app/network/OllamaSetupTest.kt
++++ b/app/src/test/java/com/resonant/app/network/OllamaSetupTest.kt
+@@ -154,4 +154,54 @@ class OllamaSetupTest {
+         val text = describeFailure(IllegalStateException("weird"))
+         assertTrue(text.contains("weird"))
+     }
++
++    // ---- deciding when the server can't be used
++
++    @Test
++    fun the_server_is_usable_only_when_it_answers_and_has_the_model() {
++        assertTrue(serverIsUsable(ConnectionCheck.Reachable(listOf("llama3.2:latest"), modelInstalled = true)))
++        assertFalse(serverIsUsable(ConnectionCheck.Reachable(listOf("qwen2.5:7b"), modelInstalled = false)))
++        assertFalse(serverIsUsable(ConnectionCheck.Unreachable(ConnectException("refused"))))
++    }
++
++    @Test
++    fun connection_failures_mean_the_server_is_unavailable() {
++        assertTrue(isServerUnavailable(ConnectException("refused")))
++        assertTrue(isServerUnavailable(UnknownHostException("nope")))
++        assertTrue(isServerUnavailable(java.net.NoRouteToHostException("no route")))
++        assertTrue(isServerUnavailable(SocketTimeoutException("timed out")))
++    }
++
++    @Test
++    fun a_connection_that_is_reset_before_anything_is_said_means_unavailable() {
++        assertTrue(isServerUnavailable(java.net.SocketException("Connection reset")))
++        assertTrue(isServerUnavailable(java.net.SocketException("Broken pipe")))
++    }
++
++    @Test
++    fun a_missing_model_or_a_broken_server_means_unavailable_but_a_bad_request_does_not() {
++        assertTrue(isServerUnavailable(OllamaHttpException(404, "model not found")))
++        assertTrue(isServerUnavailable(OllamaHttpException(500, null)))
++        assertTrue(isServerUnavailable(OllamaHttpException(502, null)))
++        assertTrue(isServerUnavailable(OllamaHttpException(503, null)))
++        // Our own fault: answering from the lessons would hide a real bug.
++        assertFalse(isServerUnavailable(OllamaHttpException(400, "bad request")))
++        assertFalse(isServerUnavailable(OllamaHttpException(401, null)))
++    }
++
++    @Test
++    fun unrelated_failures_are_not_treated_as_the_server_being_down() {
++        assertFalse(isServerUnavailable(IllegalStateException("bug")))
++        assertFalse(isServerUnavailable(JSONException("bad json")))
++    }
++
++    @Test
++    fun the_spoken_notice_says_why_and_what_happens_next() {
++        val down = serverNotice(ConnectionCheck.Unreachable(ConnectException("x")))
++        assertTrue(down.contains("can't reach the AI server"))
++        assertTrue(down.contains("lessons"))
++        val noModel = serverNotice(ConnectionCheck.Reachable(emptyList(), modelInstalled = false))
++        assertTrue(noModel.contains("doesn't have the model"))
++        assertTrue(noModel.contains("lessons"))
++    }
+ }
