@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
 import com.resonant.app.haptics.HapticPattern
@@ -33,18 +35,28 @@ import kotlinx.coroutines.delay
  * few seconds after launch, something is genuinely wrong (no TTS engine
  * installed/enabled on the device) rather than still warming up, so we show
  * it and buzz once, instead of leaving the person guessing why nothing talks.
+ *
+ * The engine is released on purpose whenever the app is backgrounded, so "not ready"
+ * while stopped is expected, not a fault. The grace period therefore only runs while
+ * [lifecycle] is STARTED; otherwise the error buzz would fire from the background.
  */
 @Composable
-fun TtsUnavailableBanner(audio: AudioManager, haptics: HapticManager) {
+fun TtsUnavailableBanner(audio: AudioManager, haptics: HapticManager, lifecycle: Lifecycle) {
     val isReady by audio.isReady.collectAsState()
     var showBanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(isReady) {
         if (isReady) {
             showBanner = false
-        } else {
+            return@LaunchedEffect
+        }
+        // repeatOnLifecycle cancels the wait when the app stops and starts it over on
+        // return, and reading the flow fresh means an engine that came back in the
+        // meantime is not reported as missing. The buzz plays once, when the banner first
+        // appears, not on every return to the foreground.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             delay(4000) // grace period — normal init takes well under a second
-            if (!isReady) {
+            if (!audio.isReady.value && !showBanner) {
                 showBanner = true
                 haptics.play(HapticPattern.ERROR)
             }

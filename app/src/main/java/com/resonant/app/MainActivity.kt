@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         Box(Modifier.fillMaxSize()) {
                             ResonantNavHost(startDestination = start)
-                            TtsUnavailableBanner(container.audioManager, container.hapticManager)
+                            TtsUnavailableBanner(container.audioManager, container.hapticManager, lifecycle)
                         }
                     }
                 }

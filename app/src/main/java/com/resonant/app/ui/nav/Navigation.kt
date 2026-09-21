@@ -60,8 +60,11 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(onFinished = {
                 prefs.onboardingComplete = true
+                // Clear the whole stack, not just this entry. On first launch the tutorial
+                // is the only thing on it; when replayed from Settings, popping only the
+                // tutorial would leave Home -> Settings -> Home behind.
                 navController.navigate(Routes.HOME) {
-                    popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    popUpTo(navController.graph.id) { inclusive = true }
                 }
             })
         }
