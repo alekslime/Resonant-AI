@@ -1,7 +1,10 @@
 package com.resonant.app.content
 
+<<<<<<< HEAD
 import com.resonant.app.speech.SentenceChunker
 import org.junit.Assert.assertEquals
+=======
+>>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -66,6 +69,7 @@ class OfflineAnswersTest {
     }
 
     @Test
+<<<<<<< HEAD
     fun a_matched_answer_splits_into_several_speakable_sentences() {
         // ChatScreen feeds the offline reply through SentenceChunker so it becomes one
         // SemanticUnit per sentence, like a streamed answer — that's what makes pause,
@@ -81,6 +85,8 @@ class OfflineAnswersTest {
     }
 
     @Test
+=======
+>>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
     fun a_single_incidental_word_is_not_enough_to_match() {
         // "show" alone is worth one OTHER_WORD_WEIGHT point (it's a keyword on the
         // Example section), which sits below MIN_SCORE, so it should not be trusted

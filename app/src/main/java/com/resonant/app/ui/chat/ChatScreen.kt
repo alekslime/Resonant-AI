@@ -204,6 +204,7 @@ fun ChatScreen(onBack: () -> Unit) {
                         // from the lesson content bundled in the app. onSentence's
                         // sentenceCount == 0 branch is exactly "post the first reply",
                         // so this rides the same path a real answer would.
+<<<<<<< HEAD
                         //
                         // Chunk it the same way a streamed answer is chunked: every
                         // other reply in the app is one SemanticUnit per sentence, and
@@ -217,6 +218,10 @@ fun ChatScreen(onBack: () -> Unit) {
                         val offlineText = OfflineAnswers.answerFor(userText)
                         offlineChunker.feed(offlineText).forEach { onSentence(it) }
                         offlineChunker.flush()?.let { onSentence(it) }
+=======
+                        haptics.play(HapticPattern.ERROR)
+                        onSentence(OfflineAnswers.answerFor(userText))
+>>>>>>> d0e7410044c32903b896ded2b2b7293565749e8e
                     } else {
                         handleError(spokenErrorFor(e))
                     }
