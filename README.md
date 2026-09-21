@@ -77,7 +77,16 @@ What Chat does so that silence never looks like a crash:
   request and closes the connection.
 - Tapping while an answer is still being spoken starts a new question
   (barge-in) and stops the old stream.
-- If the server is unreachable, Chat announces the error out loud.
+- Every failure is announced out loud in one plain sentence — no HTTP bodies or
+  socket errors, which are logged instead (`OllamaErrors.kt`).
+- If the server can't be reached **at all** (refused, timed out, wrong Wi-Fi),
+  Chat doesn't just report the error: it answers from the binary-search lesson
+  bundled in the app, prefaced with "I can't reach the AI server right now, so
+  here's what the lesson says." It picks the closest section by word overlap and
+  reads it back — it never composes new text, so nothing invented can come out of
+  the offline path. A question it can't match gets a spoken list of the topics it
+  *can* answer. A server that answered badly (wrong model, malformed reply) is
+  left alone, since retrying that can actually help.
 
 ### Changing the server on the phone
 

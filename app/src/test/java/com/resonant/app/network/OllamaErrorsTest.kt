@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 import java.net.ConnectException
+import java.net.NoRouteToHostException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -71,5 +72,31 @@ class OllamaErrorsTest {
             SocketTimeoutException(), SocketException(), JSONException("x"),
             IOException("Cleartext"), IllegalStateException()
         ).forEach { assertTrue(spokenErrorFor(it).endsWith("Tap the center to try again.")) }
+    }
+
+    @Test
+    fun unreachable_covers_connection_and_resolution_failures() {
+        listOf(
+            ConnectException("refused"),
+            NoRouteToHostException("no route"),
+            UnknownHostException("nope"),
+            SocketTimeoutException("Read timed out"),
+            SocketException("Connection reset")
+        ).forEach { assertTrue(it.toString(), isServerUnreachable(it)) }
+    }
+
+    @Test
+    fun unreachable_is_false_once_the_server_has_answered() {
+        // A response the server actually sent back - even an error one - is a
+        // different situation from never getting through, and retrying makes
+        // sense here in a way it doesn't for a dead connection.
+        listOf(
+            OllamaHttpException(404, body),
+            OllamaHttpException(500, null),
+            OllamaStreamException(body),
+            JSONException("bad"),
+            IOException("Cleartext HTTP traffic to 192.168.1.50 not permitted"),
+            IllegalStateException("boom")
+        ).forEach { assertFalse(it.toString(), isServerUnreachable(it)) }
     }
 }

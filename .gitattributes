@@ -1,0 +1,16 @@
+# Keep line endings LF in the repo no matter what checks it out; a Windows
+# checkout that re-zips the tree used to rewrite every file as CRLF and bury
+# real diffs in whitespace churn.
+* text=auto eol=lf
+
+# Binary: never touch.
+*.png binary
+*.jpg binary
+*.webp binary
+*.jar binary
+*.apk binary
+*.aab binary
+
+# The wrapper script must stay LF or it will not run on macOS/Linux.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
