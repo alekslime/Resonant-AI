@@ -33,6 +33,8 @@ import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * One step of the tutorial. [matches] decides whether a gesture completes the
@@ -112,47 +114,62 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     var step by remember { mutableIntStateOf(-1) }   // -1 = intro still playing
     var misses by remember { mutableIntStateOf(0) }
     var completing by remember { mutableStateOf(false) }
+    // True once the current step's spoken prompt has finished (or been cut off), so the
+    // "still there?" re-prompt is timed from silence rather than from when the step began.
+    var promptSettled by remember { mutableStateOf(false) }
+    // Set the moment we decide to leave, so a late speech callback can't restart the
+    // tutorial and a second exit path can't navigate twice.
+    var leaving by remember { mutableStateOf(false) }
     val onFinishedNow by rememberUpdatedState(onFinished)
 
-    // Intro plays once, then the first lesson starts. The delay is a deliberate
-    // simplification: the tutorial is scripted speech, not queue playback, so it
-    // doesn't need the utterance-completion plumbing the rest of the app uses.
+    fun finish() {
+        if (leaving) return
+        leaving = true
+        onFinishedNow()
+    }
+
+    // Intro plays once, then the first lesson starts. Waits for the speech itself rather
+    // than guessing a duration: how long the intro takes depends on the engine, its voice
+    // and the saved speech speed, and a guess that runs short cuts off the line that
+    // explains how to skip. The callback also fires if the intro is interrupted (the skip
+    // gesture does that), hence the `leaving` check.
     LaunchedEffect(Unit) {
         debug.setScreen("Onboarding")
-        audio.announce(INTRO)
-        delay(13_000)
+        suspendCancellableCoroutine<Unit> { cont ->
+            audio.announce(INTRO) { if (cont.isActive) cont.resume(Unit) }
+        }
+        if (leaving) return@LaunchedEffect
         step = 0
-        audio.announce(lessons[0].spoken)
+        promptSettled = false
+        audio.announce(lessons[0].spoken) { if (step == 0) promptSettled = true }
     }
 
-    // Re-prompt with the short hint if the user has been silent or wrong a while.
-    LaunchedEffect(step, misses, completing) {
-        if (step < 0 || step >= lessons.size || completing) return@LaunchedEffect
+    // Re-prompt with the short hint if the user has been silent or wrong a while —
+    // counted from when the prompt stopped speaking, not from when it began.
+    LaunchedEffect(step, misses, completing, promptSettled) {
+        if (step < 0 || step >= lessons.size || completing || !promptSettled) return@LaunchedEffect
         delay(12_000)
         audio.announce(lessons[step].hint)
-    }
-
-    // Let the closing line actually finish before Home flushes the TTS queue.
-    LaunchedEffect(completing) {
-        if (!completing) return@LaunchedEffect
-        delay(6_000)
-        onFinishedNow()
     }
 
     fun advance() {
         val next = step + 1
         if (next >= lessons.size) {
             haptics.play(HapticPattern.CORRECT)
-            audio.announce(
-                "That's all of them. You can hear this tutorial again any time from Settings. Taking you to the home screen."
-            )
             step = lessons.size
             completing = true
+            // Home's first queue flushes whatever is speaking, so leave only once the
+            // closing line has been heard.
+            audio.announce(
+                "That's all of them. You can hear this tutorial again any time from Settings. Taking you to the home screen."
+            ) { finish() }
         } else {
             haptics.play(HapticPattern.CONFIRM)
+            promptSettled = false
             step = next
             misses = 0
-            audio.announce("Good. " + lessons[next].spoken)
+            // Ignore the callback of a prompt that a later step has already replaced.
+            audio.announce("Good. " + lessons[next].spoken) { if (step == next) promptSettled = true }
         }
     }
 
@@ -175,7 +192,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 if (gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.LEFT_EDGE) {
                     haptics.play(HapticPattern.BACK)
                     audio.announce("Skipping the tutorial. Going to the home screen.")
-                    onFinishedNow()
+                    finish()
                     return@GestureSurface
                 }
                 val lesson = lessons.getOrNull(step) ?: return@GestureSurface
