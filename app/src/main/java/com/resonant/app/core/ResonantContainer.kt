@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
+import com.resonant.app.network.OllamaConfig
 
 /**
  * Resonant deliberately has no backend, database, or DI framework — this
@@ -12,10 +13,21 @@ import com.resonant.app.haptics.HapticManager
  * HapticManager / DebugState instance instead of creating its own.
  */
 class ResonantContainer(context: Context) {
-    val audioManager = AudioManager(context)
+    // prefs first: the managers below read their saved state from it.
+    val prefs = ResonantPrefs(context)
+
+    // Speech speed survives a restart. Restoring happens before the TTS engine
+    // finishes starting, so the very first utterance already uses the saved rate.
+    val audioManager = AudioManager(context).also { audio ->
+        audio.restoreSpeedIndex(prefs.speedIndex)
+        audio.onSpeedIndexChanged = { index -> prefs.speedIndex = index }
+    }
     val hapticManager = HapticManager(context)
     val debugState = DebugState()
-    val prefs = ResonantPrefs(context)
+
+    init {
+        OllamaConfig.applyOverrides(prefs.ollamaBaseUrl, prefs.ollamaModel)
+    }
 }
 
 val LocalAudioManager = staticCompositionLocalOf<AudioManager> {

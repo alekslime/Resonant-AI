@@ -48,6 +48,18 @@ class AudioManager(context: Context) {
 
     val speed: Float get() = SPEEDS[_speedIndex.value]
 
+    /** Called with the new index after every speed change, so it can be saved. */
+    var onSpeedIndexChanged: ((Int) -> Unit)? = null
+
+    /**
+     * Sets the speed without announcing it — for restoring the saved value at
+     * startup, before any speech is queued. Out-of-range values are clamped, so a
+     * stale saved index can never crash the lookup in [speed].
+     */
+    fun restoreSpeedIndex(index: Int) {
+        _speedIndex.value = index.coerceIn(0, SPEEDS.lastIndex)
+    }
+
     private var autoAdvanceEnabled = false
     private var tts: TextToSpeech? = null
 
@@ -279,6 +291,7 @@ class AudioManager(context: Context) {
             return false
         }
         _speedIndex.value = newIndex
+        onSpeedIndexChanged?.invoke(newIndex)
         announceSpeed(atLimit = false)
         return true
     }
@@ -290,6 +303,7 @@ class AudioManager(context: Context) {
             return false
         }
         _speedIndex.value = newIndex
+        onSpeedIndexChanged?.invoke(newIndex)
         announceSpeed(atLimit = false)
         return true
     }

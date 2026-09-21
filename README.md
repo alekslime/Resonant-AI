@@ -41,8 +41,13 @@ Tap the center of the Chat screen to talk. Your speech is transcribed on the
 device's own recognizer and sent to *your* Ollama server; the reply is spoken
 sentence by sentence while the model is still writing the rest.
 
-1. On a machine on your Wi-Fi, run `ollama serve` and `ollama pull llama3.2`
-   (or any model you prefer).
+1. On a machine on your Wi-Fi, run `ollama pull llama3.2` (or any model you
+   prefer), then start the server so the phone can reach it. By default Ollama
+   listens only on the machine itself, so a phone can never connect unless you
+   set `OLLAMA_HOST=0.0.0.0` first (PowerShell:
+   `$env:OLLAMA_HOST="0.0.0.0"; ollama serve` — macOS/Linux:
+   `OLLAMA_HOST=0.0.0.0 ollama serve`). If Windows Firewall asks, allow it on
+   private networks.
 2. In `local.properties` (git-ignored, so your LAN address is never committed):
 
    ```
@@ -52,7 +57,9 @@ sentence by sentence while the model is still writing the rest.
 
    - `ollama.baseUrl` — that machine's LAN address. The default, `10.0.2.2`,
      only resolves from the Android *emulator*; a physical phone needs the real
-     LAN IP. Values are baked in at build time, so rebuild after changing them.
+     LAN IP. These are the defaults baked in at build time; you can override
+     both on the phone without rebuilding (see "Changing the server on the
+     phone" below).
    - `ollama.model` — must match a model you've already pulled.
 3. **Plain HTTP works in debug builds only** (`src/debug/AndroidManifest.xml`).
    A release build needs an `https://` URL.
@@ -71,6 +78,17 @@ What Chat does so that silence never looks like a crash:
 - Tapping while an answer is still being spoken starts a new question
   (barge-in) and stops the old stream.
 - If the server is unreachable, Chat announces the error out loud.
+
+### Changing the server on the phone
+
+A different Wi-Fi means a different address, and rebuilding at a venue is not
+an option. From Home open **Settings → Debug Mode**, then **swipe right in the
+middle of the screen** to open *Server setup*: type the server's address
+(`192.168.1.50` is enough — the port defaults to 11434) and the model, tap
+**Test connection** to see whether the server is reachable and has the model
+(it tells you the `ollama pull` command if not), then **Save**. The change
+applies to the next Chat question and survives restarts. **Use build
+defaults** clears it. The Debug screen always shows the address in use.
 
 ---
 
@@ -181,7 +199,7 @@ The same on every screen:
 | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
 | Left edge | Tap | Pause / resume speech |
 | Left edge | Double-tap | Repeat the current unit |
-| Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×) |
+| Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×); remembered between launches |
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
 | Right edge | Tap | Nothing, deliberately (no accidental triggers) |
 | Anywhere | Three-finger tap | Repeat the current unit |

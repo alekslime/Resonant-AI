@@ -20,14 +20,16 @@ import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
+import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
+import com.resonant.app.network.OllamaConfig
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
-fun DebugScreen(onBack: () -> Unit) {
+fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -60,7 +62,10 @@ fun DebugScreen(onBack: () -> Unit) {
         "Speech speed" to "${AudioManager.SPEEDS[speedIndex]}x",
         "Last gesture" to lastGesture,
         "Last haptic" to (lastHaptic?.name ?: "—"),
-        "Current zone" to zone
+        "Current zone" to zone,
+        "Ollama server" to OllamaConfig.BASE_URL,
+        "Ollama model" to OllamaConfig.MODEL,
+        "Server setup" to "Swipe right in the middle of the screen"
     )
 
     ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
@@ -70,6 +75,12 @@ fun DebugScreen(onBack: () -> Unit) {
                     haptics.play(HapticPattern.BACK)
                     audio.announce("Back to Settings.")
                     onBack()
+                }
+                is ResonantGesture.Swipe -> if (
+                    gesture.zone == InteractionZone.CENTER && gesture.direction == SwipeDirection.RIGHT
+                ) {
+                    haptics.play(HapticPattern.CONFIRM)
+                    onOpenServerSetup()
                 }
                 is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
                     audio.togglePause(); haptics.play(HapticPattern.CONFIRM)

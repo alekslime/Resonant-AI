@@ -24,6 +24,7 @@ import com.resonant.app.ui.lessons.LessonsScreen
 import com.resonant.app.ui.quiz.QuizResultsScreen
 import com.resonant.app.ui.quiz.QuizScreen
 import com.resonant.app.ui.settings.DebugScreen
+import com.resonant.app.ui.settings.ServerSetupScreen
 import com.resonant.app.ui.settings.SettingsScreen
 
 object Routes {
@@ -35,6 +36,7 @@ object Routes {
     const val CHAT = "chat"
     const val SETTINGS = "settings"
     const val DEBUG = "debug"
+    const val SERVER_SETUP = "server_setup"
     const val ONBOARDING = "onboarding"
 
     fun lesson(id: String) = "lesson/$id"
@@ -146,7 +148,13 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             )
         }
         composable(Routes.DEBUG) {
-            DebugScreen(onBack = goBack)
+            DebugScreen(
+                onOpenServerSetup = { navController.navigate(Routes.SERVER_SETUP) },
+                onBack = goBack
+            )
+        }
+        composable(Routes.SERVER_SETUP) {
+            ServerSetupScreen(onDone = goBack)
         }
     }
 }
