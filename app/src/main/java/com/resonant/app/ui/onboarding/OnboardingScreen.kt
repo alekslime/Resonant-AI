@@ -50,15 +50,15 @@ private data class GestureLesson(
 
 private val lessons = listOf(
     GestureLesson(
-        label = "Swipe up",
-        spoken = "First, moving through a list. Swipe up anywhere in the middle of the screen to go to the next item.",
-        hint = "Swipe up in the middle of the screen.",
+        label = "Swipe down",
+        spoken = "First, moving through a list. Swipe down anywhere in the middle of the screen to go to the next item.",
+        hint = "Swipe down in the middle of the screen.",
         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.UP }
     ),
     GestureLesson(
-        label = "Swipe down",
-        spoken = "Now the other way. Swipe down in the middle to go back to the previous item.",
-        hint = "Swipe down in the middle of the screen.",
+        label = "Swipe up",
+        spoken = "Now the other way. Swipe up in the middle to go back to the previous item.",
+        hint = "Swipe up in the middle of the screen.",
         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.DOWN }
     ),
     GestureLesson(

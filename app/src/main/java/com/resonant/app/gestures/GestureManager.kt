@@ -34,6 +34,11 @@ private const val LONG_PRESS_MS = 500L
 private const val DOUBLE_TAP_MAX_INTERVAL_MS = 300L
 private const val TAP_MAX_DURATION_MS = 300L
 
+// Deliberate, chosen by feel on-device: a finger moving DOWN the screen is
+// SwipeDirection.UP, which every screen treats as "next" (the finger follows the
+// list downward). So spoken prompts and docs must say "swipe DOWN" for next and
+// "swipe UP" for previous. If you flip this, reword them too: OnboardingScreen
+// steps 1-2, the QuizScreen "continue" prompts, and the README gesture table.
 private const val INVERT_VERTICAL_SWIPES = true
 private const val INVERT_HORIZONTAL_SWIPES = false
 

@@ -147,7 +147,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> {
                     val status = when {
-                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe up to continue."
+                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe down to continue."
                         selectedOption != null -> "Option ${question.options[selectedOption!!].letter} selected. Swipe right to submit."
                         else -> "No option selected. Swipe up or down to browse, tap to select, swipe right to submit."
                     }
@@ -211,8 +211,8 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            if (lastAnswerCorrect == true) "Correct — swipe up to continue."
-                            else "Incorrect — swipe up to continue.",
+                            if (lastAnswerCorrect == true) "Correct — swipe down to continue."
+                            else "Incorrect — swipe down to continue.",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                             color = colors.feedbackText
                         )

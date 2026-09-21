@@ -1,0 +1,79 @@
+diff --git a/README.md b/README.md
+index ff50eca..e5a3790 100644
+--- a/README.md
++++ b/README.md
+@@ -175,7 +175,7 @@ The same on every screen:
+ 
+ | Where | Gesture | Does |
+ |---|---|---|
+-| Center | Swipe up / down | Next / previous (menu item, lesson unit, quiz option, chat sentence) |
++| Center | Swipe down / up | Next / previous (menu item, lesson unit, quiz option, chat sentence) |
+ | Center | Swipe right | Continue / submit (Lesson: next section; Quiz: submit) |
+ | Center | Swipe left | Back (Lesson: previous section) |
+ | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
+diff --git a/app/src/main/java/com/resonant/app/gestures/GestureManager.kt b/app/src/main/java/com/resonant/app/gestures/GestureManager.kt
+index 1658eaf..b29b56b 100644
+--- a/app/src/main/java/com/resonant/app/gestures/GestureManager.kt
++++ b/app/src/main/java/com/resonant/app/gestures/GestureManager.kt
+@@ -34,6 +34,11 @@ private const val LONG_PRESS_MS = 500L
+ private const val DOUBLE_TAP_MAX_INTERVAL_MS = 300L
+ private const val TAP_MAX_DURATION_MS = 300L
+ 
++// Deliberate, chosen by feel on-device: a finger moving DOWN the screen is
++// SwipeDirection.UP, which every screen treats as "next" (the finger follows the
++// list downward). So spoken prompts and docs must say "swipe DOWN" for next and
++// "swipe UP" for previous. If you flip this, reword them too: OnboardingScreen
++// steps 1-2, the QuizScreen "continue" prompts, and the README gesture table.
+ private const val INVERT_VERTICAL_SWIPES = true
+ private const val INVERT_HORIZONTAL_SWIPES = false
+ 
+diff --git a/app/src/main/java/com/resonant/app/ui/onboarding/OnboardingScreen.kt b/app/src/main/java/com/resonant/app/ui/onboarding/OnboardingScreen.kt
+index 431063a..3346996 100644
+--- a/app/src/main/java/com/resonant/app/ui/onboarding/OnboardingScreen.kt
++++ b/app/src/main/java/com/resonant/app/ui/onboarding/OnboardingScreen.kt
+@@ -50,15 +50,15 @@ private data class GestureLesson(
+ 
+ private val lessons = listOf(
+     GestureLesson(
+-        label = "Swipe up",
+-        spoken = "First, moving through a list. Swipe up anywhere in the middle of the screen to go to the next item.",
+-        hint = "Swipe up in the middle of the screen.",
++        label = "Swipe down",
++        spoken = "First, moving through a list. Swipe down anywhere in the middle of the screen to go to the next item.",
++        hint = "Swipe down in the middle of the screen.",
+         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.UP }
+     ),
+     GestureLesson(
+-        label = "Swipe down",
+-        spoken = "Now the other way. Swipe down in the middle to go back to the previous item.",
+-        hint = "Swipe down in the middle of the screen.",
++        label = "Swipe up",
++        spoken = "Now the other way. Swipe up in the middle to go back to the previous item.",
++        hint = "Swipe up in the middle of the screen.",
+         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.DOWN }
+     ),
+     GestureLesson(
+diff --git a/app/src/main/java/com/resonant/app/ui/quiz/QuizScreen.kt b/app/src/main/java/com/resonant/app/ui/quiz/QuizScreen.kt
+index 98a1553..b22356b 100644
+--- a/app/src/main/java/com/resonant/app/ui/quiz/QuizScreen.kt
++++ b/app/src/main/java/com/resonant/app/ui/quiz/QuizScreen.kt
+@@ -147,7 +147,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
+                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
+                 ResonantGesture.ThreeFingerHold -> {
+                     val status = when {
+-                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe up to continue."
++                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe down to continue."
+                         selectedOption != null -> "Option ${question.options[selectedOption!!].letter} selected. Swipe right to submit."
+                         else -> "No option selected. Swipe up or down to browse, tap to select, swipe right to submit."
+                     }
+@@ -211,8 +211,8 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
+                             .padding(horizontal = 14.dp, vertical = 8.dp)
+                     ) {
+                         Text(
+-                            if (lastAnswerCorrect == true) "Correct — swipe up to continue."
+-                            else "Incorrect — swipe up to continue.",
++                            if (lastAnswerCorrect == true) "Correct — swipe down to continue."
++                            else "Incorrect — swipe down to continue.",
+                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                             color = colors.feedbackText
+                         )

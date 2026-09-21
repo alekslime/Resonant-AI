@@ -175,7 +175,7 @@ The same on every screen:
 
 | Where | Gesture | Does |
 |---|---|---|
-| Center | Swipe up / down | Next / previous (menu item, lesson unit, quiz option, chat sentence) |
+| Center | Swipe down / up | Next / previous (menu item, lesson unit, quiz option, chat sentence) |
 | Center | Swipe right | Continue / submit (Lesson: next section; Quiz: submit) |
 | Center | Swipe left | Back (Lesson: previous section) |
 | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
