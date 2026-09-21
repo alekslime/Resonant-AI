@@ -41,6 +41,54 @@ object QuizData {
                 ),
                 correctIndex = 2,
                 explanation = "Cutting the remaining range in half on every step is what gives binary search its speed."
+            ),
+            QuizQuestion(
+                id = "q4",
+                prompt = SemanticUnit("q4_prompt", "Which three things does photosynthesis need?"),
+                options = listOf(
+                    QuizOption('A', "Sunlight, water, and carbon dioxide"),
+                    QuizOption('B', "Soil, wind, and heat"),
+                    QuizOption('C', "Only sunlight"),
+                    QuizOption('D', "Oxygen, salt, and shade")
+                ),
+                correctIndex = 0,
+                explanation = "A plant combines sunlight, water, and carbon dioxide to make its own sugar."
+            ),
+            QuizQuestion(
+                id = "q5",
+                prompt = SemanticUnit("q5_prompt", "What gas do plants release during photosynthesis?"),
+                options = listOf(
+                    QuizOption('A', "Carbon dioxide"),
+                    QuizOption('B', "Nitrogen"),
+                    QuizOption('C', "Hydrogen"),
+                    QuizOption('D', "Oxygen")
+                ),
+                correctIndex = 3,
+                explanation = "Splitting water to power the reaction leaves oxygen over, which the plant releases into the air."
+            ),
+            QuizQuestion(
+                id = "q6",
+                prompt = SemanticUnit("q6_prompt", "What is Earth's outer shell broken into, according to plate tectonics?"),
+                options = listOf(
+                    QuizOption('A', "A single solid shell"),
+                    QuizOption('B', "Large moving plates"),
+                    QuizOption('C', "Layers of ice"),
+                    QuizOption('D', "Floating islands only"),
+                ),
+                correctIndex = 1,
+                explanation = "Earth's crust is broken into large plates that carry the continents and ocean floors."
+            ),
+            QuizQuestion(
+                id = "q7",
+                prompt = SemanticUnit("q7_prompt", "What drags tectonic plates along?"),
+                options = listOf(
+                    QuizOption('A', "Ocean tides"),
+                    QuizOption('B', "Earth's rotation"),
+                    QuizOption('C', "Slow currents in the mantle"),
+                    QuizOption('D', "Wind erosion")
+                ),
+                correctIndex = 2,
+                explanation = "Heat drives slow currents in the mantle, and those currents drag the plates above them along."
             )
         )
     )
