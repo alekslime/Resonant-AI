@@ -5,6 +5,20 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!--
+        Package visibility (Android 11+): without these, the system hides the speech
+        recognizer and TTS engine packages from this app, and
+        SpeechRecognizer.isRecognitionAvailable() reports false even when one is installed.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ResonantApp"
         android:allowBackup="false"

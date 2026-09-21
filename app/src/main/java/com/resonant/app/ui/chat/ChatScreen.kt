@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
@@ -40,6 +41,7 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.network.spokenErrorFor
 import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
 import com.resonant.app.ui.components.GestureSurface
@@ -190,7 +192,10 @@ fun ChatScreen(onBack: () -> Unit) {
                 throw e
             } catch (e: Exception) {
                 if (requestId == myId) {
-                    handleError("I couldn't reach the AI. ${e.message ?: "Check your Ollama server is running and reachable."}")
+                    // The exception's own text can be an HTTP body or a raw socket error:
+                    // log that, and speak something a person can act on.
+                    Log.w("ResonantChat", "Chat request failed", e)
+                    handleError(spokenErrorFor(e))
                 }
             } finally {
                 ticker.cancel()

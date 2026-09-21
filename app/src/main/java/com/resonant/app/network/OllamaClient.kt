@@ -22,6 +22,13 @@ data class ChatMessage(val role: String, val content: String)
 /** One decoded line of Ollama's streamed /api/chat response. */
 internal data class StreamChunk(val delta: String, val done: Boolean)
 
+/** The server answered, but not with 200. [detail] is Ollama's own error body: for logs, never for speech. */
+internal class OllamaHttpException(val status: Int, val detail: String?) :
+    IOException("Ollama returned HTTP $status${detail?.let { ": $it" } ?: ""}")
+
+/** Ollama reported a failure in the middle of a streamed reply (`{"error": "..."}`). */
+internal class OllamaStreamException(val detail: String) : IOException("Ollama error: $detail")
+
 /**
  * Decodes one newline-delimited-JSON line from a streamed /api/chat response.
  * Returns null for a blank line; throws [IOException] if the server reported an
@@ -31,7 +38,7 @@ internal fun parseStreamLine(line: String): StreamChunk? {
     if (line.isBlank()) return null
     val obj = JSONObject(line)
     val error = obj.optString("error")
-    if (error.isNotEmpty()) throw IOException("Ollama error: $error")
+    if (error.isNotEmpty()) throw OllamaStreamException(error)
     val delta = obj.optJSONObject("message")?.optString("content").orEmpty()
     return StreamChunk(delta, obj.optBoolean("done", false))
 }
@@ -92,7 +99,7 @@ object OllamaClient {
                 val status = connection.responseCode
                 if (status != HttpURLConnection.HTTP_OK) {
                     val errText = connection.errorStream?.let { readAll(it) }
-                    throw IOException("Ollama returned HTTP $status${errText?.let { ": $it" } ?: ""}")
+                    throw OllamaHttpException(status, errText)
                 }
 
                 BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { reader ->
