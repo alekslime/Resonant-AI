@@ -1,0 +1,186 @@
+diff --git a/app/src/main/java/com/resonant/app/content/LessonData.kt b/app/src/main/java/com/resonant/app/content/LessonData.kt
+index a86cb27..a9cd0d0 100644
+--- a/app/src/main/java/com/resonant/app/content/LessonData.kt
++++ b/app/src/main/java/com/resonant/app/content/LessonData.kt
+@@ -63,5 +63,121 @@ object LessonData {
+         )
+     )
+ 
+-    val allLessons = listOf(binarySearchLesson)
++    val photosynthesisLesson = Lesson(
++        id = "lesson_photosynthesis",
++        title = "Introduction to Photosynthesis",
++        sections = listOf(
++            LessonSection(
++                id = "s1",
++                title = "What is photosynthesis?",
++                units = listOf(
++                    unit("s1u1", "Photosynthesis is the process plants use to turn sunlight into energy."),
++                    unit("s1u2", "They capture light in their leaves and use it to build the sugars they need to grow."),
++                    unit("s1u3", "It's the reason plants are green: the pigment that captures light, chlorophyll, gives them their color.")
++                ),
++                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "basics", "beginner")
++            ),
++            LessonSection(
++                id = "s2",
++                title = "What plants need",
++                units = listOf(
++                    unit("s2u1", "Photosynthesis needs three ingredients: sunlight, water, and carbon dioxide."),
++                    unit("s2u2", "Roots draw water up from the soil, and leaves pull carbon dioxide in from the air."),
++                    unit("s2u3", "Without any one of the three, the process stops.")
++                ),
++                keywords = listOf("need", "needs", "require", "requirement", "requires", "ingredient", "ingredients", "sunlight", "water", "carbon", "dioxide")
++            ),
++            LessonSection(
++                id = "s3",
++                title = "The process",
++                units = listOf(
++                    unit("s3u1", "Chlorophyll in the leaf absorbs light energy from the sun."),
++                    unit("s3u2", "That energy splits water molecules apart and powers a chain of reactions."),
++                    unit("s3u3", "The plant uses the released energy to combine carbon dioxide and water into glucose, a sugar."),
++                    unit("s3u4", "Oxygen is left over from splitting the water, and the plant releases it into the air.")
++                ),
++                keywords = listOf("work", "works", "process", "step", "steps", "procedure", "chlorophyll", "glucose", "oxygen", "reaction", "implement")
++            ),
++            LessonSection(
++                id = "s4",
++                title = "Example",
++                units = listOf(
++                    unit("s4u1", "Picture a leaf sitting in bright sunlight for a few hours."),
++                    unit("s4u2", "It draws in carbon dioxide and pulls water up from the roots."),
++                    unit("s4u3", "By the end of the day it has produced sugar to fuel the plant's growth, and released oxygen into the air around it.")
++                ),
++                keywords = listOf("example", "instance", "demonstrate", "demo", "sample", "illustrate", "show", "leaf")
++            ),
++            LessonSection(
++                id = "s5",
++                title = "Key takeaway",
++                units = listOf(
++                    unit("s5u1", "Photosynthesis turns sunlight, water, and carbon dioxide into sugar and oxygen."),
++                    unit("s5u2", "Plants use the sugar as fuel for growth."),
++                    unit("s5u3", "The oxygen they release along the way is the same oxygen most living things breathe.")
++                ),
++                keywords = listOf("summary", "summarize", "summarise", "recap", "takeaway", "remember", "important", "conclusion", "key", "main")
++            )
++        )
++    )
++
++    val plateTectonicsLesson = Lesson(
++        id = "lesson_plate_tectonics",
++        title = "Introduction to Plate Tectonics",
++        sections = listOf(
++            LessonSection(
++                id = "s1",
++                title = "What is plate tectonics?",
++                units = listOf(
++                    unit("s1u1", "Plate tectonics is the idea that Earth's outer shell is broken into large pieces called plates."),
++                    unit("s1u2", "These plates carry the continents and ocean floors, and they are always moving, just very slowly."),
++                    unit("s1u3", "Most plates drift only a few centimeters a year, about as fast as fingernails grow.")
++                ),
++                keywords = listOf("define", "definition", "meaning", "mean", "overview", "intro", "basics", "beginner", "plate", "plates")
++            ),
++            LessonSection(
++                id = "s2",
++                title = "Why the plates move",
++                units = listOf(
++                    unit("s2u1", "Deep inside the Earth, heat drives slow currents in the hot rock of the mantle."),
++                    unit("s2u2", "Those currents drag the plates floating above them along, the way a slow current drags a raft."),
++                    unit("s2u3", "Over millions of years, that steady drag reshapes where the continents sit.")
++                ),
++                keywords = listOf("move", "moves", "moving", "cause", "causes", "mantle", "convection", "current", "currents", "heat", "drive", "driver")
++            ),
++            LessonSection(
++                id = "s3",
++                title = "The three types of boundaries",
++                units = listOf(
++                    unit("s3u1", "Where two plates pull apart, new crust forms in the gap; that's a divergent boundary."),
++                    unit("s3u2", "Where two plates crash together, one may be pushed under the other, or both may buckle upward; that's a convergent boundary."),
++                    unit("s3u3", "Where two plates slide past each other sideways, that's a transform boundary."),
++                    unit("s3u4", "Most earthquakes and volcanoes happen right along these boundaries.")
++                ),
++                keywords = listOf("boundary", "boundaries", "type", "types", "divergent", "convergent", "transform", "earthquake", "volcano", "step", "steps")
++            ),
++            LessonSection(
++                id = "s4",
++                title = "Example",
++                units = listOf(
++                    unit("s4u1", "The Himalayas are still rising today because the plate carrying India is pushing into the plate carrying Asia."),
++                    unit("s4u2", "That collision is a convergent boundary, and it has been crumpling the land upward for millions of years."),
++                    unit("s4u3", "California's San Andreas Fault, by contrast, is a transform boundary where plates grind past each other sideways.")
++                ),
++                keywords = listOf("example", "instance", "demonstrate", "demo", "sample", "illustrate", "show", "himalayas")
++            ),
++            LessonSection(
++                id = "s5",
++                title = "Key takeaway",
++                units = listOf(
++                    unit("s5u1", "Earth's crust is broken into plates that drift on slow currents in the mantle."),
++                    unit("s5u2", "Where those plates meet, they pull apart, collide, or slide past one another."),
++                    unit("s5u3", "That motion, over millions of years, builds mountains and shapes the map of the continents.")
++                ),
++                keywords = listOf("summary", "summarize", "summarise", "recap", "takeaway", "remember", "important", "conclusion", "key", "main")
++            )
++        )
++    )
++
++    val allLessons = listOf(binarySearchLesson, photosynthesisLesson, plateTectonicsLesson)
+ }
+diff --git a/app/src/main/java/com/resonant/app/content/QuizData.kt b/app/src/main/java/com/resonant/app/content/QuizData.kt
+index 31e5f1b..42b0fb5 100644
+--- a/app/src/main/java/com/resonant/app/content/QuizData.kt
++++ b/app/src/main/java/com/resonant/app/content/QuizData.kt
+@@ -41,6 +41,54 @@ object QuizData {
+                 ),
+                 correctIndex = 2,
+                 explanation = "Cutting the remaining range in half on every step is what gives binary search its speed."
++            ),
++            QuizQuestion(
++                id = "q4",
++                prompt = SemanticUnit("q4_prompt", "Which three things does photosynthesis need?"),
++                options = listOf(
++                    QuizOption('A', "Sunlight, water, and carbon dioxide"),
++                    QuizOption('B', "Soil, wind, and heat"),
++                    QuizOption('C', "Only sunlight"),
++                    QuizOption('D', "Oxygen, salt, and shade")
++                ),
++                correctIndex = 0,
++                explanation = "A plant combines sunlight, water, and carbon dioxide to make its own sugar."
++            ),
++            QuizQuestion(
++                id = "q5",
++                prompt = SemanticUnit("q5_prompt", "What gas do plants release during photosynthesis?"),
++                options = listOf(
++                    QuizOption('A', "Carbon dioxide"),
++                    QuizOption('B', "Nitrogen"),
++                    QuizOption('C', "Hydrogen"),
++                    QuizOption('D', "Oxygen")
++                ),
++                correctIndex = 3,
++                explanation = "Splitting water to power the reaction leaves oxygen over, which the plant releases into the air."
++            ),
++            QuizQuestion(
++                id = "q6",
++                prompt = SemanticUnit("q6_prompt", "What is Earth's outer shell broken into, according to plate tectonics?"),
++                options = listOf(
++                    QuizOption('A', "A single solid shell"),
++                    QuizOption('B', "Large moving plates"),
++                    QuizOption('C', "Layers of ice"),
++                    QuizOption('D', "Floating islands only"),
++                ),
++                correctIndex = 1,
++                explanation = "Earth's crust is broken into large plates that carry the continents and ocean floors."
++            ),
++            QuizQuestion(
++                id = "q7",
++                prompt = SemanticUnit("q7_prompt", "What drags tectonic plates along?"),
++                options = listOf(
++                    QuizOption('A', "Ocean tides"),
++                    QuizOption('B', "Earth's rotation"),
++                    QuizOption('C', "Slow currents in the mantle"),
++                    QuizOption('D', "Wind erosion")
++                ),
++                correctIndex = 2,
++                explanation = "Heat drives slow currents in the mantle, and those currents drag the plates above them along."
+             )
+         )
+     )
