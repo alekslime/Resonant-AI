@@ -278,6 +278,10 @@ fun ChatScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         debug.setScreen("AI Chat")
+        // Start from an empty queue. AudioManager is shared by every screen, so without
+        // this next/previous/repeat here would walk the previous screen's items (Home's
+        // menu) until the first reply arrives.
+        audio.setQueue(emptyList(), autoAdvance = true)
         audio.announce(ChatData.greeting)
         audio.index.collect { idx ->
             val flat = flatten(exchanges)
@@ -305,8 +309,8 @@ fun ChatScreen(onBack: () -> Unit) {
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> { audio.next(); haptics.play(HapticPattern.NEXT) }
-                        SwipeDirection.DOWN -> { audio.previous(); haptics.play(HapticPattern.PREVIOUS) }
+                        SwipeDirection.UP -> haptics.play(if (audio.next()) HapticPattern.NEXT else HapticPattern.EDGE)
+                        SwipeDirection.DOWN -> haptics.play(if (audio.previous()) HapticPattern.PREVIOUS else HapticPattern.EDGE)
                         else -> {}
                     }
                 }

@@ -69,9 +69,11 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
         val target = (lastSectionIndex + delta).coerceIn(0, lesson.sections.size - 1)
         if (target == lastSectionIndex) return
         val idx = firstIndexOfSection(flat, target)
-        audio.jumpTo(idx)
         haptics.play(HapticPattern.SECTION_CHANGE)
+        // Title first, then the section's first unit queued behind it. The other order
+        // has the title flush the unit the instant it starts, and nothing resumes it.
         audio.announce(lesson.sections[target].title)
+        audio.jumpTo(idx, queueBehindAnnouncement = true)
     }
 
     val current = flat.getOrNull(flatIndex)

@@ -64,6 +64,13 @@ class AudioManager(context: Context) {
     private var streamOpen = false
     private var awaitingMore = false
 
+    // Speech requested while the engine is still starting (cold launch, or coming back
+    // from the background) is held here and replayed the moment the engine is ready,
+    // instead of being silently dropped. Main-thread only.
+    private class PendingAnnouncement(val text: String, val onFinished: (() -> Unit)?)
+    private var pendingAnnouncement: PendingAnnouncement? = null
+    private var pendingCurrent = false
+
     init {
         initEngine()
     }
@@ -80,7 +87,15 @@ class AudioManager(context: Context) {
             // TextToSpeech constructor has returned, which would leave `tts` still
             // null here. Posting guarantees the assignment below has landed.
             mainHandler.post {
-                if (status != TextToSpeech.SUCCESS) return@post
+                if (status != TextToSpeech.SUCCESS) {
+                    // No usable engine. Release it so the next onStart can try again, and
+                    // let anything waiting on speech go: announce() promises callers that
+                    // onFinished is never left hanging.
+                    tts?.shutdown()
+                    tts = null
+                    dropPending()
+                    return@post
+                }
                 val t = tts ?: return@post
                 t.language = Locale.US
                 t.setSpeechRate(speed)
@@ -127,6 +142,7 @@ class AudioManager(context: Context) {
                 })
                 ready = true
                 _isReady.value = true
+                replayPending(t)
             }
         }
     }
@@ -181,7 +197,12 @@ class AudioManager(context: Context) {
 
     fun speakCurrent(queueBehindAnnouncement: Boolean = false) {
         val unit = _currentUnit.value ?: return
-        if (!ready) return
+        if (!ready) {
+            // Engine still starting: speak as soon as it can. With no engine at all
+            // there is nothing to wait for.
+            if (tts != null) pendingCurrent = true
+            return
+        }
         _isPaused.value = false
         val t = tts ?: return
         t.setSpeechRate(speed)
@@ -215,12 +236,12 @@ class AudioManager(context: Context) {
         return true
     }
 
-    fun jumpTo(newIndex: Int) {
+    fun jumpTo(newIndex: Int, queueBehindAnnouncement: Boolean = false) {
         val q = _queue.value
         val clamped = newIndex.coerceIn(0, (q.size - 1).coerceAtLeast(0))
         _index.value = clamped
         _currentUnit.value = q.getOrNull(clamped)
-        speakCurrent()
+        speakCurrent(queueBehindAnnouncement)
     }
 
     // Transport
@@ -324,8 +345,16 @@ class AudioManager(context: Context) {
      */
     fun announce(text: String, onFinished: (() -> Unit)? = null) {
         val t = tts
-        if (t == null || !ready) {
+        if (t == null) {
+            // No engine at all: nothing will ever be spoken, so don't make the caller wait.
             onFinished?.let { mainHandler.post(it) }
+            return
+        }
+        if (!ready) {
+            // Engine still starting. Hold the latest announcement and speak it when ready;
+            // one it replaces counts as interrupted, so its caller is released too.
+            pendingAnnouncement?.onFinished?.let { mainHandler.post(it) }
+            pendingAnnouncement = PendingAnnouncement(text, onFinished)
             return
         }
         t.setSpeechRate(speed)
@@ -353,6 +382,27 @@ class AudioManager(context: Context) {
         }
     }
 
+    /** Speaks whatever was requested while the engine was starting. Announcement first. */
+    private fun replayPending(t: TextToSpeech) {
+        val announcement = pendingAnnouncement
+        val current = pendingCurrent
+        pendingAnnouncement = null
+        pendingCurrent = false
+        if (announcement != null) {
+            t.setSpeechRate(speed)
+            speakAnnouncement(t, announcement.text, announcement.onFinished)
+        }
+        if (current) speakCurrent(queueBehindAnnouncement = announcement != null)
+    }
+
+    /** Gives up on speech that was waiting for an engine, releasing any caller waiting on it. */
+    private fun dropPending() {
+        pendingCurrent = false
+        val announcement = pendingAnnouncement
+        pendingAnnouncement = null
+        announcement?.onFinished?.invoke()
+    }
+
     private fun settleAllAnnouncements() {
         activeAnnounceId = null
         val pending = announceCallbacks.values.toList()
@@ -378,6 +428,7 @@ class AudioManager(context: Context) {
         tts?.shutdown()
         tts = null
         settleAllAnnouncements()
+        dropPending()
     }
 
     /** Called from Activity.onStart. Rebuilds the engine released above. */
@@ -392,5 +443,6 @@ class AudioManager(context: Context) {
         tts?.shutdown()
         tts = null
         settleAllAnnouncements()
+        dropPending()
     }
 }
