@@ -1,7 +1,12 @@
 package com.resonant.app.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.app.Activity
@@ -14,6 +19,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.resonant.app.content.LessonData
 import com.resonant.app.content.QuizData
+import com.resonant.app.content.QuizQuestion
+import com.resonant.app.content.QuizSet
 import com.resonant.app.ui.chat.ChatScreen
 import com.resonant.app.ResonantApp
 import com.resonant.app.ui.home.HomeScreen
@@ -32,6 +39,16 @@ object Routes {
     const val LESSONS = "lessons"
     const val LESSON = "lesson/{lessonId}"
     const val QUIZ = "quiz"
+    // Item 2: a second quiz destination, played out with whatever QuizSet the
+    // results screen just built from the missed questions. A route of its own
+    // rather than a param on QUIZ, so the Home > Quiz entry point never has to
+    // know or care that retries exist.
+    const val QUIZ_REVIEW = "quiz_review"
+    // Carries only correct/total, same as before. The missed QuizQuestion list
+    // itself can't ride along in a route string, so it's kept as plain
+    // in-memory state in ResonantNavHost instead (see lastMissed below) — the
+    // same pattern the QUIZ route already uses to hand a whole QuizSet to
+    // QuizScreen without threading it through arguments.
     const val QUIZ_RESULTS = "quiz_results/{correct}/{total}"
     const val CHAT = "chat"
     const val SETTINGS = "settings"
@@ -47,6 +64,13 @@ object Routes {
 fun ResonantNavHost(startDestination: String = Routes.HOME) {
     val navController = rememberNavController()
     val prefs = (LocalContext.current.applicationContext as ResonantApp).container.prefs
+
+    // Item 2: which questions were missed on the last quiz round (QUIZ or
+    // QUIZ_REVIEW), read by QUIZ_RESULTS to decide whether to offer a retry,
+    // and by QUIZ_REVIEW to know what to play. Nav-host-scoped state, the same
+    // way QUIZ already hands QuizScreen a whole QuizSet without a route arg —
+    // a list of QuizQuestion has nowhere to go in a route string.
+    var lastMissed by remember { mutableStateOf<List<QuizQuestion>>(emptyList()) }
 
     // Single definition of "back". Pops one entry; if this is the root there is
     // nothing to pop, so we land on Home rather than dropping out of the app.
@@ -104,7 +128,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         composable(Routes.QUIZ) {
             QuizScreen(
                 quiz = QuizData.sampleQuiz,
-                onFinished = { correct, total ->
+                onFinished = { correct, total, missed ->
+                    lastMissed = missed
                     navController.navigate(Routes.quizResults(correct, total)) {
                         popUpTo(Routes.QUIZ) { inclusive = true }
                     }
@@ -118,6 +143,39 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                 }
             )
         }
+        composable(Routes.QUIZ_REVIEW) {
+            val questions = lastMissed
+            if (questions.isEmpty()) {
+                // Reached with nothing to review — e.g. process death restored
+                // this route without the in-memory missed list. Bounce to
+                // Lessons rather than hand QuizScreen an empty question list.
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.LESSONS) {
+                        popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
+                    }
+                }
+            } else {
+                val reviewQuiz = QuizSet(
+                    id = "quiz_review",
+                    title = "Review: Missed Questions",
+                    questions = questions
+                )
+                QuizScreen(
+                    quiz = reviewQuiz,
+                    onFinished = { correct, total, missed ->
+                        lastMissed = missed
+                        navController.navigate(Routes.quizResults(correct, total)) {
+                            popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
+                        }
+                    },
+                    onBack = {
+                        navController.navigate(Routes.LESSONS) {
+                            popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
         composable(
             Routes.QUIZ_RESULTS,
             arguments = listOf(
@@ -130,7 +188,14 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             QuizResultsScreen(
                 correct = correct,
                 total = total,
+                missedCount = lastMissed.size,
+                onRetryMissed = {
+                    navController.navigate(Routes.QUIZ_REVIEW) {
+                        popUpTo(Routes.QUIZ_RESULTS) { inclusive = true }
+                    }
+                },
                 onDone = {
+                    lastMissed = emptyList()
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.HOME) { inclusive = true }
                     }

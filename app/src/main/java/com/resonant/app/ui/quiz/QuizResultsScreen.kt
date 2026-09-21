@@ -23,17 +23,35 @@ import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
-fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
+fun QuizResultsScreen(
+    correct: Int,
+    total: Int,
+    // Item 2: empty when the score is perfect, or when this results screen is
+    // itself showing the outcome of a retry round — either way there is
+    // nothing left to offer a retry of.
+    missedCount: Int,
+    onRetryMissed: () -> Unit,
+    onDone: () -> Unit
+) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val colors = LocalResonantColors.current
+    val canRetry = missedCount > 0
 
-    LaunchedEffect(correct, total) {
+    // Kept out of the spoken instructions when there's nothing to retry, so a
+    // perfect score doesn't get a dangling "tap right edge" that does nothing.
+    val instructions = if (canRetry) {
+        "$missedCount missed. Tap the right edge to retry those, or tap center to return home."
+    } else {
+        "Tap to return home."
+    }
+
+    LaunchedEffect(correct, total, missedCount) {
         debug.setScreen("Quiz Results")
         haptics.play(HapticPattern.CONFIRM)
         audio.setQueue(
-            listOf(SemanticUnit("results", "You scored $correct out of $total. Tap to return home.")),
+            listOf(SemanticUnit("results", "You scored $correct out of $total. $instructions")),
             startIndex = 0,
             autoAdvance = false
         )
@@ -45,7 +63,11 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                 is ResonantGesture.Tap -> when (gesture.zone) {
                     InteractionZone.CENTER -> { haptics.play(HapticPattern.CONFIRM); onDone() }
                     InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
-                    InteractionZone.RIGHT_EDGE -> {}
+                    InteractionZone.RIGHT_EDGE -> if (canRetry) {
+                        haptics.play(HapticPattern.SELECT)
+                        audio.announce("Retrying $missedCount missed question${if (missedCount == 1) "" else "s"}.")
+                        onRetryMissed()
+                    }
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
@@ -55,7 +77,7 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "Quiz Results. You scored $correct out of $total. Tap to return home."
+                    "Quiz Results. You scored $correct out of $total. $instructions"
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
@@ -69,7 +91,8 @@ fun QuizResultsScreen(correct: Int, total: Int, onDone: () -> Unit) {
                     color = colors.text
                 )
                 Text(
-                    "Tap anywhere to return home.",
+                    if (canRetry) "Tap center for home. Tap the right edge to retry the $missedCount missed."
+                    else "Tap anywhere to return home.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = colors.text,
                     modifier = Modifier.padding(top = 20.dp)

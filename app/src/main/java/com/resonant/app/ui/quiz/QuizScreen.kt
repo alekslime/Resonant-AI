@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.resonant.app.content.QuizQuestion
 import com.resonant.app.content.QuizSet
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -33,7 +34,13 @@ import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
-fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, onBack: () -> Unit) {
+fun QuizScreen(
+    quiz: QuizSet,
+    // Item 2: the results screen offers a retry of just the ones missed, so
+    // finishing has to report WHICH questions those were, not just the count.
+    onFinished: (correct: Int, total: Int, missed: List<QuizQuestion>) -> Unit,
+    onBack: () -> Unit
+) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -45,6 +52,9 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
     var submitted by remember { mutableStateOf(false) }
     var lastAnswerCorrect by remember { mutableStateOf<Boolean?>(null) }
     var correctCount by remember { mutableIntStateOf(0) }
+    // Keyed on quiz.id so a fresh quiz (e.g. starting a retry-missed round)
+    // never inherits misses from a previous round still sitting in memory.
+    val missed = remember(quiz.id) { mutableListOf<QuizQuestion>() }
 
     val question = quiz.questions[questionIndex]
 
@@ -87,6 +97,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
             haptics.play(HapticPattern.CORRECT)
             audio.announce("Correct. ${question.explanation}")
         } else {
+            missed.add(question)
             haptics.play(HapticPattern.INCORRECT)
             audio.announce("Incorrect. ${question.explanation}")
         }
@@ -97,7 +108,7 @@ fun QuizScreen(quiz: QuizSet, onFinished: (correct: Int, total: Int) -> Unit, on
         if (questionIndex + 1 < quiz.questions.size) {
             loadQuestion(questionIndex + 1)
         } else {
-            onFinished(correctCount, quiz.questions.size)
+            onFinished(correctCount, quiz.questions.size, missed.toList())
         }
     }
 
