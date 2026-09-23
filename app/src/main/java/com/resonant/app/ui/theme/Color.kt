@@ -28,6 +28,18 @@ val ResonantLightGray = Color(0xFFE8E6E1)
 val ResonantOrange = Color(0xFFFF5A1F)
 val ResonantYellow = Color(0xFFFFD400)
 
+// ---------------------------------------------------------------------------
+// Flat brand orange — the Splash frame's background (Figma node 2002:52) and,
+// per the same redesign, Home's. Deliberately NOT part of the light/dark
+// gradient system every other screen sits on (see ResonantSurface): these two
+// screens are a fixed brand moment, the same way the launcher icon isn't
+// re-themed for dark mode either.
+val BrandOrange = Color(0xFFFFAE00)
+
+/** Text/icon color on top of [BrandOrange] — fixed, not theme-derived, same
+ *  reasoning as the background itself. */
+val BrandInk = Color(0xFF0A0A0A)
+
 // Dark-theme accent text. Lighter than ResonantOrange on purpose: FF5A1F
 // only measures ~5:1 against the darkest gradient stop. FF9D3D clears 7:1
 // (WCAG AAA) against every stop this app actually places text on.

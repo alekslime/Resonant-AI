@@ -22,6 +22,7 @@ import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.ui.components.TtsUnavailableBanner
 import com.resonant.app.ui.nav.ResonantNavHost
 import com.resonant.app.ui.nav.Routes
+import com.resonant.app.ui.splash.SplashScreen
 import com.resonant.app.ui.talkback.TalkBackNoticeScreen
 import com.resonant.app.ui.theme.ResonantTheme
 
@@ -64,26 +65,37 @@ class MainActivity : ComponentActivity() {
                     onDispose { accessibilityManager.removeTouchExplorationStateChangeListener(listener) }
                 }
                 var bypassWarning by remember { mutableStateOf(false) }
+                // The splash plays on top of whichever screen is actually ready
+                // underneath (TalkBack notice or the real nav host), so its exit
+                // animation uncovers live content instead of handing off to a
+                // blank frame while something else loads.
+                var showSplash by remember { mutableStateOf(true) }
 
                 CompositionLocalProvider(
                     LocalAudioManager provides container.audioManager,
                     LocalHapticManager provides container.hapticManager,
                     LocalDebugState provides container.debugState
                 ) {
-                    if (touchExplorationOn && !bypassWarning) {
-                        TalkBackNoticeScreen(
-                            onOpenAccessibilitySettings = {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            },
-                            onRecheck = {
-                                touchExplorationOn = isTouchExplorationOn(accessibilityManager)
-                            },
-                            onContinueAnyway = { bypassWarning = true }
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize()) {
-                            ResonantNavHost(startDestination = start)
-                            TtsUnavailableBanner(container.audioManager, container.hapticManager, lifecycle)
+                    Box(Modifier.fillMaxSize()) {
+                        if (touchExplorationOn && !bypassWarning) {
+                            TalkBackNoticeScreen(
+                                onOpenAccessibilitySettings = {
+                                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                },
+                                onRecheck = {
+                                    touchExplorationOn = isTouchExplorationOn(accessibilityManager)
+                                },
+                                onContinueAnyway = { bypassWarning = true }
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize()) {
+                                ResonantNavHost(startDestination = start)
+                                TtsUnavailableBanner(container.audioManager, container.hapticManager, lifecycle)
+                            }
+                        }
+
+                        if (showSplash) {
+                            SplashScreen(onFinished = { showSplash = false })
                         }
                     }
                 }
