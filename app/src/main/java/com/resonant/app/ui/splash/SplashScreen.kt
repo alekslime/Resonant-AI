@@ -113,8 +113,8 @@ fun SplashScreen(onFinished: () -> Unit) {
                 anim.animateTo(
                     1f,
                     spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMedium
                     )
                 )
             }
@@ -132,7 +132,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                 anim.animateTo(
                     1f,
                     spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMediumLow
                     )
                 )
@@ -204,8 +204,8 @@ private fun BrailleDot(reveal: Float, modifier: Modifier = Modifier) {
                 .size(DOT_RADIUS * 2)
                 .graphicsLayer {
                     val ring = reveal.coerceAtLeast(0f)
-                    scaleX = 1f + ring * 1.8f
-                    scaleY = 1f + ring * 1.8f
+                    scaleX = 1f + ring * 1.1f
+                    scaleY = 1f + ring * 1.1f
                     alpha = (1f - ring).coerceIn(0f, 1f) * 0.5f
                 }
                 .border(2.dp, SplashMark, CircleShape)
