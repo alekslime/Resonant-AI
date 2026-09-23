@@ -29,7 +29,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.content.SemanticUnit
@@ -68,10 +67,14 @@ private val homeItems = listOf(
  * Decisions made turning this into code:
  *  - The two brand fonts (Agharti / GC Sublime) aren't in the project yet;
  *    see ui/theme/Fonts.kt for exactly where the files need to go.
- *  - The Figma comp distinguishes focus by color alone (black vs. white on
- *    orange), which measures ~1.9:1 contrast — well under WCAG AA, and the
- *    opposite of the deliberate contrast work described in Color.kt. Every
- *    item is black here; focus is shown by weight + underline instead.
+ *  - Focus is shown by color alone (black on the focused item, white on the
+ *    rest, on the [BrandOrange] background), per the reference design —
+ *    matched here exactly as an explicit call after flagging that the
+ *    white/orange pairing measures ~1.9:1 contrast, under WCAG AA and short
+ *    of the deliberate contrast work described in Color.kt. If that ever
+ *    needs revisiting, pairing the color with weight and/or an underline on
+ *    the focused item (as this screen briefly did) restores a second,
+ *    color-independent signal without changing the color scheme itself.
  *  - The mic/settings icons Figma exports as SVGs couldn't be downloaded in
  *    this sandbox (no network access to Figma's asset URLs) — see
  *    IconPlaceholders.kt for the placeholders standing in for them.
@@ -82,11 +85,10 @@ private val WordmarkStyle = TextStyle(
     fontSize = 130.sp
 )
 
-private fun menuStyle(focused: Boolean) = TextStyle(
+private val MenuTextStyle = TextStyle(
     fontFamily = GcSublimeRegular,
-    fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal,
-    fontSize = 64.sp,
-    textDecoration = if (focused) TextDecoration.Underline else TextDecoration.None
+    fontWeight = FontWeight.Bold,
+    fontSize = 64.sp
 )
 
 private val AskBarStyle = TextStyle(fontFamily = GcSublimeRegular, fontSize = 20.sp)
@@ -207,8 +209,8 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                         val focused = i == index
                         Text(
                             text = item.label,
-                            style = menuStyle(focused),
-                            color = BrandInk,
+                            style = MenuTextStyle,
+                            color = if (focused) BrandInk else Color.White,
                             modifier = Modifier
                                 .clickable {
                                     audio.jumpTo(i)
