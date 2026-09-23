@@ -18,19 +18,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -184,19 +183,32 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             }
         }) {
             Column(Modifier.fillMaxSize()) {
-                // Wordmark, cropped at the very top per the Figma frame (its box
-                // starts 14dp above the screen's own top edge) — nothing above
-                // y=0 to draw into, so this reads as a crop rather than needing
-                // an explicit clip.
+                // Wordmark. Auto-shrinks to whatever size actually fits this
+                // font's real character widths, rather than a hardcoded 130sp
+                // tuned against a different (fallback) font's metrics — that
+                // was the actual bug: 130sp fit the system font's proportions,
+                // not Agharti's. Top-aligned with no crop for the same reason:
+                // the -14dp "crop to match Figma" offset was tuned against the
+                // fallback font's line-height, which is why swapping in the
+                // real font made it crop far more than intended. Once this is
+                // visible with the real font, dial the crop back in as an
+                // actual measured Modifier.height + clip if you still want it,
+                // rather than another guessed offset.
+                var wordmarkSize by remember { mutableStateOf(130.sp) }
                 Text(
                     text = "RESONANT",
-                    style = WordmarkStyle,
+                    style = WordmarkStyle.copy(fontSize = wordmarkSize),
                     color = BrandInk,
                     maxLines = 1,
+                    softWrap = false,
+                    onTextLayout = { result ->
+                        if (result.didOverflowWidth && wordmarkSize > 40.sp) {
+                            wordmarkSize *= 0.95f
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = HomeHorizontalPadding)
-                        .offset(y = (-14).dp)
                 )
 
                 Spacer(Modifier.height(144.dp))
