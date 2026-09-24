@@ -19,6 +19,7 @@ val ollamaModel: String = localProps.getProperty("ollama.model", "llama3.2")
 android {
     namespace = "com.resonant.app"
     compileSdk = 34
+    ndkVersion = "26.1.10909125"
 
     defaultConfig {
         applicationId = "com.resonant.app"
@@ -31,6 +32,26 @@ android {
 
         buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
         buildConfigField("String", "OLLAMA_MODEL", "\"$ollamaModel\"")
+
+        // Local Whisper (offline speech-to-text) — see app/src/main/cpp/CMakeLists.txt
+        // for what needs to be vendored before this actually builds.
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
+                arguments += listOf("-DANDROID_STL=c++_shared")
+            }
+        }
+        ndk {
+            // Real devices only for now; add "x86_64" too if you need the emulator.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {

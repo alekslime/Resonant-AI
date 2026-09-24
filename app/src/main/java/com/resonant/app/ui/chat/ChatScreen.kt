@@ -51,6 +51,7 @@ import com.resonant.app.network.spokenErrorFor
 import com.resonant.app.network.warmUpModel
 import com.resonant.app.speech.SentenceChunker
 import com.resonant.app.speech.SpeechInputManager
+import com.resonant.app.speech.VoiceInputController
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
@@ -88,7 +89,7 @@ fun ChatScreen(onBack: () -> Unit) {
     val colors = LocalResonantColors.current
     val scope = rememberCoroutineScope()
 
-    val speech = remember { SpeechInputManager(context) }
+    val speech = remember { VoiceInputController(context) }
     var alive by remember { mutableStateOf(true) }
     var requestJob by remember { mutableStateOf<Job?>(null) }
     // Bumped every time a request is cancelled or replaced. A cancelled request's
@@ -99,6 +100,7 @@ fun ChatScreen(onBack: () -> Unit) {
         onDispose {
             alive = false
             speech.stopListening()
+            speech.release() // frees the native Whisper model — nothing does this automatically
             requestJob?.cancel()
             audio.endStream()
         }
