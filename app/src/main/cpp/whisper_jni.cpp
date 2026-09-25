@@ -18,9 +18,33 @@
 #define LOG_TAG "WhisperJNI"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+// Routes whisper.cpp/ggml's internal logging to Logcat. Without this, errors
+// from inside whisper_init_from_file_with_params / whisper_full (a bad model
+// file, an unsupported CPU feature, etc.) are silently swallowed instead of
+// showing up anywhere — this is the difference between "it just returns 0/
+// fails with no explanation" and an actual error message to search for.
+// Pattern taken from whisper.cpp's own examples/whisper.android JNI sample.
+static void ggml_log_to_logcat(enum ggml_log_level level, const char *text, void * /*user_data*/) {
+    const int androidLevel = (level == GGML_LOG_LEVEL_ERROR) ? ANDROID_LOG_ERROR
+                            : (level == GGML_LOG_LEVEL_WARN)  ? ANDROID_LOG_WARN
+                                                               : ANDROID_LOG_INFO;
+    __android_log_print(androidLevel, LOG_TAG, "%s", text);
+}
+
+static bool g_log_installed = false;
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_resonant_app_speech_whisper_WhisperNative_nativeInit(
         JNIEnv *env, jobject /*thiz*/, jstring modelPath) {
+    if (!g_log_installed) {
+        // ggml_log_set is the ggml-level hook; whisper.cpp's own logging
+        // routes through it. If your checkout instead only exposes
+        // whisper_log_set(...), swap this one line for that — same idea,
+        // whisper.cpp has had both at different points.
+        ggml_log_set(ggml_log_to_logcat, nullptr);
+        g_log_installed = true;
+    }
+
     const char *path = env->GetStringUTFChars(modelPath, nullptr);
 
     struct whisper_context_params cparams = whisper_context_default_params();

@@ -32,9 +32,22 @@ add_subdirectory(${WHISPER_DIR} whisper_build)
 
 add_library(whisper_jni SHARED whisper_jni.cpp)
 
+# whisper_jni.cpp only calls whisper.cpp's public API (whisper_*), never
+# ggml internals directly, so it only needs whisper.h's directory. Do NOT
+# add ggml's internal src/ include paths here on the assumption that fixes
+# a missing-header error — that's a real, documented problem (see
+# ggml-org/whisper.cpp#2624 and #2647), but it hits people who hand-list
+# ggml's individual .c files as their own build target, bypassing whisper.cpp's
+# own CMake. Building it correctly through add_subdirectory() above means
+# ggml's internal includes are that target's problem, already solved by its
+# own CMakeLists — not something a caller of the public API should need to
+# know about. If you DO hit a "fatal error: ... not found" pointing at a
+# ggml-internal header (ggml-cpu-impl.h, ggml-aarch64.c, etc.), it means
+# something about that assumption didn't hold for whatever version you
+# cloned — that's the CMake issue to search for by exact filename, not a
+# sign to start guessing extra include paths here.
 target_include_directories(whisper_jni PRIVATE
     ${WHISPER_DIR}/include
-    ${WHISPER_DIR}/ggml/include
 )
 
 find_library(log-lib log)
