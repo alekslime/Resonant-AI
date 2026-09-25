@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -23,6 +25,11 @@ import java.net.URL
  * This class never triggers a download on its own — a ~148MB pull shouldn't
  * start silently, especially on cellular. Something explicit (a Settings
  * toggle, an onboarding step) should call [ensureDownloaded].
+ *
+ * Safe to construct more than once (e.g. one instance per screen that needs
+ * it) — [downloadMutex] is shared across every instance in the process, so
+ * two instances calling [ensureDownloaded] around the same time serialize
+ * onto one real download instead of both writing to the same temp file.
  */
 class WhisperModelManager(context: Context) {
 
@@ -47,18 +54,25 @@ class WhisperModelManager(context: Context) {
 
     fun modelPath(): String = modelFile.absolutePath
 
-    /** Idempotent — safe to call again after a failed or interrupted attempt. */
+    /** Idempotent — safe to call again after a failed or interrupted attempt, or concurrently from another instance. */
     suspend fun ensureDownloaded() {
         if (isModelPresent()) {
             _state.value = State.Ready
             return
         }
         withContext(Dispatchers.IO) {
-            try {
-                download()
-                _state.value = State.Ready
-            } catch (e: IOException) {
-                _state.value = State.Failed(e.message ?: "Download failed.")
+            downloadMutex.withLock {
+                // Re-check: another instance may have finished while we were waiting for the lock.
+                if (isModelPresent()) {
+                    _state.value = State.Ready
+                    return@withLock
+                }
+                try {
+                    download()
+                    _state.value = State.Ready
+                } catch (e: IOException) {
+                    _state.value = State.Failed(e.message ?: "Download failed.")
+                }
             }
         }
     }
@@ -80,6 +94,11 @@ class WhisperModelManager(context: Context) {
 
             val total = connection.contentLengthLong
             var downloaded = 0L
+            // Emitted state drives UI (and, indirectly, accessibility announcements) —
+            // only emit on an actual percentage change, not every ~64KB chunk. On a fast
+            // connection that chunk loop can fire hundreds of times a second; nothing
+            // downstream needs updates anywhere near that granular.
+            var lastEmittedPercent = -1
             connection.inputStream.use { input ->
                 tmp.outputStream().use { output ->
                     val buffer = ByteArray(64 * 1024)
@@ -88,7 +107,17 @@ class WhisperModelManager(context: Context) {
                         if (read == -1) break
                         output.write(buffer, 0, read)
                         downloaded += read
-                        _state.value = State.Downloading(downloaded, total)
+                        if (total > 0) {
+                            val percent = (downloaded * 100 / total).toInt()
+                            if (percent != lastEmittedPercent) {
+                                lastEmittedPercent = percent
+                                _state.value = State.Downloading(downloaded, total)
+                            }
+                        } else {
+                            // No Content-Length from the server — can't compute a percentage,
+                            // so just report raw bytes as they come (rare fallback case).
+                            _state.value = State.Downloading(downloaded, total)
+                        }
                     }
                 }
             }
@@ -119,5 +148,11 @@ class WhisperModelManager(context: Context) {
 
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 30_000 // per-read stall timeout, not total transfer time
+
+        // Process-wide on purpose: guards the shared temp-file path against two
+        // independent WhisperModelManager instances (one per screen, say) both
+        // downloading at once.
+        private val downloadMutex = Mutex()
     }
 }
+

@@ -30,20 +30,48 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
+import com.resonant.app.speech.whisper.WhisperModelManager
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val SOUND_CUES = "Sound cues"
+private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, SOUND_CUES, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, SOUND_CUES, OFFLINE_VOICE_MODEL, DEBUG_MODE)
 
-/** What is shown and spoken for an item. The toggle carries its state, so it is never a guess. */
-private fun labelFor(item: String, soundCuesOn: Boolean) =
-    if (item == SOUND_CUES) "$SOUND_CUES: ${if (soundCuesOn) "on" else "off"}" else item
+/** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
+private fun labelFor(item: String, soundCuesOn: Boolean, voiceModelState: WhisperModelManager.State) = when (item) {
+    SOUND_CUES -> "$SOUND_CUES: ${if (soundCuesOn) "on" else "off"}"
+    OFFLINE_VOICE_MODEL -> "$OFFLINE_VOICE_MODEL: ${voiceModelStatusText(voiceModelState)}"
+    else -> item
+}
+
+private fun voiceModelStatusText(state: WhisperModelManager.State): String = when (state) {
+    is WhisperModelManager.State.NotDownloaded -> "not downloaded"
+    is WhisperModelManager.State.Downloading -> {
+        val percent = if (state.totalBytes > 0) (state.bytesDownloaded * 100 / state.totalBytes).toInt() else null
+        if (percent != null) "downloading, $percent percent" else "downloading"
+    }
+    is WhisperModelManager.State.Ready -> "ready"
+    is WhisperModelManager.State.Failed -> "download failed, tap to retry"
+}
+
+/** Coarse category only — used to decide when the voice model's line is worth re-announcing.
+ *  A percentage tick during download is not; NotDownloaded -> Downloading -> Ready/Failed is. */
+private fun voiceModelCategory(state: WhisperModelManager.State): String = when (state) {
+    is WhisperModelManager.State.NotDownloaded -> "not_downloaded"
+    is WhisperModelManager.State.Downloading -> "downloading"
+    is WhisperModelManager.State.Ready -> "ready"
+    is WhisperModelManager.State.Failed -> "failed"
+}
 
 @Composable
 fun SettingsScreen(
@@ -55,24 +83,51 @@ fun SettingsScreen(
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val colors = LocalResonantColors.current
-    val soundCues = (LocalContext.current.applicationContext as ResonantApp).container.soundCues
+    val context = LocalContext.current
+    val soundCues = (context.applicationContext as ResonantApp).container.soundCues
     var soundCuesOn by remember { mutableStateOf(soundCues.enabled) }
     var index by remember { mutableIntStateOf(0) }
     val speedIndex by audio.speedIndex.collectAsState()
     val speed = AudioManager.SPEEDS[speedIndex]
+
+    // Only the model manager is needed here — no need to also drag in
+    // WhisperSpeechInputManager/SpeechInputManager just to reach it, so this
+    // reaches into WhisperModelManager directly rather than through the
+    // heavier VoiceInputController that ChatScreen uses for actual listening.
+    val voiceModel = remember { WhisperModelManager(context.applicationContext) }
+    val voiceModelState by voiceModel.state.collectAsState()
+    val voiceModelCategory = voiceModelCategory(voiceModelState)
+    // Downloads must outlive this screen (leaving Settings mid-download
+    // shouldn't cancel it), so this is a plain unscoped launch tied to the
+    // process, not rememberCoroutineScope() — the same reasoning as
+    // VoiceInputController.downloadOfflineModel(), which this mirrors.
+    val downloadScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
 
     // Single effect: setQueue must land before collection starts, or the first
     // collected value could be the pre-queue default instead of the real start.
     LaunchedEffect(Unit) {
         debug.setScreen("Settings")
         audio.setQueue(
-            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn)) },
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState)) },
             startIndex = 0,
             autoAdvance = false
         )
         audio.index.collect { idx ->
             index = idx.coerceIn(0, (settingsItems.size - 1).coerceAtLeast(0))
         }
+    }
+
+    // Re-announce the voice-model line only when its category actually changes
+    // (not downloaded -> downloading -> ready/failed), never on a percentage
+    // tick — and only at whatever the current focus already is, so a
+    // background download finishing doesn't yank focus away from wherever
+    // the person actually is in this list.
+    LaunchedEffect(voiceModelCategory) {
+        audio.setQueue(
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState)) },
+            startIndex = index,
+            autoAdvance = false
+        )
     }
 
     // One place for "the user chose this item", shared by the tap gesture and the on-screen
@@ -86,12 +141,24 @@ fun SettingsScreen(
                 soundCuesOn = now
                 // Re-queueing at the same position speaks the new state ("Sound cues: off").
                 audio.setQueue(
-                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, now)) },
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, now, voiceModelState)) },
                     startIndex = settingsItems.indexOf(SOUND_CUES),
                     autoAdvance = false
                 )
                 // Turning them on: sound one, so the change is heard and not only announced.
                 if (now) haptics.play(HapticPattern.CONFIRM)
+            }
+            OFFLINE_VOICE_MODEL -> when (voiceModelState) {
+                is WhisperModelManager.State.NotDownloaded, is WhisperModelManager.State.Failed -> {
+                    audio.announce("Downloading offline voice model. This is a one-time download of about 150 megabytes — best on Wi-Fi.")
+                    downloadScope.launch { voiceModel.ensureDownloaded() }
+                }
+                is WhisperModelManager.State.Downloading -> {
+                    audio.announce("Still ${voiceModelStatusText(voiceModelState)}.")
+                }
+                is WhisperModelManager.State.Ready -> {
+                    audio.announce("Offline voice model is already downloaded and ready.")
+                }
             }
             DEBUG_MODE -> onOpenDebug()
         }
@@ -123,7 +190,7 @@ fun SettingsScreen(
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "Settings. Speaking at ${audio.speedLabel(speed)}. Hold the right edge and drag up to speed up, down to slow down. Currently focused: ${labelFor(settingsItems[index], soundCuesOn)}."
+                    "Settings. Speaking at ${audio.speedLabel(speed)}. Hold the right edge and drag up to speed up, down to slow down. Currently focused: ${labelFor(settingsItems[index], soundCuesOn, voiceModelState)}."
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
@@ -142,7 +209,7 @@ fun SettingsScreen(
                 )
                 settingsItems.forEachIndexed { i, item ->
                     Text(
-                        labelFor(item, soundCuesOn),
+                        labelFor(item, soundCuesOn, voiceModelState),
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = (-0.6).sp
