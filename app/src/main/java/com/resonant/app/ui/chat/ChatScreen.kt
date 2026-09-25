@@ -278,19 +278,27 @@ fun ChatScreen(onBack: () -> Unit) {
         // the recognizer can pick up the app's own voice as the user's question.
         audio.announce("Listening.") {
             if (alive && listening) {
-                speech.startListening { outcome ->
-                    listening = false
-                    when (outcome) {
-                        is SpeechInputManager.Outcome.Success -> {
-                            haptics.play(HapticPattern.CONFIRM)
-                            // One announcement, not two: a second announce() would flush this one,
-                            // and the reply's first sentence is queued behind it (see askModel).
-                            audio.announce("You said: ${outcome.text}. Thinking.")
-                            askModel(outcome.text)
+                speech.startListening(
+                    onOutcome = { outcome ->
+                        listening = false
+                        when (outcome) {
+                            is SpeechInputManager.Outcome.Success -> {
+                                haptics.play(HapticPattern.CONFIRM)
+                                // One announcement, not two: a second announce() would flush this one,
+                                // and the reply's first sentence is queued behind it (see askModel).
+                                audio.announce("You said: ${outcome.text}. Thinking.")
+                                askModel(outcome.text)
+                            }
+                            is SpeechInputManager.Outcome.Error -> handleError(outcome.message)
                         }
-                        is SpeechInputManager.Outcome.Error -> handleError(outcome.message)
+                    },
+                    onStatus = { status, onSpoken ->
+                        // Same reasoning as "Listening." above: the mic must not
+                        // open until this has actually finished being spoken, or
+                        // Whisper would transcribe this announcement itself.
+                        if (alive && listening) audio.announce(status, onSpoken) else onSpoken()
                     }
-                }
+                )
             }
         }
     }

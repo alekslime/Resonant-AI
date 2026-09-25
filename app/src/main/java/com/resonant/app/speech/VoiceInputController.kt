@@ -34,12 +34,31 @@ class VoiceInputController(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     val modelState get() = modelManager.state
+    val whisperLoadState get() = whisper.loadState
+
+    init {
+        // Start warming up the model the moment a screen that might need voice
+        // input exists — not lazily on first tap. A no-op if the model isn't
+        // downloaded yet. See WhisperSpeechInputManager.preload() for why this
+        // matters: without it, the first real transcription silently eats
+        // however long loading a ~150MB model takes.
+        whisper.preload()
+    }
 
     fun isAvailable(): Boolean = whisper.isAvailable() || fallback.isAvailable()
 
-    fun startListening(onOutcome: (SpeechInputManager.Outcome) -> Unit) {
+    /**
+     * [onStatus] only ever fires on the Whisper path, and only when someone
+     * starts listening before the background preload from init{} has finished
+     * — see WhisperSpeechInputManager.startListening for the detail, including
+     * why the caller MUST wait for onSpoken() before treating the mic as open.
+     */
+    fun startListening(
+        onOutcome: (SpeechInputManager.Outcome) -> Unit,
+        onStatus: (String, onSpoken: () -> Unit) -> Unit = { _, onSpoken -> onSpoken() }
+    ) {
         if (whisper.isAvailable()) {
-            whisper.startListening(onOutcome)
+            whisper.startListening(onOutcome, onStatus)
         } else {
             fallback.startListening(onOutcome)
         }
