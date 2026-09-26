@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.haptics.HapticPattern
-import com.resonant.app.ui.theme.AghartiBlack
+import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.BrandOrange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -178,7 +178,7 @@ fun SplashScreen(onFinished: () -> Unit) {
                     Text(
                         text = letter.toString(),
                         style = TextStyle(
-                            fontFamily = AghartiBlack,
+                            fontFamily = MetropolisBlack,
                             fontWeight = FontWeight.Black,
                             fontSize = 34.sp,
                             letterSpacing = 0.5.sp

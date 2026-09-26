@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.ResonantApp
 import com.resonant.app.audio.AudioManager
+import com.resonant.app.content.ChatHistoryStore
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -43,9 +44,10 @@ import kotlinx.coroutines.launch
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val SOUND_CUES = "Sound cues"
 private const val OFFLINE_VOICE_MODEL = "Offline voice model"
+private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, SOUND_CUES, OFFLINE_VOICE_MODEL, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, SOUND_CUES, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun labelFor(item: String, soundCuesOn: Boolean, voiceModelState: WhisperModelManager.State) = when (item) {
@@ -87,6 +89,7 @@ fun SettingsScreen(
     val soundCues = (context.applicationContext as ResonantApp).container.soundCues
     var soundCuesOn by remember { mutableStateOf(soundCues.enabled) }
     var index by remember { mutableIntStateOf(0) }
+    var awaitingClearConfirm by remember { mutableStateOf(false) }
     val speedIndex by audio.speedIndex.collectAsState()
     val speed = AudioManager.SPEEDS[speedIndex]
 
@@ -160,6 +163,17 @@ fun SettingsScreen(
                     audio.announce("Offline voice model is already downloaded and ready.")
                 }
             }
+            CLEAR_HISTORY -> {
+                if (awaitingClearConfirm) {
+                    downloadScope.launch(Dispatchers.IO) { ChatHistoryStore.clear(context) }
+                    awaitingClearConfirm = false
+                    haptics.play(HapticPattern.CONFIRM)
+                    audio.announce("Chat history cleared.")
+                } else {
+                    awaitingClearConfirm = true
+                    audio.announce("Clear all chat history? Tap again to confirm, or swipe away to cancel.")
+                }
+            }
             DEBUG_MODE -> onOpenDebug()
         }
     }
@@ -169,8 +183,8 @@ fun SettingsScreen(
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        SwipeDirection.UP -> if (audio.next()) haptics.play(HapticPattern.NEXT)
-                        SwipeDirection.DOWN -> if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
+                        SwipeDirection.UP -> if (audio.next()) { awaitingClearConfirm = false; haptics.play(HapticPattern.NEXT) }
+                        SwipeDirection.DOWN -> if (audio.previous()) { awaitingClearConfirm = false; haptics.play(HapticPattern.PREVIOUS) }
                         else -> {}
                     }
                 }
@@ -184,6 +198,7 @@ fun SettingsScreen(
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                    awaitingClearConfirm = false
                     haptics.play(HapticPattern.BACK)
                     audio.announce("Back to Home.")
                     onBack()

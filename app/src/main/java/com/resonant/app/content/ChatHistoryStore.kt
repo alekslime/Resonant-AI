@@ -76,7 +76,7 @@ object ChatHistoryStore {
         }
     }
 
-    /** For a future "clear chat history" control — not wired to any UI yet. */
+    /** Deletes the history file. Called from SettingsScreen after user confirmation. */
     fun clear(context: Context) {
         file(context).delete()
     }

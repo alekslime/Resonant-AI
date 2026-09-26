@@ -19,7 +19,22 @@ import com.resonant.app.R
  * at exactly that path, delete the `= FontFamily.Default` line below and
  * uncomment the real one — nothing else in the app needs to change.
  */
+/**
+ * Brand fonts:
+ *   - Metropolis (Black) — the entire app's typeface per the redesign.
+ *     File: res/font/metropolis_black.ttf
+ *     Source: https://github.com/fontsource/font-files/tree/main/fonts/other/metropolis/files
+ *             → metropolis-latin-900-normal.ttf, renamed to metropolis_black.ttf
+ *
+ *   - AghartiBlack — kept in res/font/ but no longer used. Safe to delete
+ *     once Metropolis is confirmed on device.
+ *
+ * GC Sublime is retired — all screens now use Metropolis.
+ */
+val MetropolisBlack: FontFamily = FontFamily(Font(R.font.metropolis_black, FontWeight.Black))
+
+@Deprecated("Replaced by MetropolisBlack — retained until font file is confirmed on device.")
 val AghartiBlack: FontFamily = FontFamily(Font(R.font.agharti_black, FontWeight.Black))
 
-// val GcSublimeRegular: FontFamily = FontFamily(Font(R.font.gc_sublime_regular, FontWeight.Normal))
-val GcSublimeRegular: FontFamily = FontFamily.Default
+// Retired — was a placeholder for GC Sublime which is no longer in the design.
+val GcSublimeRegular: FontFamily = MetropolisBlack
