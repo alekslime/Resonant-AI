@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.sp
  * disposable caption to its actual audience.
  */
 val ResonantTypography = Typography(
-    displayLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 56.sp, lineHeight = 64.sp),
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 52.sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 42.sp),
-    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 36.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 38.sp),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 32.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 26.sp)
+    displayLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 56.sp, lineHeight = 64.sp),
+    headlineLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 52.sp),
+    headlineMedium = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 42.sp),
+    headlineSmall = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
+    titleLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 36.sp),
+    bodyLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Normal, fontSize = 26.sp, lineHeight = 38.sp),
+    bodyMedium = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 32.sp),
+    labelLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+    labelMedium = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 26.sp)
 )
