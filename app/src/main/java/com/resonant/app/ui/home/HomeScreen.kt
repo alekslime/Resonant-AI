@@ -39,10 +39,9 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.theme.AghartiBlack
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
-import com.resonant.app.ui.theme.GcSublimeRegular
+import com.resonant.app.ui.theme.MetropolisBlack
 
 private data class HomeItem(val label: String, val route: String)
 
@@ -79,18 +78,18 @@ private val homeItems = listOf(
  *    IconPlaceholders.kt for the placeholders standing in for them.
  */
 private val WordmarkStyle = TextStyle(
-    fontFamily = AghartiBlack,
+    fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
     fontSize = 130.sp
 )
 
 private val MenuTextStyle = TextStyle(
-    fontFamily = GcSublimeRegular,
-    fontWeight = FontWeight.Bold,
+    fontFamily = MetropolisBlack,
+    fontWeight = FontWeight.Black,
     fontSize = 64.sp
 )
 
-private val AskBarStyle = TextStyle(fontFamily = GcSublimeRegular, fontSize = 20.sp)
+private val AskBarStyle = TextStyle(fontFamily = MetropolisBlack, fontSize = 20.sp)
 
 private val HomeHorizontalPadding = 24.dp
 private val AskBarPillColor = Color(0xFF2B2A2A)
