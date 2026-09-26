@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.resonant.app.content.ChatData
 import com.resonant.app.content.ChatExchange
+import com.resonant.app.content.ChatHistoryStore
 import com.resonant.app.content.OfflineAnswers
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -58,9 +59,11 @@ import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, val userText: String)
@@ -113,6 +116,11 @@ fun ChatScreen(onBack: () -> Unit) {
     var thinking by remember { mutableStateOf(false) }   // question sent, no sentence back yet
     var statusText by remember { mutableStateOf("") }
     var micPermanentlyDenied by remember { mutableStateOf(false) }
+    // Separate from `exchanges.isEmpty()` on purpose: persisted history from a
+    // previous session means `exchanges` is non-empty from the moment this
+    // screen opens, but the server-down notice below should still fire on a
+    // fresh open where nothing has been asked *this* session yet.
+    var askedThisSession by remember { mutableStateOf(false) }
     // What we last learned about the AI server: null = not known yet, false = unusable, so
     // questions go to the lessons (after a quick look), true = fine.
     var serverUp by remember { mutableStateOf<Boolean?>(null) }
@@ -146,6 +154,7 @@ fun ChatScreen(onBack: () -> Unit) {
 
     fun askModel(userText: String) {
         cancelRequest()
+        askedThisSession = true
         val myId = requestId
         thinking = true
         statusText = "Thinking…"
@@ -168,7 +177,10 @@ fun ChatScreen(onBack: () -> Unit) {
 
             val history = buildList {
                 add(ChatMessage("system", ChatData.systemPrompt))
-                exchanges.forEach { ex ->
+                // Same cap ChatHistoryStore saves with — sending unbounded history to the
+                // model isn't new to this feature, but persistence makes it far more likely
+                // to actually be hit (a demo session was never going to run 20+ exchanges).
+                exchanges.takeLast(ChatHistoryStore.MAX_EXCHANGES).forEach { ex ->
                     add(ChatMessage("user", ex.userText))
                     add(ChatMessage("assistant", ex.assistantChunks.joinToString(" ") { it.text }))
                 }
@@ -262,6 +274,13 @@ fun ChatScreen(onBack: () -> Unit) {
                     audio.endStream()
                     thinking = false
                     statusText = ""
+                    if (sentenceCount > 0) {
+                        // Snapshot now: `exchanges` is a val capture below, but this closure
+                        // runs on Dispatchers.IO later, by which point a *new* question could
+                        // already be in flight and have changed it again.
+                        val snapshot = exchanges
+                        scope.launch(Dispatchers.IO) { ChatHistoryStore.save(context, snapshot) }
+                    }
                 }
             }
         }
@@ -350,12 +369,38 @@ fun ChatScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         debug.setScreen("AI Chat")
+        val loaded = withContext(Dispatchers.IO) { ChatHistoryStore.load(context) }
+        exchanges = loaded
+        val loadedFlat = flatten(loaded)
+        if (loadedFlat.isNotEmpty()) {
+            lastExchangeIndex = loadedFlat.last().exchangeIndex
+            flatIndex = loadedFlat.lastIndex
+        }
+
         // Start from an empty queue. AudioManager is shared by every screen, so without
         // this next/previous/repeat here would walk the previous screen's items (Home's
-        // menu) until the first reply arrives.
+        // menu) until the loaded history (or the first reply) is put in its place below.
         audio.setQueue(emptyList(), autoAdvance = true)
         val greetingDone = CompletableDeferred<Unit>()
-        audio.announce(ChatData.greeting) { greetingDone.complete(Unit) }
+        val greetingText = if (loaded.isEmpty()) {
+            ChatData.greeting
+        } else {
+            val n = loaded.size
+            "Ask Resonant. You have $n previous ${if (n == 1) "exchange" else "exchanges"} from " +
+                "before. Swipe up or down to review them, or tap center to ask something new."
+        }
+        audio.announce(greetingText) { greetingDone.complete(Unit) }
+
+        if (loadedFlat.isNotEmpty()) {
+            // Queued behind the greeting rather than cutting it off — same idiom askModel's
+            // onSentence uses for "You said … Thinking." followed by the actual reply.
+            audio.setQueue(
+                loadedFlat.map { it.unit },
+                startIndex = loadedFlat.lastIndex,
+                autoAdvance = true,
+                queueBehindAnnouncement = true
+            )
+        }
 
         // Find out now, not after someone has asked a question and waited, whether the server is
         // usable. If it is, load the model in the background so the first answer isn't the slow
@@ -369,7 +414,7 @@ fun ChatScreen(onBack: () -> Unit) {
                 serverUp = false
                 // Never talk over the greeting, and stay quiet if the person has already begun.
                 withTimeoutOrNull(NOTICE_WAIT_MS) { greetingDone.await() }
-                if (alive && exchanges.isEmpty() && !listening && !thinking) {
+                if (alive && !askedThisSession && !listening && !thinking) {
                     audio.announce(serverNotice(check))
                 }
             }
