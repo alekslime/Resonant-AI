@@ -51,7 +51,7 @@ const val ROUTE_EXIT = "exit"
 private val homeItems = listOf(
     HomeItem("Chat", "chat"),
     HomeItem("Lessons", "lessons"),
-    HomeItem("Quiz", "quiz"),
+    HomeItem("Quiz", "quiz_browser"),
     HomeItem("Settings", "settings"),
     HomeItem("Exit", ROUTE_EXIT)
 )

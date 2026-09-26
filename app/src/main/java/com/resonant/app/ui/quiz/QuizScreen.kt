@@ -124,8 +124,12 @@ fun QuizScreen(
                         // index collector above) IS the feedback for a successful move —
                         // playing NEXT/PREVIOUS on top of it just replaced one buzz with
                         // another. Only the edges need an explicit cue here.
-                        SwipeDirection.UP -> if (submitted) advance() else if (!audio.next()) haptics.play(HapticPattern.EDGE)
-                        SwipeDirection.DOWN -> if (!submitted) {
+                        // Post-submit, continuing is swipe DOWN — matching the on-screen and
+                        // spoken "swipe down to continue" feedback below. (Previously this was
+                        // wired to UP, which silently contradicted every piece of user-facing
+                        // copy telling them to swipe down.)
+                        SwipeDirection.UP -> if (!submitted && !audio.next()) haptics.play(HapticPattern.EDGE)
+                        SwipeDirection.DOWN -> if (submitted) advance() else {
                             if (!audio.previous()) {
                                 haptics.play(HapticPattern.EDGE)
                             } else if (audio.index.value == 0) {
