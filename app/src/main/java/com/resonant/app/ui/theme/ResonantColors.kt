@@ -22,7 +22,7 @@ data class ResonantExtendedColors(
 )
 
 val LightResonantColors = ResonantExtendedColors(
-    gradient = Brush.verticalGradient(listOf(GradientLightTop, GradientLightMid, GradientLightBottom)),
+    gradient = Brush.verticalGradient(listOf(BrandOrange, BrandOrange)),
     text = ResonantTextOnLight,
     focusedFill = ResonantFocusedFillLight,
     focusedText = ResonantFocusedTextLight,
