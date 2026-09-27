@@ -1,11 +1,18 @@
 package com.resonant.app.ui.quiz
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,9 +22,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.content.QuizQuestion
 import com.resonant.app.content.QuizSet
 import com.resonant.app.content.SemanticUnit
@@ -31,6 +42,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
@@ -124,12 +136,8 @@ fun QuizScreen(
                         // index collector above) IS the feedback for a successful move —
                         // playing NEXT/PREVIOUS on top of it just replaced one buzz with
                         // another. Only the edges need an explicit cue here.
-                        // Post-submit, continuing is swipe DOWN — matching the on-screen and
-                        // spoken "swipe down to continue" feedback below. (Previously this was
-                        // wired to UP, which silently contradicted every piece of user-facing
-                        // copy telling them to swipe down.)
-                        SwipeDirection.UP -> if (!submitted && !audio.next()) haptics.play(HapticPattern.EDGE)
-                        SwipeDirection.DOWN -> if (submitted) advance() else {
+                        SwipeDirection.UP -> if (submitted) advance() else if (!audio.next()) haptics.play(HapticPattern.EDGE)
+                        SwipeDirection.DOWN -> if (!submitted) {
                             if (!audio.previous()) {
                                 haptics.play(HapticPattern.EDGE)
                             } else if (audio.index.value == 0) {
@@ -173,57 +181,88 @@ fun QuizScreen(
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = ScreenHorizontalPadding, vertical = 24.dp)
+            ) {
+                // Question prompt
                 Text(
                     question.prompt.text,
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
                     color = colors.text
                 )
-                Column(Modifier.padding(top = 36.dp)) {
+
+                // Options
+                Column(Modifier.padding(top = 24.dp)) {
                     question.options.forEachIndexed { i, opt ->
                         val isFocused = queueIndex == i + 1
                         val isSelected = selectedOption == i
-                        val label = "${opt.letter}. ${opt.text}" + if (isFocused && !submitted) "  ◂" else ""
-                        // Pre-submit: flat, matches the Home/Lessons/Settings direction —
-                        // no chip, always colors.text. "isSelected" (the option the person
-                        // actually tapped as their answer, not just where audio-focus
-                        // happens to be) is still bold: that's a real committed choice, not
-                        // a cosmetic focus indicator, so it stays visually distinct even
-                        // after the person swipes focus elsewhere pre-submit.
-                        val textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                        if (submitted && (i == question.correctIndex || isSelected)) {
-                            // Solid filled chip, never colored text directly on the gradient —
-                            // plain green/red text there measured under 2.5:1 contrast (see
-                            // Color.kt). Chip colors are theme-specific: the light-theme fills
-                            // would nearly vanish against the dark gradient, and vice versa.
-                            val fill = if (i == question.correctIndex) colors.correctFill else colors.incorrectFill
+                        val isCorrect = i == question.correctIndex
+
+                        val cardBackground = when {
+                            submitted && isCorrect -> colors.correctFill
+                            submitted && isSelected && !isCorrect -> colors.incorrectFill
+                            isSelected -> Color(0xFF2A2A2A)
+                            else -> Color(0xFF1A1A1A)
+                        }
+                        val textColor = when {
+                            submitted && (isCorrect || isSelected) -> colors.feedbackText
+                            else -> Color.White
+                        }
+                        val borderMod = if (isFocused && !submitted)
+                            Modifier.border(2.dp, Color(0xFFFFAE00), RoundedCornerShape(16.dp))
+                        else Modifier
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(cardBackground)
+                                .then(borderMod)
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Letter badge
                             Box(
-                                Modifier
-                                    .padding(vertical = 5.dp)
-                                    .background(fill, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF2E2E2E))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(label, style = textStyle, color = colors.feedbackText)
+                                Text(
+                                    text = opt.letter.toString(),
+                                    color = Color.White,
+                                    fontFamily = MetropolisBlack,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 14.sp
+                                )
                             }
-                        } else {
+                            Spacer(Modifier.width(14.dp))
                             Text(
-                                label,
-                                style = textStyle,
-                                color = colors.text,
-                                modifier = Modifier.padding(vertical = 9.dp)
+                                text = opt.text,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                ),
+                                color = textColor
                             )
                         }
                     }
                 }
+
+                // Feedback banner
                 if (submitted) {
                     val feedbackFill = if (lastAnswerCorrect == true) colors.correctFill else colors.incorrectFill
                     Box(
                         Modifier
-                            .padding(top = 32.dp)
-                            .background(feedbackFill, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                            .padding(top = 24.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(feedbackFill)
+                            .padding(horizontal = 18.dp, vertical = 14.dp)
                     ) {
                         Text(
                             if (lastAnswerCorrect == true) "Correct — swipe down to continue."
@@ -233,6 +272,8 @@ fun QuizScreen(
                         )
                     }
                 }
+
+                Spacer(Modifier.padding(bottom = 24.dp))
             }
         }
     }
