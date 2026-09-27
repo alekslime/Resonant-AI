@@ -45,7 +45,7 @@ data class QuizQuestion(
 data class QuizSet(
     val id: String,
     val title: String,
-    val category: String,
+    val category: String = "",
     val questions: List<QuizQuestion>
 )
 

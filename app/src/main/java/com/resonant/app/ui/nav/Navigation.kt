@@ -40,15 +40,11 @@ object Routes {
     const val HOME = "home"
     const val LESSONS = "lessons"
     const val LESSON = "lesson/{lessonId}"
-    // Home now lands on the browser first; QUIZ itself takes a quizId so it
-    // can open whichever set the browser card pointed at, instead of always
-    // playing QuizData.sampleQuiz.
     const val QUIZ_BROWSER = "quiz_browser"
-    const val QUIZ = "quiz/{quizId}"
     // Item 2: a second quiz destination, played out with whatever QuizSet the
     // results screen just built from the missed questions. A route of its own
-    // rather than a param on QUIZ, so the browser > Quiz entry point never has
-    // to know or care that retries exist.
+    // rather than a param on QUIZ, so the Home > Quiz entry point never has to
+    // know or care that retries exist.
     const val QUIZ_REVIEW = "quiz_review"
     // Carries only correct/total, same as before. The missed QuizQuestion list
     // itself can't ride along in a route string, so it's kept as plain
@@ -63,7 +59,6 @@ object Routes {
     const val ONBOARDING = "onboarding"
 
     fun lesson(id: String) = "lesson/$id"
-    fun quiz(quizId: String) = "quiz/$quizId"
     fun quizResults(correct: Int, total: Int) = "quiz_results/$correct/$total"
 }
 
@@ -113,6 +108,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                         delay(900)
                         context.findActivity()?.finish()
                     }
+                } else if (route == "quiz") {
+                    navController.navigate(Routes.QUIZ_BROWSER)
                 } else {
                     navController.navigate(route)
                 }
@@ -133,20 +130,19 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             LessonScreen(lesson = lesson, onExit = goBack)
         }
         composable(Routes.QUIZ_BROWSER) {
+            val context = LocalContext.current
             QuizBrowserScreen(
-                onOpenQuiz = { quizId ->
-                    navController.navigate(Routes.quiz(quizId))
-                },
+                onOpenQuiz = { quizId -> navController.navigate("quiz/$quizId") },
                 onBack = goBack
             )
         }
         composable(
-            Routes.QUIZ,
+            "quiz/{quizId}",
             arguments = listOf(navArgument("quizId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val quizId = backStackEntry.arguments?.getString("quizId")
-            val quiz = QuizData.allQuizSets.firstOrNull { it.id == quizId } ?: QuizData.sampleQuiz
             val context = LocalContext.current
+            val quizId = backStackEntry.arguments?.getString("quizId") ?: QuizData.sampleQuiz.id
+            val quiz = QuizData.allQuizSets.firstOrNull { it.id == quizId } ?: QuizData.sampleQuiz
             val scope = rememberCoroutineScope()
             QuizScreen(
                 quiz = quiz,
@@ -154,16 +150,12 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                     lastMissed = missed
                     scope.launch { QuizProgressStore.markCompleted(context, quiz.id, correct, total) }
                     navController.navigate(Routes.quizResults(correct, total)) {
-                        popUpTo(Routes.QUIZ) { inclusive = true }
+                        popUpTo("quiz/$quizId") { inclusive = true }
                     }
                 },
-                // Leaving a quiz mid-way lands back on the quiz browser — that's
-                // the screen this destination is now always reached from, and
-                // where a user who bails wants to end up (pick a different set,
-                // or come back to this one later).
                 onBack = {
                     navController.navigate(Routes.QUIZ_BROWSER) {
-                        popUpTo(Routes.QUIZ_BROWSER) { inclusive = true }
+                        popUpTo("quiz/$quizId") { inclusive = true }
                     }
                 }
             )
@@ -172,10 +164,10 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             val questions = lastMissed
             if (questions.isEmpty()) {
                 // Reached with nothing to review — e.g. process death restored
-                // this route without the in-memory missed list. Bounce to the
-                // quiz browser rather than hand QuizScreen an empty question list.
+                // this route without the in-memory missed list. Bounce to
+                // Lessons rather than hand QuizScreen an empty question list.
                 LaunchedEffect(Unit) {
-                    navController.navigate(Routes.QUIZ_BROWSER) {
+                    navController.navigate(Routes.LESSONS) {
                         popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
                     }
                 }
@@ -183,9 +175,10 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                 val reviewQuiz = QuizSet(
                     id = "quiz_review",
                     title = "Review: Missed Questions",
-                    category = "Review",
                     questions = questions
                 )
+                val scope = rememberCoroutineScope()
+                val context = LocalContext.current
                 QuizScreen(
                     quiz = reviewQuiz,
                     onFinished = { correct, total, missed ->
@@ -196,7 +189,7 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                     },
                     onBack = {
                         navController.navigate(Routes.QUIZ_BROWSER) {
-                            popUpTo(Routes.QUIZ_BROWSER) { inclusive = true }
+                            popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
                         }
                     }
                 )
@@ -223,7 +216,7 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                 onDone = {
                     lastMissed = emptyList()
                     navController.navigate(Routes.QUIZ_BROWSER) {
-                        popUpTo(Routes.QUIZ_BROWSER) { inclusive = true }
+                        popUpTo(Routes.QUIZ_BROWSER) { inclusive = false }
                     }
                 }
             )

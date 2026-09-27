@@ -282,7 +282,7 @@ object QuizData {
         plantAdaptations
     )
 
-    // Kept for backward compatibility with call sites that still reference a
-    // single default quiz. Points to the first set.
+    // Kept for backward compatibility with QuizScreen/QuizResultsScreen
+    // which still reference this. Points to the first set.
     val sampleQuiz = photosynthesisBasics
 }
