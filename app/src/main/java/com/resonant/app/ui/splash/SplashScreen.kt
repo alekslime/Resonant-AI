@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import com.resonant.app.core.LocalHapticManager
+import com.resonant.app.ui.components.DotsState
+import com.resonant.app.ui.components.ResonantDots
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.BrandOrange
@@ -157,20 +159,11 @@ fun SplashScreen(onFinished: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(width = 64.dp, height = 84.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                DOT_LAYOUT.forEachIndexed { index, spec ->
-                    BrailleDot(
-                        reveal = dotReveal[index].value,
-                        modifier = Modifier.offset(
-                            x = spec.dx * DOT_SPACING_X,
-                            y = spec.dy * DOT_SPACING_Y
-                        )
-                    )
-                }
-            }
+            ResonantDots(
+                state = DotsState.Idle,
+                appearFromNothing = true,
+                modifier = Modifier.size(width = 120.dp, height = 140.dp)
+            )
 
             Row(modifier = Modifier.offset(y = (-4).dp)) {
                 WORDMARK.forEachIndexed { index, letter ->

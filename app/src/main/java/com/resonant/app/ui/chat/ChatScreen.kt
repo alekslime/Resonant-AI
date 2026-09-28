@@ -10,7 +10,13 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
+import com.resonant.app.ui.components.DotsState
+import com.resonant.app.ui.components.ResonantDots
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -433,6 +439,13 @@ fun ChatScreen(onBack: () -> Unit) {
 
     val flat = flatten(exchanges)
     val current = flat.getOrNull(flatIndex)
+    val audioSpeaking by audio.isSpeaking.collectAsState()
+    val dotsState = when {
+        listening -> DotsState.Listening
+        thinking -> DotsState.Thinking
+        audioSpeaking -> DotsState.Speaking
+        else -> DotsState.Idle
+    }
 
     ResonantScaffold(
         title = ChatData.title,
@@ -472,6 +485,12 @@ fun ChatScreen(onBack: () -> Unit) {
                 else -> {}
             }
         }) {
+            Box(Modifier.fillMaxSize()) {
+            ResonantDots(
+                state = dotsState,
+                level = { audio.speechLevel() },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp).size(260.dp)
+            )
             Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
                 if (statusText.isNotEmpty()) {
                     Text(
@@ -492,6 +511,7 @@ fun ChatScreen(onBack: () -> Unit) {
                     color = colors.text,
                     modifier = Modifier.padding(top = 20.dp)
                 )
+            }
             }
         }
     }

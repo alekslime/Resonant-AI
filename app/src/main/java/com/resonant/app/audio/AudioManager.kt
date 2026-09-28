@@ -3,12 +3,15 @@ package com.resonant.app.audio
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.resonant.app.content.SemanticUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
+import kotlin.math.exp
+import kotlin.math.max
 
 class AudioManager(context: Context) {
 
@@ -39,6 +42,18 @@ class AudioManager(context: Context) {
 
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking
+
+    // Speech loudness for the dots. Android TTS exposes no PCM, so this is word-timed:
+    // each word boundary kicks the level, which decays between words. See speechLevel().
+    @Volatile private var levelPeak = 0f
+    @Volatile private var levelAt = 0L
+
+    /** 0..1, safe to call every frame from any thread. 0 when not speaking or paused. */
+    fun speechLevel(): Float {
+        if (!_isSpeaking.value || _isPaused.value) return 0f
+        val dt = (SystemClock.uptimeMillis() - levelAt).toFloat()
+        return max(.12f, levelPeak * exp(-dt / 220f))
+    }
 
     private val _isPaused = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean> = _isPaused
@@ -120,6 +135,12 @@ class AudioManager(context: Context) {
                             _isSpeaking.value = true
                             _isPaused.value = false
                         }
+                    }
+
+                    override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                        if (isAnnouncement(utteranceId)) return
+                        levelPeak = (.55f + .06f * (end - start)).coerceAtMost(1f)
+                        levelAt = SystemClock.uptimeMillis()
                     }
 
                     override fun onDone(utteranceId: String?) {
