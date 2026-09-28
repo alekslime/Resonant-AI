@@ -465,7 +465,9 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
 
     val flat = flatten(exchanges)
     val current = flat.getOrNull(flatIndex)
-    val audioSpeaking by audio.isSpeaking.collectAsState()
+    val unitSpeaking by audio.isSpeaking.collectAsState()
+    val announcing by audio.isAnnouncing.collectAsState()
+    val audioSpeaking = unitSpeaking || announcing // Resonant is talking: a reply, or the app itself
     // Hold "speaking" briefly so the gap between two sentences doesn't flick the dots to idle.
     var speakingHold by remember { mutableStateOf(false) }
     LaunchedEffect(audioSpeaking) {

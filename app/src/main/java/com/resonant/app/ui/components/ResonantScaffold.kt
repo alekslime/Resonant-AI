@@ -1,5 +1,6 @@
 package com.resonant.app.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -70,17 +73,37 @@ fun ResonantScaffold(
                         )
                     }
                 }
-                if (trailing != null) trailing() else ResonantDots(
-                    state = DotsState.Idle,
-                    color = colors.text,
-                    modifier = Modifier.size(48.dp)
-                )
+                if (trailing != null) trailing() else BrailleRMark(color = colors.text)
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 content()
             }
             bottomBar?.invoke()
+        }
+    }
+}
+
+/**
+ * The header mark: the app logo (braille "R", dots 1-2-3-5) as four circles, static. The
+ * animated dots live only on the Chat screen. Positions/radius are fractions of this
+ * composable's size, measured from the logo PNG, same as the launcher icon.
+ */
+@Composable
+private fun BrailleRMark(color: Color) {
+    Canvas(
+        modifier = Modifier
+            .size(width = 19.dp, height = 28.dp)
+            .padding(top = 6.dp)
+    ) {
+        val radius = size.height * 0.150f
+        listOf(
+            0.221f to 0.150f, // top-left
+            0.221f to 0.500f, // mid-left
+            0.221f to 0.850f, // bottom-left
+            0.778f to 0.500f  // mid-right
+        ).forEach { (nx, ny) ->
+            drawCircle(color = color, radius = radius, center = Offset(size.width * nx, size.height * ny))
         }
     }
 }

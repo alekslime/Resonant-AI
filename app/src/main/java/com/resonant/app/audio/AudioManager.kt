@@ -57,11 +57,16 @@ class AudioManager(context: Context) {
 
     /** 0..1, safe to call every frame from any thread. 0 when not speaking or paused. */
     fun speechLevel(): Float {
-        if (!_isSpeaking.value || _isPaused.value) return 0f
+        val announcing = _isAnnouncing.value
+        if (!(_isSpeaking.value || announcing) || (_isPaused.value && !announcing)) return 0f
         pcm.level()?.let { return it } // real loudness of the PCM being played
         val dt = (SystemClock.uptimeMillis() - levelAt).toFloat()
         return max(.12f, levelPeak * exp(-dt / 220f))
     }
+
+    private val _isAnnouncing = MutableStateFlow(false)
+    /** True while an announcement (greeting, errors, confirmations) is being spoken. */
+    val isAnnouncing: StateFlow<Boolean> = _isAnnouncing
 
     private val _isPaused = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean> = _isPaused
@@ -138,7 +143,11 @@ class AudioManager(context: Context) {
                 // guaranteed to be set before any speak() call can complete.
                 t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        if (isAnnouncement(utteranceId) || isPcm(utteranceId)) return
+                        if (isAnnouncement(utteranceId)) {
+                            mainHandler.post { if (activeAnnounceId == utteranceId) _isAnnouncing.value = true }
+                            return
+                        }
+                        if (isPcm(utteranceId)) return
                         mainHandler.post {
                             _isSpeaking.value = true
                             _isPaused.value = false
@@ -146,7 +155,7 @@ class AudioManager(context: Context) {
                     }
 
                     override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
-                        if (isAnnouncement(utteranceId) || isPcm(utteranceId)) return
+                        if (isPcm(utteranceId)) return // unit speech has real PCM level
                         levelPeak = (.55f + .06f * (end - start)).coerceAtMost(1f)
                         levelAt = SystemClock.uptimeMillis()
                     }
@@ -495,6 +504,7 @@ class AudioManager(context: Context) {
         if (id == null) return
         mainHandler.post {
             if (activeAnnounceId == id) activeAnnounceId = null
+            if (activeAnnounceId == null) _isAnnouncing.value = false
             announceCallbacks.remove(id)?.invoke()
             if (activeAnnounceId == null && deferredUnit) {
                 deferredUnit = false
@@ -528,6 +538,7 @@ class AudioManager(context: Context) {
 
     private fun settleAllAnnouncements() {
         activeAnnounceId = null
+        _isAnnouncing.value = false
         val pending = announceCallbacks.values.toList()
         announceCallbacks.clear()
         pending.forEach { it.invoke() }
