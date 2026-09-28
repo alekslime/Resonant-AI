@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.times
 import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.ui.components.DotsState
 import com.resonant.app.ui.components.ResonantDots
+import com.resonant.app.ui.components.idleLetterFormedAt
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.BrandOrange
@@ -48,34 +49,14 @@ private val SplashMark = Color(0xFF0A0A0A)
 
 private const val WORDMARK = "RESONANT"
 
-/**
- * The four dots are the same braille cell as the launcher's adaptive-icon
- * foreground (dots 1-2-3-5, the braille letter "R") — see
- * ic_launcher_foreground.xml for the source measurements this layout is
- * derived from. Order is column-then-crossbar, i.e. the order a fingertip
- * would actually read the cell: top-left, mid-left, bottom-left, then the
- * mid-right dot that turns "the letter I" into "the letter R".
- */
-private data class DotSpec(val dx: Float, val dy: Float)
-
-private val DOT_RADIUS = 9.dp
-private val DOT_LAYOUT = listOf(
-    DotSpec(dx = -1f, dy = -1f),   // top-left    (braille dot 1)
-    DotSpec(dx = -1f, dy = 0f),    // mid-left    (braille dot 2)
-    DotSpec(dx = -1f, dy = 1f),    // bottom-left (braille dot 3)
-    DotSpec(dx = 1f, dy = 0f)      // mid-right   (braille dot 5)
-)
-private val DOT_SPACING_X = 22.dp
-private val DOT_SPACING_Y = 21.dp
+/** Idle word playback speed on the splash: the whole R-e-s-o-n-a-n-t spell-out in ~2.2 s. */
+private const val SPLASH_SPEED = 3.5f
 
 /**
- * Animated launch splash. Not a fade-in: the app's own braille "R" mark
- * (see ic_launcher_foreground.xml) assembles dot by dot — the order a
- * fingertip would trace the cell — each landing with a small resonant
- * overshoot and an expanding ring, echoing the haptic pulses the rest of
- * the app uses for confirmation. The wordmark then reveals letter by
- * letter, holds briefly, and the whole mark scales and fades to uncover
- * the real UI already sitting underneath it.
+ * Animated launch splash. Not a fade-in: the braille "R" mark (see ResonantDots) grows in,
+ * then spells R-e-s-o-n-a-n-t in braille at speed, with each wordmark letter landing as its
+ * braille letter forms. It holds briefly, then the whole mark scales and fades to uncover the
+ * real UI already sitting underneath it.
  *
  * Respects the system "remove animations" accessibility setting
  * (Settings.Global.ANIMATOR_DURATION_SCALE == 0): in that case the mark
@@ -93,13 +74,11 @@ fun SplashScreen(onFinished: () -> Unit) {
         ) == 0f
     }
 
-    val dotReveal = remember { DOT_LAYOUT.map { Animatable(0f) } }
     val letterReveal = remember { WORDMARK.map { Animatable(0f) } }
     val exit = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
         if (reduceMotion) {
-            dotReveal.forEach { it.snapTo(1f) }
             letterReveal.forEach { it.snapTo(1f) }
             delay(200)
             exit.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
@@ -107,30 +86,15 @@ fun SplashScreen(onFinished: () -> Unit) {
             return@LaunchedEffect
         }
 
-        // Dots assemble in reading order, each with a small resonant
-        // overshoot rather than a hard stop.
-        dotReveal.forEachIndexed { index, anim ->
-            launch {
-                delay(index * 110L)
-                anim.animateTo(
-                    1f,
-                    spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                )
-            }
+        // The dots spell R-e-s-o-n-a-n-t in braille (ResonantDots idle, sped up) and each
+        // wordmark letter lands the moment its braille letter is fully formed.
+        launch {
+            delay(450L)
+            haptics.play(HapticPattern.SECTION_CHANGE) // the R has grown in
         }
-
-        // The last dot (the one that turns the cell into "R") is the beat
-        // the haptic pulse rides on — the same confirmation vocabulary the
-        // rest of the app uses when something locks in.
-        delay(DOT_LAYOUT.size * 110L + 120L)
-        haptics.play(HapticPattern.SECTION_CHANGE)
-
         letterReveal.forEachIndexed { index, anim ->
             launch {
-                delay(index * 35L)
+                delay((idleLetterFormedAt(index) / SPLASH_SPEED * 1000f).toLong())
                 anim.animateTo(
                     1f,
                     spring(
@@ -141,7 +105,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             }
         }
 
-        delay(letterReveal.size * 35L + 350L)
+        delay((idleLetterFormedAt(letterReveal.lastIndex) / SPLASH_SPEED * 1000f).toLong() + 700L)
         exit.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
         onFinished()
     }
@@ -161,6 +125,7 @@ fun SplashScreen(onFinished: () -> Unit) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             ResonantDots(
                 state = DotsState.Idle,
+                timeScale = SPLASH_SPEED,
                 appearFromNothing = true,
                 modifier = Modifier.size(width = 120.dp, height = 140.dp)
             )
@@ -185,36 +150,5 @@ fun SplashScreen(onFinished: () -> Unit) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BrailleDot(reveal: Float, modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        // Expanding ring: a resonance pulse leaving the dot as it lands.
-        Box(
-            modifier = Modifier
-                .size(DOT_RADIUS * 2)
-                .graphicsLayer {
-                    val ring = reveal.coerceAtLeast(0f)
-                    scaleX = 1f + ring * 1.1f
-                    scaleY = 1f + ring * 1.1f
-                    alpha = (1f - ring).coerceIn(0f, 1f) * 0.5f
-                }
-                .border(2.dp, SplashMark, CircleShape)
-        )
-        // The solid dot itself, riding the same spring value so its
-        // landing slightly overshoots before settling — the "resonant"
-        // wobble, not a hard stop.
-        Box(
-            modifier = Modifier
-                .size(DOT_RADIUS * 2)
-                .graphicsLayer {
-                    scaleX = reveal
-                    scaleY = reveal
-                    alpha = reveal.coerceIn(0f, 1f)
-                }
-                .background(SplashMark, CircleShape)
-        )
     }
 }

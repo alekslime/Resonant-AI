@@ -24,7 +24,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 
-enum class DotsState { Idle, Listening, Thinking, Speaking }
+enum class DotsState { Idle, Listening, Thinking, Speaking, Offline }
 
 /**
  * The braille "R" mark, alive. Six dot slots (a full braille cell); the logo uses 1-2-3-5.
@@ -33,11 +33,14 @@ enum class DotsState { Idle, Listening, Thinking, Speaking }
  *  - Listening: R tightens, drifts and sways; the right dot leans out like an ear.
  *  - Thinking: four dots orbit with a speed-ramped loop.
  *  - Speaking: dots ride a traveling wave with squash/stretch, driven by [level] (0..1).
+ *  - Offline: the R with its right dot cut loose, drifting away and flickering — the AI server
+ *    is unreachable and answers come from the bundled lessons.
  *
  * Decorative: cleared from the semantics tree, since state is already spoken/haptic.
  * With "remove animations" on, it holds a static pose.
  *
  * @param level speaking loudness 0..1, read every frame. null = built-in fake voice envelope.
+ * @param timeScale playback speed of the idle word (splash runs it fast).
  * @param appearFromNothing start with all dots at scale 0 and grow into the first pose (splash).
  */
 @Composable
@@ -46,6 +49,7 @@ fun ResonantDots(
     modifier: Modifier = Modifier,
     color: Color = BrandInk,
     level: (() -> Float)? = null,
+    timeScale: Float = 1f,
     appearFromNothing: Boolean = false
 ) {
     val context = LocalContext.current
@@ -62,7 +66,7 @@ fun ResonantDots(
 
     Canvas(modifier.clearAndSetSemantics { }) {
         val t = time // read in draw phase: redraws each frame without recomposing
-        val pose = engine.frame(state, t, level?.invoke(), reduceMotion)
+        val pose = engine.frame(state, t, level?.invoke(), reduceMotion, timeScale)
         val k = min(size.width, size.height) / 1400f
         val c = Offset(size.width / 2f, size.height / 2f)
         for (i in 0 until 6) {
@@ -97,6 +101,13 @@ private val HOLD = floatArrayOf(1.6f, .5f, .3f, .25f, .25f, .3f, .5f, .9f)   // 
 private val TRANS = floatArrayOf(.9f, .7f, .5f, .4f, .4f, .5f, .7f, .9f)
 private val TOTAL = HOLD.sum() + TRANS.sum()
 
+/** Seconds (at timeScale 1) until idle letter [i] of R-e-s-o-n-a-n-t is fully formed. */
+internal fun idleLetterFormedAt(i: Int): Float {
+    var t = 0f
+    for (j in 0 until i.coerceIn(0, 7)) t += HOLD[j] + TRANS[j]
+    return t
+}
+
 private fun clamp(x: Float, a: Float = 0f, b: Float = 1f) = x.coerceIn(a, b)
 private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 private fun ease(t: Float) = if (t < .5f) 4f * t * t * t else 1f - (-2f * t + 2f).pow(3) / 2f
@@ -111,7 +122,7 @@ internal class DotsEngine(fromNothing: Boolean) {
     private var smooth = 0f
     private var lastT = 0f
 
-    fun frame(state: DotsState, t: Float, level: Float?, reduceMotion: Boolean): FloatArray {
+    fun frame(state: DotsState, t: Float, level: Float?, reduceMotion: Boolean, timeScale: Float = 1f): FloatArray {
         if (state != cur) { snap = pose.copyOf(); cur = state; switchT = t }
         val dt = (t - lastT).coerceIn(0f, .1f); lastT = t
         val raw = level ?: -1f
@@ -121,7 +132,8 @@ internal class DotsEngine(fromNothing: Boolean) {
         }
         tgt.fill(0f)
         when (state) {
-            DotsState.Idle -> idle(t)
+            DotsState.Idle -> idle(t * timeScale)
+            DotsState.Offline -> offline(t)
             DotsState.Listening -> listening(t)
             DotsState.Thinking -> thinking(t)
             DotsState.Speaking -> speaking(t, if (raw >= 0f) smooth else null)
@@ -149,6 +161,19 @@ internal class DotsEngine(fromNothing: Boolean) {
             val (x, y) = SLOT[k]
             val (rx, ry) = rot(x * (.55f + .45f * s), y * (.55f + .45f * s), ang)
             put(k, rx, ry, s)
+        }
+    }
+
+    private fun offline(t: Float) {
+        val flick = ease(clamp((sin(t * 2.3f) * sin(t * 5.1f) + .2f) * 2f))
+        for (k in ACT) {
+            val (x, y) = SLOT[k]
+            if (k == 4) {
+                // the "ear" dot: cut loose, drifting out and stuttering
+                put(k, x + 110f + 40f * sin(t * .5f), y + 30f * sin(t * .8f), .3f + .7f * flick)
+            } else {
+                put(k, x + 10f * sin(t * .6f + k), y + 10f * cos(t * .5f + k), 1f)
+            }
         }
     }
 

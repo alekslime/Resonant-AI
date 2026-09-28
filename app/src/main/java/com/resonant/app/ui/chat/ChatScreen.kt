@@ -475,7 +475,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
         listening -> DotsState.Listening
         thinking -> DotsState.Thinking
         speakingHold -> DotsState.Speaking
-        else -> DotsState.Idle
+        else -> if (serverUp == false) DotsState.Offline else DotsState.Idle
     }
 
     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
