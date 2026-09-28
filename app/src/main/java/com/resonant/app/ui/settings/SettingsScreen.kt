@@ -42,12 +42,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
+private const val YOUR_NAME = "Your name"
 private const val SOUND_CUES = "Sound cues"
 private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, SOUND_CUES, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun labelFor(item: String, soundCuesOn: Boolean, voiceModelState: WhisperModelManager.State) = when (item) {
@@ -79,6 +80,7 @@ private fun voiceModelCategory(state: WhisperModelManager.State): String = when 
 fun SettingsScreen(
     onOpenDebug: () -> Unit,
     onReplayTutorial: () -> Unit,
+    onOpenName: () -> Unit,
     onBack: () -> Unit
 ) {
     val audio = LocalAudioManager.current
@@ -138,6 +140,7 @@ fun SettingsScreen(
     fun activate(item: String) {
         when (item) {
             REPLAY_TUTORIAL -> onReplayTutorial()
+            YOUR_NAME -> onOpenName()
             SOUND_CUES -> {
                 val now = !soundCuesOn
                 soundCues.enabled = now
