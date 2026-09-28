@@ -1,6 +1,7 @@
 package com.resonant.app.ui.lessons
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,9 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.content.Lesson
+import com.resonant.app.content.LessonSection
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -36,10 +41,10 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.components.ResonantScaffold
+import com.resonant.app.ui.home.SettingsPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
+import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private data class FlatUnit(val unit: SemanticUnit, val sectionIndex: Int, val sectionTitle: String)
 
@@ -61,9 +66,6 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
     var flatIndex by remember { mutableIntStateOf(0) }
     var lastSectionIndex by remember { mutableIntStateOf(0) }
 
-    // Single effect keyed on lesson.id: setQueue lands before collection starts,
-    // and if lesson.id ever changes, both setup and the collector restart together
-    // instead of the collector being left subscribed under a stale Unit key.
     LaunchedEffect(lesson.id) {
         debug.setScreen("Lesson: ${lesson.title}")
         audio.setQueue(flat.map { it.unit }, startIndex = 0, autoAdvance = true)
@@ -82,17 +84,16 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
         if (target == lastSectionIndex) return
         val idx = firstIndexOfSection(flat, target)
         haptics.play(HapticPattern.SECTION_CHANGE)
-        // Title first, then the section's first unit queued behind it. The other order
-        // has the title flush the unit the instant it starts, and nothing resumes it.
         audio.announce(lesson.sections[target].title)
         audio.jumpTo(idx, queueBehindAnnouncement = true)
     }
 
-    val current = flat.getOrNull(flatIndex)
+    val currentSection = lesson.sections.getOrNull(lastSectionIndex)
 
-    ResonantScaffold(
-        title = lesson.title,
-        subtitle = current?.let { "Section ${it.sectionIndex + 1} of ${lesson.sections.size}: ${it.sectionTitle}" }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(BrandOrange)
     ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
@@ -127,105 +128,160 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                // Section progress bar
-                val sectionFraction = if (lesson.sections.isEmpty()) 0f
-                    else (lastSectionIndex + 1).toFloat() / lesson.sections.size
+                // Top bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color(0xFF0A0A0A))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color(0xFF3A3A3A))
+                            .size(36.dp)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(sectionFraction)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(BrandInk)
+                        Text(
+                            text = "←",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(Modifier.width(12.dp))
+
                     Text(
-                        text = "Section ${lastSectionIndex + 1}/${lesson.sections.size}",
+                        text = "Lessons",
                         fontFamily = MetropolisBlack,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = BrandInk
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color.White
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
+                    }
                 }
 
-                // Main content card
-                Box(
+                // Lesson title — large, directly on orange
+                Text(
+                    text = lesson.title,
+                    fontFamily = MetropolisBlack,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 42.sp,
+                    lineHeight = 48.sp,
+                    color = BrandInk,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                )
+
+                // White content card
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF1A1A1A))
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.White)
                         .padding(24.dp)
                 ) {
-                    Column {
-                        // Section title
-                        current?.sectionTitle?.let { title ->
-                            Text(
-                                text = title,
-                                fontFamily = MetropolisBlack,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 13.sp,
-                                color = Color(0xFFFFAE00),
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
+                    // Section summary — first unit of the section if no stepTitle, else a fixed line
+                    val summaryText = currentSection?.let { sec ->
+                        if (sec.units.any { it.stepTitle != null }) {
+                            // Section has steps — use section title as summary prompt
+                            sec.title
+                        } else {
+                            sec.units.firstOrNull()?.text ?: sec.title
                         }
+                    } ?: lesson.title
 
-                        // Unit text
-                        Text(
-                            text = current?.unit?.text ?: "",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Black
-                            ),
-                            color = Color.White
-                        )
+                    Text(
+                        text = summaryText,
+                        fontFamily = MetropolisBlack,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        lineHeight = 28.sp,
+                        color = BrandInk,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
 
-                        Spacer(Modifier.height(24.dp))
-
-                        // Unit counter
-                        Text(
-                            text = "Unit ${flatIndex + 1} of ${flat.size}",
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 13.sp,
-                            color = Color(0xFFAAAAAA)
-                        )
+                    // Steps or plain units
+                    currentSection?.let { sec ->
+                        val hasSteps = sec.units.any { it.stepTitle != null }
+                        if (hasSteps) {
+                            sec.units.forEachIndexed { i, unit ->
+                                StepRow(number = i + 1, title = unit.stepTitle ?: "", body = unit.text)
+                                if (i < sec.units.size - 1) Spacer(Modifier.height(20.dp))
+                            }
+                        } else {
+                            // Plain units — show from second onward (first is the summary)
+                            sec.units.drop(1).forEach { unit ->
+                                Text(
+                                    text = unit.text,
+                                    fontFamily = MetropolisBlack,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp,
+                                    color = BrandInk,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Bottom hint pill
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 8.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Color(0xFF1A1A1A))
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Swipe up · next   |   Swipe right · next section",
-                        fontFamily = MetropolisBlack,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 12.sp,
-                        color = Color(0xFF888888)
-                    )
-                }
+                Spacer(Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun StepRow(number: Int, title: String, body: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        // Numbered circle
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(BrandInk),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = number.toString(),
+                fontFamily = MetropolisBlack,
+                fontWeight = FontWeight.Black,
+                fontSize = 13.sp,
+                color = Color.White
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                fontFamily = MetropolisBlack,
+                fontWeight = FontWeight.Black,
+                fontSize = 15.sp,
+                color = BrandInk
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = body,
+                fontFamily = MetropolisBlack,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Color(0xFF444444)
+            )
         }
     }
 }

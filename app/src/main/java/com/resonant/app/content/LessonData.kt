@@ -91,10 +91,9 @@ object LessonData {
                 id = "s3",
                 title = "The process",
                 units = listOf(
-                    unit("s3u1", "Chlorophyll in the leaf absorbs light energy from the sun."),
-                    unit("s3u2", "That energy splits water molecules apart and powers a chain of reactions."),
-                    unit("s3u3", "The plant uses the released energy to combine carbon dioxide and water into glucose, a sugar."),
-                    unit("s3u4", "Oxygen is left over from splitting the water, and the plant releases it into the air.")
+                    SemanticUnit("s3u1", "Chlorophyll in the leaf absorbs sunlight.", stepTitle = "Catch the light"),
+                    SemanticUnit("s3u2", "That energy helps turn water and carbon dioxide into sugar.", stepTitle = "Make food"),
+                    SemanticUnit("s3u3", "The plant uses the sugar and sends oxygen into the air.", stepTitle = "Grow and release oxygen")
                 ),
                 keywords = listOf("work", "works", "process", "step", "steps", "procedure", "chlorophyll", "glucose", "oxygen", "reaction", "implement")
             ),

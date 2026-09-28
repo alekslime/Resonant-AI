@@ -49,8 +49,8 @@ import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
-private val CardBackground = Color(0xFF1A1A1A)
-private val CardButtonBackground = Color(0xFFFFFFFF)
+private val CardBackground = Color.White
+private val CardButtonBackground = Color(0xFF0A0A0A)
 private val TopBarBackground = Color(0xFF0A0A0A)
 
 private val TopBarTitleStyle = TextStyle(
@@ -61,7 +61,8 @@ private val TopBarTitleStyle = TextStyle(
 private val CardTitleStyle = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
-    fontSize = 20.sp
+    fontSize = 36.sp,
+    lineHeight = 40.sp
 )
 private val CardButtonStyle = TextStyle(
     fontFamily = MetropolisBlack,
@@ -210,38 +211,38 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(CardBackground)
             .clickable(onClick = onClick)
-            .padding(20.dp)
+            .padding(24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
     ) {
         Text(
             text = title,
             style = CardTitleStyle,
-            color = Color.White
+            color = BrandInk
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // "Continue lesson →" pill
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
                 .background(CardButtonBackground)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Continue lesson",
                 style = CardButtonStyle,
-                color = BrandInk
+                color = Color.White
             )
             Spacer(Modifier.width(12.dp))
             Text(
                 text = "→",
                 style = CardButtonStyle,
-                color = BrandInk
+                color = Color.White
             )
         }
     }

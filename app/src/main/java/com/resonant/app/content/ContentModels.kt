@@ -7,7 +7,9 @@ package com.resonant.app.content
  */
 data class SemanticUnit(
     val id: String,
-    val text: String
+    val text: String,
+    /** When set, the unit renders as a numbered step with a bold title above the body text. */
+    val stepTitle: String? = null
 )
 
 data class LessonSection(
