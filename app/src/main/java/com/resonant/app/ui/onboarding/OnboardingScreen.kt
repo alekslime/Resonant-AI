@@ -1,11 +1,15 @@
 package com.resonant.app.ui.onboarding
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,11 +20,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
@@ -30,7 +38,7 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -109,8 +117,6 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
-    val colors = LocalResonantColors.current
-
     var step by remember { mutableIntStateOf(-1) }   // -1 = intro still playing
     var misses by remember { mutableIntStateOf(0) }
     var completing by remember { mutableStateOf(false) }
@@ -210,29 +216,78 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = ScreenHorizontalPadding, vertical = 40.dp),
-                    verticalArrangement = Arrangement.Center
+                        .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = current?.label ?: "Welcome",
-                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Black),
-                        color = colors.text,
-                        modifier = Modifier.semantics {
-                            contentDescription = current?.spoken ?: INTRO
+                    // Step counter pill
+                    if (step >= 0) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFFFFAE00)
+                            )
                         }
-                    )
-                    Box(Modifier.height(20.dp))
-                    Text(
-                        text = current?.hint ?: "Turn your volume up.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.text
-                    )
-                    Box(Modifier.height(36.dp))
-                    Text(
-                        text = "Hold the left edge to skip.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.text
-                    )
+                    } else {
+                        Spacer(Modifier.height(36.dp))
+                    }
+
+                    // Main card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1A1A1A))
+                            .padding(24.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Column {
+                            Text(
+                                text = current?.label ?: "Welcome",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Black
+                                ),
+                                color = Color.White,
+                                modifier = Modifier.semantics {
+                                    contentDescription = current?.spoken ?: INTRO
+                                }
+                            )
+                            Spacer(Modifier.height(20.dp))
+                            Text(
+                                text = current?.hint ?: "Turn your volume up.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFFCCCCCC)
+                            )
+                        }
+                    }
+
+                    // Skip hint pill
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Color(0xFF1A1A1A))
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Hold left edge to skip tutorial",
+                            fontFamily = MetropolisBlack,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            color = Color(0xFF888888)
+                        )
+                    }
                 }
             }
         }
