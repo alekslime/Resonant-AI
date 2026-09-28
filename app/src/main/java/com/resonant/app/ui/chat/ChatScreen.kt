@@ -440,10 +440,15 @@ fun ChatScreen(onBack: () -> Unit) {
     val flat = flatten(exchanges)
     val current = flat.getOrNull(flatIndex)
     val audioSpeaking by audio.isSpeaking.collectAsState()
+    // Hold "speaking" briefly so the gap between two sentences doesn't flick the dots to idle.
+    var speakingHold by remember { mutableStateOf(false) }
+    LaunchedEffect(audioSpeaking) {
+        if (audioSpeaking) speakingHold = true else { delay(600); speakingHold = false }
+    }
     val dotsState = when {
         listening -> DotsState.Listening
         thinking -> DotsState.Thinking
-        audioSpeaking -> DotsState.Speaking
+        speakingHold -> DotsState.Speaking
         else -> DotsState.Idle
     }
 

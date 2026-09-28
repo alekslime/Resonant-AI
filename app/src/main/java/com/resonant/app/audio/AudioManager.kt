@@ -9,6 +9,7 @@ import android.speech.tts.UtteranceProgressListener
 import com.resonant.app.content.SemanticUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 import java.util.Locale
 import kotlin.math.exp
 import kotlin.math.max
@@ -20,6 +21,7 @@ class AudioManager(context: Context) {
         const val DEFAULT_SPEED_INDEX = 1
         /** Every announcement gets a unique id under this prefix (see [announce]). */
         private const val ANNOUNCE_PREFIX = "resonant_announce_"
+        private const val PCM_PREFIX = "resonant_pcm_"
     }
 
     private val appContext: Context = context.applicationContext
@@ -43,14 +45,20 @@ class AudioManager(context: Context) {
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking
 
-    // Speech loudness for the dots. Android TTS exposes no PCM, so this is word-timed:
-    // each word boundary kicks the level, which decays between words. See speechLevel().
+    // Speech loudness for the dots. Unit speech is synthesized to a file and played by [pcm], so
+    // its level is the real PCM loudness. The word-timed estimate below (each word boundary
+    // kicks the level, which decays) only covers the fallback path where synthesis fails.
+    private val pcm = PcmSpeaker(mainHandler)
+    private var pcmGen = 0
+    // A unit that must start once the currently playing announcement has finished.
+    private var deferredUnit = false
     @Volatile private var levelPeak = 0f
     @Volatile private var levelAt = 0L
 
     /** 0..1, safe to call every frame from any thread. 0 when not speaking or paused. */
     fun speechLevel(): Float {
         if (!_isSpeaking.value || _isPaused.value) return 0f
+        pcm.level()?.let { return it } // real loudness of the PCM being played
         val dt = (SystemClock.uptimeMillis() - levelAt).toFloat()
         return max(.12f, levelPeak * exp(-dt / 220f))
     }
@@ -130,7 +138,7 @@ class AudioManager(context: Context) {
                 // guaranteed to be set before any speak() call can complete.
                 t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        if (isAnnouncement(utteranceId)) return
+                        if (isAnnouncement(utteranceId) || isPcm(utteranceId)) return
                         mainHandler.post {
                             _isSpeaking.value = true
                             _isPaused.value = false
@@ -138,7 +146,7 @@ class AudioManager(context: Context) {
                     }
 
                     override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
-                        if (isAnnouncement(utteranceId)) return
+                        if (isAnnouncement(utteranceId) || isPcm(utteranceId)) return
                         levelPeak = (.55f + .06f * (end - start)).coerceAtMost(1f)
                         levelAt = SystemClock.uptimeMillis()
                     }
@@ -146,6 +154,11 @@ class AudioManager(context: Context) {
                     override fun onDone(utteranceId: String?) {
                         if (isAnnouncement(utteranceId)) {
                             settleAnnouncement(utteranceId)
+                            return
+                        }
+                        if (isPcm(utteranceId)) {
+                            // Synthesis finished (not playback): hand the WAV to our player.
+                            mainHandler.post { onSynthesized(pcmGenOf(utteranceId)) }
                             return
                         }
                         mainHandler.post {
@@ -162,6 +175,10 @@ class AudioManager(context: Context) {
                     override fun onError(utteranceId: String?) {
                         if (isAnnouncement(utteranceId)) {
                             settleAnnouncement(utteranceId)
+                            return
+                        }
+                        if (isPcm(utteranceId)) {
+                            mainHandler.post { onSynthesisFailed(pcmGenOf(utteranceId)) }
                             return
                         }
                         mainHandler.post { _isSpeaking.value = false }
@@ -238,13 +255,71 @@ class AudioManager(context: Context) {
         }
         _isPaused.value = false
         val t = tts ?: return
-        t.setSpeechRate(speed)
-        val mode = if (queueBehindAnnouncement && activeAnnounceId != null) {
-            TextToSpeech.QUEUE_ADD
-        } else {
-            TextToSpeech.QUEUE_FLUSH
+        if (queueBehindAnnouncement && activeAnnounceId != null) {
+            // Wait for the announcement; settleAnnouncement starts this unit when it ends.
+            cancelUnitSpeech()
+            deferredUnit = true
+            return
         }
-        t.speak(unit.text, mode, null, unit.id)
+        deferredUnit = false
+        cancelUnitSpeech()
+        t.stop() // flush semantics: anything still queued (announcement, old synthesis) goes
+        requestUnitSpeech(t, unit)
+    }
+
+    // Unit speech: synthesize to a WAV, then play it ourselves so the dots get real PCM loudness.
+
+    /** Drops any in-flight synthesis or playback of the current unit. */
+    private fun cancelUnitSpeech() {
+        pcmGen++ // late callbacks from the old request see a stale generation and are ignored
+        pcm.stop()
+        _isSpeaking.value = false
+    }
+
+    private fun isPcm(id: String?) = id?.startsWith(PCM_PREFIX) == true
+    private fun pcmGenOf(id: String?) = id?.removePrefix(PCM_PREFIX)?.toIntOrNull() ?: -1
+    private fun pcmFile(gen: Int) = File(appContext.cacheDir, "resonant_pcm_$gen.wav")
+
+    private fun requestUnitSpeech(t: TextToSpeech, unit: SemanticUnit) {
+        val gen = ++pcmGen
+        t.setSpeechRate(speed)
+        val result = t.synthesizeToFile(unit.text, null, pcmFile(gen), PCM_PREFIX + gen)
+        if (result == TextToSpeech.ERROR) fallbackSpeak(unit)
+    }
+
+    private fun onSynthesized(gen: Int) {
+        val file = pcmFile(gen)
+        val unit = _currentUnit.value
+        if (gen != pcmGen || tts == null || unit == null) { file.delete(); return }
+        val ok = pcm.play(
+            file,
+            onStarted = { if (gen == pcmGen) { _isSpeaking.value = true; _isPaused.value = false } },
+            onFinished = { onUnitFinished(gen) }
+        )
+        if (!ok) fallbackSpeak(unit)
+    }
+
+    private fun onSynthesisFailed(gen: Int) {
+        pcmFile(gen).delete()
+        if (gen != pcmGen) return
+        _currentUnit.value?.let { fallbackSpeak(it) }
+    }
+
+    /** Plain TTS (no real level; dots use the word-timed estimate). Same behavior as before PCM. */
+    private fun fallbackSpeak(unit: SemanticUnit) {
+        val t = tts ?: return
+        t.setSpeechRate(speed)
+        t.speak(unit.text, TextToSpeech.QUEUE_ADD, null, unit.id)
+    }
+
+    private fun onUnitFinished(gen: Int) {
+        if (gen != pcmGen) return
+        _isSpeaking.value = false
+        if (autoAdvanceEnabled && !_isPaused.value) {
+            // Ran off the end of a stream that is still open: remember to pick up with the
+            // next appended unit.
+            if (!next() && streamOpen) awaitingMore = true
+        }
     }
 
     fun repeatCurrent() = speakCurrent()
@@ -281,6 +356,7 @@ class AudioManager(context: Context) {
 
     fun pause() {
         if (!_isSpeaking.value) return
+        cancelUnitSpeech()
         tts?.stop()
         _isPaused.value = true
         _isSpeaking.value = false
@@ -296,6 +372,8 @@ class AudioManager(context: Context) {
     }
 
     fun stop() {
+        deferredUnit = false
+        cancelUnitSpeech()
         tts?.stop()
         _isSpeaking.value = false
         _isPaused.value = false
@@ -343,14 +421,14 @@ class AudioManager(context: Context) {
             else -> label
         }
         if (!ready) return
+        val wasActive = _isSpeaking.value || _isPaused.value
         t.setSpeechRate(speed)
         speakAnnouncement(t, text, null)
 
         // Resume whatever was playing, queued behind the confirmation.
-        val unit = _currentUnit.value
-        if (unit != null && (_isSpeaking.value || _isPaused.value)) {
+        if (_currentUnit.value != null && wasActive) {
             _isPaused.value = false
-            t.speak(unit.text, TextToSpeech.QUEUE_ADD, null, unit.id)
+            deferredUnit = true
         }
     }
 
@@ -403,6 +481,7 @@ class AudioManager(context: Context) {
         utteranceId?.startsWith(ANNOUNCE_PREFIX) == true
 
     private fun speakAnnouncement(t: TextToSpeech, text: String, onFinished: (() -> Unit)?) {
+        cancelUnitSpeech() // an announcement interrupts unit speech, as QUEUE_FLUSH used to
         val id = ANNOUNCE_PREFIX + (++announceCounter)
         activeAnnounceId = id
         if (onFinished != null) announceCallbacks[id] = onFinished
@@ -417,6 +496,12 @@ class AudioManager(context: Context) {
         mainHandler.post {
             if (activeAnnounceId == id) activeAnnounceId = null
             announceCallbacks.remove(id)?.invoke()
+            if (activeAnnounceId == null && deferredUnit) {
+                deferredUnit = false
+                val t = tts
+                val unit = _currentUnit.value
+                if (ready && t != null && unit != null) requestUnitSpeech(t, unit)
+            }
         }
     }
 
@@ -462,6 +547,8 @@ class AudioManager(context: Context) {
         _isSpeaking.value = false
         _isPaused.value = _currentUnit.value != null
         awaitingMore = false
+        deferredUnit = false
+        cancelUnitSpeech()
         tts?.stop()
         tts?.shutdown()
         tts = null
@@ -475,6 +562,8 @@ class AudioManager(context: Context) {
     }
 
     fun shutdown() {
+        deferredUnit = false
+        cancelUnitSpeech()
         ready = false
         _isReady.value = false
         tts?.stop()
