@@ -1,19 +1,18 @@
 package com.resonant.app.ui.quiz
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.content.QuizQuestion
@@ -40,23 +40,23 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.LocalResonantColors
+import com.resonant.app.ui.home.SettingsPlaceholderIcon
+import com.resonant.app.ui.theme.BrandInk
+import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
+
+private val CorrectGreen = Color(0xFF4CAF50)
+private val WrongRed = Color(0xFFE53935)
 
 @Composable
 fun QuizScreen(
     quiz: QuizSet,
-    // Item 2: the results screen offers a retry of just the ones missed, so
-    // finishing has to report WHICH questions those were, not just the count.
     onFinished: (correct: Int, total: Int, missed: List<QuizQuestion>) -> Unit,
     onBack: () -> Unit
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
-    val colors = LocalResonantColors.current
 
     var questionIndex by remember { mutableIntStateOf(0) }
     var queueIndex by remember { mutableIntStateOf(0) }
@@ -64,11 +64,12 @@ fun QuizScreen(
     var submitted by remember { mutableStateOf(false) }
     var lastAnswerCorrect by remember { mutableStateOf<Boolean?>(null) }
     var correctCount by remember { mutableIntStateOf(0) }
-    // Keyed on quiz.id so a fresh quiz (e.g. starting a retry-missed round)
-    // never inherits misses from a previous round still sitting in memory.
     val missed = remember(quiz.id) { mutableListOf<QuizQuestion>() }
 
     val question = quiz.questions[questionIndex]
+
+    // Which option is currently visible (queueIndex 0 = prompt, 1..N = options)
+    val visibleOptionIndex = if (queueIndex >= 1) queueIndex - 1 else null
 
     fun loadQuestion(i: Int) {
         questionIndex = i
@@ -83,9 +84,6 @@ fun QuizScreen(
         audio.setQueue(units, startIndex = 0, autoAdvance = false)
     }
 
-    // Single effect keyed on quiz.id: loadQuestion(0) must land before collection
-    // starts, and if quiz.id ever changes, both setup and the collector restart
-    // together instead of the collector being left subscribed under a stale key.
     LaunchedEffect(quiz.id) {
         debug.setScreen("Quiz")
         loadQuestion(0)
@@ -124,26 +122,33 @@ fun QuizScreen(
         }
     }
 
-    ResonantScaffold(
-        title = quiz.title,
-        subtitle = "Question ${questionIndex + 1} of ${quiz.questions.size}"
+    // Background: green on correct, red on wrong, orange otherwise
+    val screenBackground = when {
+        submitted && lastAnswerCorrect == true -> CorrectGreen
+        submitted && lastAnswerCorrect == false -> WrongRed
+        else -> BrandOrange
+    }
+
+    // Question text color: orange on correct (over green bg), white on wrong, black otherwise
+    val questionTextColor = when {
+        submitted && lastAnswerCorrect == true -> BrandOrange
+        submitted && lastAnswerCorrect == false -> Color.White
+        else -> BrandInk
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(screenBackground)
     ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
-                        // While browsing, the option's own tactile identifier (played by the
-                        // index collector above) IS the feedback for a successful move —
-                        // playing NEXT/PREVIOUS on top of it just replaced one buzz with
-                        // another. Only the edges need an explicit cue here.
                         SwipeDirection.UP -> if (submitted) advance() else if (!audio.next()) haptics.play(HapticPattern.EDGE)
                         SwipeDirection.DOWN -> if (!submitted) {
-                            if (!audio.previous()) {
-                                haptics.play(HapticPattern.EDGE)
-                            } else if (audio.index.value == 0) {
-                                // Back on the question itself — no option identifier for that.
-                                haptics.play(HapticPattern.PREVIOUS)
-                            }
+                            if (!audio.previous()) haptics.play(HapticPattern.EDGE)
+                            else if (audio.index.value == 0) haptics.play(HapticPattern.PREVIOUS)
                         }
                         SwipeDirection.RIGHT -> if (!submitted) submit()
                         SwipeDirection.LEFT -> {}
@@ -164,13 +169,13 @@ fun QuizScreen(
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
-                    audio.announce("Leaving the quiz. Back to Lessons.")
+                    audio.announce("Leaving the quiz. Back to Quizzes.")
                     onBack()
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> {
                     val status = when {
-                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe down to continue."
+                        submitted -> "Submitted. ${if (lastAnswerCorrect == true) "Correct." else "Incorrect."} Swipe up to continue."
                         selectedOption != null -> "Option ${question.options[selectedOption!!].letter} selected. Swipe right to submit."
                         else -> "No option selected. Swipe up or down to browse, tap to select, swipe right to submit."
                     }
@@ -181,99 +186,136 @@ fun QuizScreen(
                 else -> {}
             }
         }) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = ScreenHorizontalPadding, vertical = 24.dp)
-            ) {
+            Column(Modifier.fillMaxSize()) {
+
+                // Top bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color(0xFF0A0A0A))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box(
+                        modifier = Modifier.size(36.dp).clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("←", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = "Quizzes",
+                        fontFamily = MetropolisBlack,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        color = Color.White
+                    )
+                    Box(
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
+                    }
+                }
+
                 // Question prompt
                 Text(
-                    question.prompt.text,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                    color = colors.text
+                    text = question.prompt.text,
+                    fontFamily = MetropolisBlack,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 26.sp,
+                    lineHeight = 32.sp,
+                    color = questionTextColor,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                 )
 
-                // Options
-                Column(Modifier.padding(top = 24.dp)) {
-                    question.options.forEachIndexed { i, opt ->
-                        val isFocused = queueIndex == i + 1
-                        val isSelected = selectedOption == i
-                        val isCorrect = i == question.correctIndex
+                // Option card area — fills remaining space
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Up arrow — shows when not on first option
+                    val showUp = !submitted && queueIndex > 1
+                    if (showUp) {
+                        Text(
+                            text = "↑",
+                            fontFamily = MetropolisBlack,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 28.sp,
+                            color = BrandInk.copy(alpha = 0.5f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                    } else {
+                        Spacer(Modifier.height(52.dp))
+                    }
 
-                        val cardBackground = when {
-                            submitted && isCorrect -> colors.correctFill
-                            submitted && isSelected && !isCorrect -> colors.incorrectFill
-                            isSelected -> Color(0xFF2A2A2A)
-                            else -> Color(0xFF1A1A1A)
-                        }
-                        val textColor = when {
-                            submitted && (isCorrect || isSelected) -> colors.feedbackText
-                            else -> Color.White
-                        }
-                        val borderMod = if (isFocused && !submitted)
-                            Modifier.border(2.dp, Color(0xFFFFAE00), RoundedCornerShape(16.dp))
-                        else Modifier
+                    // Option card — shows when focused on an option, hidden on prompt
+                    if (visibleOptionIndex != null) {
+                        val opt = question.options[visibleOptionIndex]
+                        val isSelected = selectedOption == visibleOptionIndex
 
-                        Row(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(cardBackground)
-                                .then(borderMod)
-                                .padding(horizontal = 18.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White)
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Letter badge
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF2E2E2E))
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = opt.letter.toString(),
-                                    color = Color.White,
-                                    fontFamily = MetropolisBlack,
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 14.sp
-                                )
-                            }
-                            Spacer(Modifier.width(14.dp))
                             Text(
                                 text = opt.text,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                ),
-                                color = textColor
+                                fontFamily = MetropolisBlack,
+                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                                fontSize = 22.sp,
+                                lineHeight = 30.sp,
+                                color = BrandInk,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // On prompt — show placeholder card with hint
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color.White.copy(alpha = 0.3f))
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Swipe up to see options",
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 16.sp,
+                                color = BrandInk.copy(alpha = 0.5f),
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
-                }
 
-                // Feedback banner
-                if (submitted) {
-                    val feedbackFill = if (lastAnswerCorrect == true) colors.correctFill else colors.incorrectFill
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(feedbackFill)
-                            .padding(horizontal = 18.dp, vertical = 14.dp)
-                    ) {
+                    // Down arrow — shows when not submitted and more options below
+                    val showDown = !submitted && visibleOptionIndex != null &&
+                        visibleOptionIndex < question.options.size - 1
+                    if (showDown) {
                         Text(
-                            if (lastAnswerCorrect == true) "Correct — swipe down to continue."
-                            else "Incorrect — swipe down to continue.",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                            color = colors.feedbackText
+                            text = "↓",
+                            fontFamily = MetropolisBlack,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 28.sp,
+                            color = BrandInk.copy(alpha = 0.5f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 12.dp)
                         )
+                    } else {
+                        Spacer(Modifier.height(52.dp))
                     }
                 }
-
-                Spacer(Modifier.padding(bottom = 24.dp))
             }
         }
     }
