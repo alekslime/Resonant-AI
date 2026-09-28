@@ -10,6 +10,21 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import com.resonant.app.core.ResonantPrefs
+import com.resonant.app.ui.home.SettingsPlaceholderIcon
+import com.resonant.app.ui.theme.BrandInk
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -90,7 +105,7 @@ private const val RECHECK_TIMEOUT_MS = 2_000
 private const val NOTICE_WAIT_MS = 20_000L
 
 @Composable
-fun ChatScreen(onBack: () -> Unit) {
+fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
     val context = LocalContext.current
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
@@ -350,6 +365,17 @@ fun ChatScreen(onBack: () -> Unit) {
         }
     }
 
+    // Typed question from the pill. Same barge-in as voice: it interrupts anything in flight.
+    fun askTyped(question: String) {
+        speech.stopListening()
+        listening = false
+        cancelRequest()
+        audio.stop()
+        haptics.play(HapticPattern.CONFIRM)
+        audio.announce("Thinking.")
+        askModel(question)
+    }
+
     fun onAskTapped() {
         // A tap while waiting for the model cancels the wait — otherwise the only
         // way out of a slow or hung request would be sitting through the timeout.
@@ -452,13 +478,27 @@ fun ChatScreen(onBack: () -> Unit) {
         else -> DotsState.Idle
     }
 
+    val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
+
     ResonantScaffold(
-        title = ChatData.title,
+        title = "Resonant",
         subtitle = when {
             thinking -> "Tap center to cancel"
-            exchanges.isEmpty() -> "Tap center to ask a question"
+            exchanges.isEmpty() -> "Chat"
             else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
-        }
+        },
+        trailing = {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(BrandInk)
+                    .semantics { role = Role.Button; contentDescription = "Settings" }
+                    .clickable { onOpenSettings() },
+                contentAlignment = Alignment.Center
+            ) { SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
+        },
+        bottomBar = { AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() }) }
     ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
@@ -490,33 +530,49 @@ fun ChatScreen(onBack: () -> Unit) {
                 else -> {}
             }
         }) {
-            Box(Modifier.fillMaxSize()) {
-            ResonantDots(
-                state = dotsState,
-                level = { audio.speechLevel() },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp).size(260.dp)
-            )
-            Column(Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 32.dp)) {
-                if (statusText.isNotEmpty()) {
-                    Text(
-                        statusText,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.text
-                    )
-                } else if (current != null) {
-                    Text(
-                        "You: ${current.userText}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.text
-                    )
-                }
-                Text(
-                    current?.unit?.text ?: "",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                    color = colors.text,
-                    modifier = Modifier.padding(top = 20.dp)
+            // Empty chat = the hero from the design: dots, greeting, prompt. Once there is a
+            // conversation the dots shrink to the top and the exchange takes the space.
+            val hero = exchanges.isEmpty()
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
+            ) {
+                ResonantDots(
+                    state = dotsState,
+                    level = { audio.speechLevel() },
+                    modifier = Modifier.size(if (hero) 240.dp else 120.dp)
                 )
-            }
+                if (hero) {
+                    Text(
+                        "Hi ${userName ?: "there"}!",
+                        style = MaterialTheme.typography.displayLarge,
+                        color = colors.text,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 24.dp)
+                    )
+                    Text(
+                        statusText.ifEmpty { "What would you like to study today?" },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.text,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                } else {
+                    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        if (statusText.isNotEmpty()) {
+                            Text(statusText, style = MaterialTheme.typography.bodyLarge, color = colors.text)
+                        } else if (current != null) {
+                            Text("You: ${current.userText}", style = MaterialTheme.typography.bodyLarge, color = colors.text)
+                        }
+                        Text(
+                            current?.unit?.text ?: "",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 20.dp)
+                        )
+                    }
+                }
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.resonant.app.ui.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -38,6 +35,8 @@ import com.resonant.app.ui.theme.ScreenTopPadding
 fun ResonantScaffold(
     title: String,
     subtitle: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val colors = LocalResonantColors.current
@@ -71,52 +70,17 @@ fun ResonantScaffold(
                         )
                     }
                 }
-                BrailleRMark(color = colors.text)
+                if (trailing != null) trailing() else ResonantDots(
+                    state = DotsState.Idle,
+                    color = colors.text,
+                    modifier = Modifier.size(48.dp)
+                )
             }
 
-            Box(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
                 content()
             }
-        }
-    }
-}
-
-/**
- * The header mark — the app's actual logo (LogoBlack_NOBG.png), the braille
- * cell for "R" (dots 1, 2, 3, 5), drawn as four circles rather than swapped
- * in as a static PNG so it tints to [color] and stays sharp at any density.
- *
- * The dot positions/radius below are fractions of this composable's own
- * width/height, not fixed dp — they were derived by measuring the source
- * PNG directly (dot centers + radii via a pixel scan, not eyeballed) and
- * normalizing against its bounding box (2000x2000px source; bbox x
- * 697-1379, y 497-1502). Same fractions drive the launcher icon
- * (ic_launcher_foreground.xml), so the header mark and the icon are the
- * same shape at every size, not two separate approximations of it.
- *
- * Matches the header's text color so it stays visible in both themes (it
- * used to be hardcoded black, which vanished against a dark background).
- */
-@Composable
-private fun BrailleRMark(color: Color) {
-    Canvas(
-        modifier = Modifier
-            .size(width = 19.dp, height = 28.dp)
-            .padding(top = 6.dp)
-    ) {
-        val radius = size.height * 0.150f
-        val dots = listOf(
-            0.221f to 0.150f, // dot 1: top-left
-            0.221f to 0.500f, // dot 2: mid-left
-            0.778f to 0.500f, // dot 3: mid-right
-            0.221f to 0.850f  // dot 4: bottom-left
-        )
-        dots.forEach { (nx, ny) ->
-            drawCircle(
-                color = color,
-                radius = radius,
-                center = Offset(size.width * nx, size.height * ny)
-            )
+            bottomBar?.invoke()
         }
     }
 }

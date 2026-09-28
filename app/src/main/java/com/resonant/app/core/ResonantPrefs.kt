@@ -38,6 +38,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getString(KEY_OLLAMA_MODEL, null)
         set(value) = putOrRemove(KEY_OLLAMA_MODEL, value)
 
+    /** First name shown in the Chat greeting ("Hi Marc!"). Null/blank = a generic greeting. */
+    var userName: String?
+        get() = prefs.getString(KEY_USER_NAME, null)
+        set(value) = putOrRemove(KEY_USER_NAME, value?.trim())
+
     private fun putOrRemove(key: String, value: String?) {
         val editor = prefs.edit()
         if (value.isNullOrBlank()) editor.remove(key) else editor.putString(key, value)
@@ -50,5 +55,6 @@ class ResonantPrefs(context: Context) {
         const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"
         const val KEY_OLLAMA_MODEL = "ollama_model"
+        const val KEY_USER_NAME = "user_name"
     }
 }

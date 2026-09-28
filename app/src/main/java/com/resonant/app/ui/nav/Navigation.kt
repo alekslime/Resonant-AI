@@ -222,7 +222,10 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             )
         }
         composable(Routes.CHAT) {
-            ChatScreen(onBack = goBack)
+            ChatScreen(
+                onBack = goBack,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
