@@ -88,6 +88,10 @@ class WhisperSpeechInputManager(context: Context) {
      * here (call onSpoken immediately) is only safe for a caller with no TTS
      * to collide with in the first place.
      */
+    /** Live mic loudness 0..1 while recording, 0 otherwise. Safe from any thread. */
+    @Volatile var micLevel = 0f
+        private set
+
     fun startListening(
         onOutcome: (SpeechInputManager.Outcome) -> Unit,
         onStatus: (String, onSpoken: () -> Unit) -> Unit = { _, onSpoken -> onSpoken() }
@@ -102,7 +106,7 @@ class WhisperSpeechInputManager(context: Context) {
         fun beginRecording() {
             activeJob = scope.launch {
                 try {
-                    val recording = withContext(Dispatchers.IO) { AudioRecorder().record() }
+                    val recording = withContext(Dispatchers.IO) { AudioRecorder { micLevel = it }.record() }
                     if (recording.samples.isEmpty()) {
                         deliver(onOutcome, SpeechInputManager.Outcome.Error("I didn't catch that."))
                         return@launch
@@ -139,6 +143,7 @@ class WhisperSpeechInputManager(context: Context) {
     fun stopListening() {
         activeJob?.cancel()
         activeJob = null
+        micLevel = 0f
     }
 
     /** Releases the loaded model. Call when the owning screen is done with voice input for good. */

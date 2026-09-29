@@ -55,6 +55,9 @@ class VoiceInputController(context: Context) {
         }
     }
 
+    /** Live mic loudness 0..1 from whichever recognizer is active. Safe from any thread. */
+    fun micLevel(): Float = maxOf(whisper.micLevel, fallback.micLevel)
+
     fun stopListening() {
         whisper.stopListening()
         fallback.stopListening()

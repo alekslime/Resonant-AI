@@ -37,11 +37,17 @@ internal class PcmSpeaker(private val main: Handler) {
         val wav = try { parseWav16(file.readBytes()) } catch (e: Exception) { null }
         file.delete()
         if (wav == null) return false
+        play(wav, onStarted, onFinished)
+        return true
+    }
+
+    /** Plays already-decoded PCM (e.g. a cached announcement). [wav] is only read, never modified. */
+    fun play(wav: WavPcm, onStarted: () -> Unit, onFinished: () -> Unit) {
+        stop()
         val window = max(1, wav.sampleRate * 30 / 1000) // 30 ms
         val s = Session(wav, windowLevels(wav, window), window)
         session = s
         Thread({ run(s, onStarted, onFinished) }, "resonant-pcm").start()
-        return true
     }
 
     /** Loudness 0..1 right now, or null when nothing is playing. */

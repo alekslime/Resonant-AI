@@ -542,7 +542,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
             ) {
                 ResonantDots(
                     state = dotsState,
-                    level = { audio.speechLevel() },
+                    level = { if (dotsState == DotsState.Listening) speech.micLevel() else audio.speechLevel() },
                     modifier = Modifier.size(if (hero) 240.dp else 120.dp)
                 )
                 if (hero) {

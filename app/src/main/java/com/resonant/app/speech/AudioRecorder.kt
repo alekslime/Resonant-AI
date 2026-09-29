@@ -6,6 +6,8 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.annotation.RequiresPermission
+import kotlin.math.log10
+import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
@@ -19,7 +21,7 @@ import kotlin.math.sqrt
  *
  * Blocking — call from a background thread/dispatcher, never the main one.
  */
-class AudioRecorder {
+class AudioRecorder(private val onLevel: (Float) -> Unit = {}) {
 
     class Result(val samples: FloatArray, val sampleRate: Int)
 
@@ -54,6 +56,7 @@ class AudioRecorder {
                 if (read <= 0) continue
 
                 for (i in 0 until read) collected.add(readBuffer[i])
+                onLevel(levelOf(rms(readBuffer, read))) // live mic loudness 0..1 for the UI
 
                 val now = System.currentTimeMillis()
                 if (rms(readBuffer, read) > SILENCE_RMS_THRESHOLD) {
@@ -65,12 +68,19 @@ class AudioRecorder {
                 }
             }
         } finally {
+            onLevel(0f)
             recorder.stop()
             recorder.release()
         }
 
         val floats = FloatArray(collected.size) { i -> collected[i] / 32768f }
         return Result(floats, SAMPLE_RATE)
+    }
+
+    /** -50 dB..-10 dB (re full scale) mapped to 0..1: whisper-quiet to loud speech. */
+    private fun levelOf(rms: Double): Float {
+        val db = 20.0 * log10(max(rms, 1.0) / 32768.0)
+        return ((db + 50.0) / 40.0).coerceIn(0.0, 1.0).toFloat()
     }
 
     private fun rms(buffer: ShortArray, length: Int): Double {
