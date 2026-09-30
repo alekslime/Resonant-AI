@@ -126,7 +126,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
             }
         }) {
             Column(Modifier.fillMaxSize()) {
-                LessonsTopBar(onBack = onExit)
+                LessonsTopBar(onBack = onExit, backAnnouncement = "Back to Lessons.")
 
                 Column(
                     Modifier

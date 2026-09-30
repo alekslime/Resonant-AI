@@ -1,6 +1,15 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.resonant.app.ui.lessons.FittedTitle
+import com.resonant.app.ui.lessons.LessonsTopBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -187,136 +196,94 @@ fun QuizScreen(
             }
         }) {
             Column(Modifier.fillMaxSize()) {
+                LessonsTopBar(
+                    onBack = onBack,
+                    title = "Quizzes",
+                    backAnnouncement = "Leaving the quiz. Back to Quizzes."
+                )
 
-                // Top bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Color(0xFF0A0A0A))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(
-                        modifier = Modifier.size(36.dp).clip(CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("←", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Text(
-                        text = "Quizzes",
-                        fontFamily = MetropolisBlack,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-                    Box(
-                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                // Question prompt
+                // Question prompt (Figma: 35/48, heavy, straight under the header)
                 Text(
                     text = question.prompt.text,
                     fontFamily = MetropolisBlack,
                     fontWeight = FontWeight.Black,
-                    fontSize = 26.sp,
-                    lineHeight = 32.sp,
+                    fontSize = 35.sp,
+                    lineHeight = 48.sp,
                     color = questionTextColor,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 )
 
-                // Option card area — fills remaining space
+                // Arrow / option card / arrow — card takes whatever height is left
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.Center,
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Up arrow — shows when not on first option
                     val showUp = !submitted && queueIndex > 1
-                    if (showUp) {
-                        Text(
-                            text = "↑",
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 28.sp,
-                            color = BrandInk.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                    } else {
-                        Spacer(Modifier.height(52.dp))
+                    Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
+                        if (showUp) VerticalArrow(up = true, tint = BrandInk.copy(alpha = 0.8f))
                     }
 
-                    // Option card — shows when focused on an option, hidden on prompt
-                    if (visibleOptionIndex != null) {
-                        val opt = question.options[visibleOptionIndex]
-                        val isSelected = selectedOption == visibleOptionIndex
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color.White)
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = opt.text,
-                                fontFamily = MetropolisBlack,
-                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
-                                fontSize = 22.sp,
-                                lineHeight = 30.sp,
-                                color = BrandInk,
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp)
+                            .heightIn(min = 140.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(if (visibleOptionIndex != null) Color.White else Color.White.copy(alpha = 0.3f))
+                            .padding(horizontal = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (visibleOptionIndex != null) {
+                            FittedTitle(
+                                title = question.options[visibleOptionIndex].text,
+                                maxSp = 36f,
+                                lineRatio = 41f / 36f,
+                                minSp = 20f,
                                 textAlign = TextAlign.Center
                             )
-                        }
-                    } else {
-                        // On prompt — show placeholder card with hint
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color.White.copy(alpha = 0.3f))
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        } else {
                             Text(
                                 text = "Swipe up to see options",
                                 fontFamily = MetropolisBlack,
-                                fontWeight = FontWeight.Normal,
-                                fontSize = 16.sp,
-                                color = BrandInk.copy(alpha = 0.5f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 24.sp,
+                                color = BrandInk.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
 
-                    // Down arrow — shows when not submitted and more options below
                     val showDown = !submitted && visibleOptionIndex != null &&
                         visibleOptionIndex < question.options.size - 1
-                    if (showDown) {
-                        Text(
-                            text = "↓",
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 28.sp,
-                            color = BrandInk.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 12.dp)
-                        )
-                    } else {
-                        Spacer(Modifier.height(52.dp))
+                    Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
+                        if (showDown) VerticalArrow(up = false, tint = BrandInk.copy(alpha = 0.8f))
                     }
                 }
             }
         }
+    }
+}
+
+/** Big chevron-arrow from the Figma quiz frame (about 76dp square, 7dp stroke). */
+@Composable
+private fun VerticalArrow(up: Boolean, tint: Color) {
+    Canvas(Modifier.size(76.dp)) {
+        val w = size.width
+        val h = size.height
+        val sw = 7.dp.toPx()
+        val tipY = if (up) sw / 2f else h - sw / 2f
+        val armY = if (up) h * 0.5f else h * 0.5f
+        val tail = if (up) h else 0f
+        drawLine(tint, Offset(w / 2f, tail), Offset(w / 2f, tipY), strokeWidth = sw)
+        val head = Path().apply {
+            moveTo(sw / 2f, armY)
+            lineTo(w / 2f, tipY)
+            lineTo(w - sw / 2f, armY)
+        }
+        drawPath(head, tint, style = Stroke(width = sw, cap = StrokeCap.Butt, join = StrokeJoin.Miter))
     }
 }

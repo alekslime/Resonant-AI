@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.core.LocalAudioManager
@@ -37,7 +38,11 @@ import com.resonant.app.ui.theme.MetropolisBlack
 
 /** Shared by the Lessons list, the single-lesson screen and the Quizzes list (same Figma header). */
 @Composable
-internal fun LessonsTopBar(onBack: () -> Unit, title: String = "Lessons") {
+internal fun LessonsTopBar(
+    onBack: () -> Unit,
+    title: String = "Lessons",
+    backAnnouncement: String = "Back to Home."
+) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val bar = Color(0xFF0A0A0A)
@@ -54,7 +59,7 @@ internal fun LessonsTopBar(onBack: () -> Unit, title: String = "Lessons") {
                 .height(52.dp)
                 .clip(RoundedCornerShape(50))
                 .background(bar)
-                .clickable { haptics.play(HapticPattern.BACK); audio.announce("Back to Home."); onBack() }
+                .clickable { haptics.play(HapticPattern.BACK); audio.announce(backAnnouncement); onBack() }
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -84,7 +89,8 @@ internal fun FittedTitle(
     title: String,
     maxSp: Float = 56f,
     lineRatio: Float = 72f / 56f,
-    minSp: Float = 26f
+    minSp: Float = 26f,
+    textAlign: TextAlign = TextAlign.Start
 ) {
     val measurer = rememberTextMeasurer()
     val base = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold)
@@ -104,7 +110,9 @@ internal fun FittedTitle(
         Text(
             text = title,
             style = base.copy(fontSize = sizeSp.sp, lineHeight = (sizeSp * lineRatio).sp),
-            color = BrandInk
+            color = BrandInk,
+            textAlign = textAlign,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
