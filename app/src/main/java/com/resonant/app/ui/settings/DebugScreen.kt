@@ -46,6 +46,7 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
     val isSpeaking by audio.isSpeaking.collectAsState()
     val isPaused by audio.isPaused.collectAsState()
     val speedIndex by audio.speedIndex.collectAsState()
+    val dotsPreview by debug.dotsPreview.collectAsState()
 
     val speechState = when {
         isSpeaking -> "speaking"
@@ -65,7 +66,8 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
         "Current zone" to zone,
         "Ollama server" to OllamaConfig.BASE_URL,
         "Ollama model" to OllamaConfig.MODEL,
-        "Server setup" to "Swipe right in the middle of the screen"
+        "Server setup" to "Swipe right in the middle of the screen",
+        "Dots preview (Chat)" to if (dotsPreview) "On — swipe left in the middle to turn off" else "Off — swipe left in the middle to turn on"
     )
 
     ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
@@ -76,11 +78,19 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
                     audio.announce("Back to Settings.")
                     onBack()
                 }
-                is ResonantGesture.Swipe -> if (
-                    gesture.zone == InteractionZone.CENTER && gesture.direction == SwipeDirection.RIGHT
-                ) {
-                    haptics.play(HapticPattern.CONFIRM)
-                    onOpenServerSetup()
+                is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
+                    when (gesture.direction) {
+                        SwipeDirection.RIGHT -> {
+                            haptics.play(HapticPattern.CONFIRM)
+                            onOpenServerSetup()
+                        }
+                        SwipeDirection.LEFT -> {
+                            val on = debug.toggleDotsPreview()
+                            haptics.play(HapticPattern.CONFIRM)
+                            audio.announce("Dots preview ${if (on) "on" else "off"}.")
+                        }
+                        else -> {}
+                    }
                 }
                 is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
                     audio.togglePause(); haptics.play(HapticPattern.CONFIRM)

@@ -24,7 +24,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 
-enum class DotsState { Idle, Listening, Thinking, Speaking, Offline }
+enum class DotsState { Idle, Listening, Transcribing, Thinking, Speaking, Offline }
 
 /**
  * The braille "R" mark, alive. Six dot slots (a full braille cell); the logo uses 1-2-3-5.
@@ -32,6 +32,8 @@ enum class DotsState { Idle, Listening, Thinking, Speaking, Offline }
  *  - Idle: spells R-e-s-o-n-a-n-t in braille, eased, with a speed ramp (slow -> fast -> slow).
  *  - Listening: R tightens, drifts and sways; the right dot leans out like an ear. With a
  *    [level] (live mic loudness) the ear reaches out further and the others get more restless.
+ *  - Transcribing: a tighter, faster orbit — you stopped talking and the words are being
+ *    turned into text, so it never looks frozen.
  *  - Thinking: four dots orbit with a speed-ramped loop.
  *  - Speaking: dots ride a traveling wave with squash/stretch, driven by [level] (0..1).
  *  - Offline: the R with its right dot cut loose, drifting away and flickering — the AI server
@@ -138,6 +140,7 @@ internal class DotsEngine(fromNothing: Boolean) {
             DotsState.Offline -> offline(t)
             DotsState.Listening -> listening(t, if (raw >= 0f) smooth else null)
             DotsState.Thinking -> thinking(t)
+            DotsState.Transcribing -> thinking(t * 1.7f, 240f)
             DotsState.Speaking -> speaking(t, if (raw >= 0f) smooth else null)
         }
         val e = if (reduceMotion) 1f else ease(clamp((t - switchT) / .9f))
@@ -195,15 +198,15 @@ internal class DotsEngine(fromNothing: Boolean) {
         }
     }
 
-    private fun thinking(t: Float) {
+    private fun thinking(t: Float, radius: Float = 330f) {
         val u = t / 2.6f
         val tau = (2 * PI).toFloat()
         val ph = tau * u - .6f * sin(tau * u) // speed ramps, never reverses
-        val ry = 330f * (.85f + .15f * sin(t * .7f))
+        val ry = radius * (.85f + .15f * sin(t * .7f))
         ACT.forEachIndexed { i, k ->
             val a = ph + i * PI.toFloat() / 2f
             val s = .72f + .28f * (.5f + .5f * sin(a))
-            val (x, y) = rot(330f * cos(a), ry * sin(a), -.5f * sin(t * .5f))
+            val (x, y) = rot(radius * cos(a), ry * sin(a), -.5f * sin(t * .5f))
             put(k, x, y, s)
         }
     }

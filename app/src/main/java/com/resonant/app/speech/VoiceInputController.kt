@@ -36,6 +36,10 @@ class VoiceInputController(context: Context) {
         whisper.preload()
     }
 
+    /** True while a finished recording is being turned into text (either recognizer). */
+    val whisperTranscribing get() = whisper.transcribing
+    val fallbackTranscribing get() = fallback.transcribing
+
     fun isAvailable(): Boolean = whisper.isAvailable() || fallback.isAvailable()
 
     /**

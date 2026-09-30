@@ -1,0 +1,460 @@
+diff --git a/app/src/main/java/com/resonant/app/core/DebugState.kt b/app/src/main/java/com/resonant/app/core/DebugState.kt
+index 2222811..325962e 100644
+--- a/app/src/main/java/com/resonant/app/core/DebugState.kt
++++ b/app/src/main/java/com/resonant/app/core/DebugState.kt
+@@ -24,6 +24,24 @@ class DebugState {
+     private val _selectedOption = MutableStateFlow("—")
+     val selectedOption: StateFlow<String> = _selectedOption
+ 
++    // Dots preview (Chat): forces a dots animation for on-device checking. In-memory only, so it
++    // resets on every app start. State is held by name to keep core free of UI types.
++    private val _dotsPreview = MutableStateFlow(false)
++    val dotsPreview: StateFlow<Boolean> = _dotsPreview
++    private val _dotsForced = MutableStateFlow<String?>(null)
++    val dotsForced: StateFlow<String?> = _dotsForced
++    private val _dotsLevel = MutableStateFlow<Float?>(null)
++    val dotsLevel: StateFlow<Float?> = _dotsLevel
++
++    fun toggleDotsPreview(): Boolean {
++        val on = !_dotsPreview.value
++        _dotsPreview.value = on
++        if (!on) { _dotsForced.value = null; _dotsLevel.value = null }
++        return on
++    }
++    fun forceDots(name: String?) { _dotsForced.value = name }
++    fun setDotsLevel(level: Float?) { _dotsLevel.value = level }
++
+     fun setScreen(name: String) { _currentScreen.value = name }
+     fun setZone(name: String) { _currentZone.value = name }
+     fun setGesture(name: String) { _lastGesture.value = name }
+diff --git a/app/src/main/java/com/resonant/app/speech/SpeechInputManager.kt b/app/src/main/java/com/resonant/app/speech/SpeechInputManager.kt
+index 10609f1..7ecd130 100644
+--- a/app/src/main/java/com/resonant/app/speech/SpeechInputManager.kt
++++ b/app/src/main/java/com/resonant/app/speech/SpeechInputManager.kt
+@@ -30,6 +30,10 @@ class SpeechInputManager(context: Context) {
+     @Volatile var micLevel = 0f
+         private set
+ 
++    private val _transcribing = kotlinx.coroutines.flow.MutableStateFlow(false)
++    /** True from the end of speech until the recognizer returns a result. */
++    val transcribing: kotlinx.coroutines.flow.StateFlow<Boolean> = _transcribing
++
+     fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(appContext)
+ 
+     fun startListening(onOutcome: (Outcome) -> Unit) {
+@@ -51,6 +55,7 @@ class SpeechInputManager(context: Context) {
+         r.setRecognitionListener(object : RecognitionListener {
+             override fun onResults(results: Bundle) {
+                 micLevel = 0f
++                _transcribing.value = false
+                 val text = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                 if (text.isNullOrBlank()) {
+                     onOutcome(Outcome.Error("I didn't catch that."))
+@@ -61,6 +66,7 @@ class SpeechInputManager(context: Context) {
+ 
+             override fun onError(error: Int) {
+                 micLevel = 0f
++                _transcribing.value = false
+                 onOutcome(Outcome.Error(errorMessage(error)))
+             }
+ 
+@@ -68,7 +74,7 @@ class SpeechInputManager(context: Context) {
+             override fun onBeginningOfSpeech() {}
+             override fun onRmsChanged(rmsdB: Float) { micLevel = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f) }
+             override fun onBufferReceived(buffer: ByteArray?) {}
+-            override fun onEndOfSpeech() {}
++            override fun onEndOfSpeech() { micLevel = 0f; _transcribing.value = true }
+             override fun onPartialResults(partialResults: Bundle?) {}
+             override fun onEvent(eventType: Int, params: Bundle?) {}
+         })
+@@ -78,6 +84,7 @@ class SpeechInputManager(context: Context) {
+ 
+     fun stopListening() {
+         micLevel = 0f
++        _transcribing.value = false
+         recognizer?.destroy()
+         recognizer = null
+     }
+diff --git a/app/src/main/java/com/resonant/app/speech/VoiceInputController.kt b/app/src/main/java/com/resonant/app/speech/VoiceInputController.kt
+index b942f7a..9a0e1e5 100644
+--- a/app/src/main/java/com/resonant/app/speech/VoiceInputController.kt
++++ b/app/src/main/java/com/resonant/app/speech/VoiceInputController.kt
+@@ -36,6 +36,10 @@ class VoiceInputController(context: Context) {
+         whisper.preload()
+     }
+ 
++    /** True while a finished recording is being turned into text (either recognizer). */
++    val whisperTranscribing get() = whisper.transcribing
++    val fallbackTranscribing get() = fallback.transcribing
++
+     fun isAvailable(): Boolean = whisper.isAvailable() || fallback.isAvailable()
+ 
+     /**
+diff --git a/app/src/main/java/com/resonant/app/speech/WhisperSpeechInputManager.kt b/app/src/main/java/com/resonant/app/speech/WhisperSpeechInputManager.kt
+index be04f87..fe8e6fb 100644
+--- a/app/src/main/java/com/resonant/app/speech/WhisperSpeechInputManager.kt
++++ b/app/src/main/java/com/resonant/app/speech/WhisperSpeechInputManager.kt
+@@ -92,6 +92,10 @@ class WhisperSpeechInputManager(context: Context) {
+     @Volatile var micLevel = 0f
+         private set
+ 
++    private val _transcribing = MutableStateFlow(false)
++    /** True from the end of recording until the transcript (or an error) is delivered. */
++    val transcribing: StateFlow<Boolean> = _transcribing
++
+     fun startListening(
+         onOutcome: (SpeechInputManager.Outcome) -> Unit,
+         onStatus: (String, onSpoken: () -> Unit) -> Unit = { _, onSpoken -> onSpoken() }
+@@ -112,6 +116,7 @@ class WhisperSpeechInputManager(context: Context) {
+                         return@launch
+                     }
+ 
++                    _transcribing.value = true
+                     val activeEngine = engine ?: WhisperEngine(modelManager.modelPath()).also { engine = it }
+                     val text = activeEngine.transcribe(recording.samples, recording.sampleRate)
+ 
+@@ -122,6 +127,7 @@ class WhisperSpeechInputManager(context: Context) {
+                     }
+                     deliver(onOutcome, outcome)
+                 } catch (e: CancellationException) {
++                    _transcribing.value = false
+                     throw e
+                 } catch (e: Exception) {
+                     deliver(onOutcome, SpeechInputManager.Outcome.Error("Offline voice recognition failed."))
+@@ -144,6 +150,7 @@ class WhisperSpeechInputManager(context: Context) {
+         activeJob?.cancel()
+         activeJob = null
+         micLevel = 0f
++        _transcribing.value = false
+     }
+ 
+     /** Releases the loaded model. Call when the owning screen is done with voice input for good. */
+@@ -156,6 +163,7 @@ class WhisperSpeechInputManager(context: Context) {
+     }
+ 
+     private suspend fun deliver(onOutcome: (SpeechInputManager.Outcome) -> Unit, outcome: SpeechInputManager.Outcome) {
++        _transcribing.value = false
+         withContext(Dispatchers.Main) { onOutcome(outcome) }
+     }
+ }
+diff --git a/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt b/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
+index 44833a4..5f7d64c 100644
+--- a/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
++++ b/app/src/main/java/com/resonant/app/ui/chat/ChatScreen.kt
+@@ -473,12 +473,21 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
+     LaunchedEffect(audioSpeaking) {
+         if (audioSpeaking) speakingHold = true else { delay(600); speakingHold = false }
+     }
+-    val dotsState = when {
++    val whisperTranscribing by speech.whisperTranscribing.collectAsState()
++    val fallbackTranscribing by speech.fallbackTranscribing.collectAsState()
++    val transcribing = whisperTranscribing || fallbackTranscribing
++    val realDotsState = when {
++        listening && transcribing -> DotsState.Transcribing
+         listening -> DotsState.Listening
+         thinking -> DotsState.Thinking
+         speakingHold -> DotsState.Speaking
+         else -> if (serverUp == false) DotsState.Offline else DotsState.Idle
+     }
++    // Debug > "Dots preview" can force any state (and a level) to check each animation.
++    val dotsPreview by debug.dotsPreview.collectAsState()
++    val forcedName by debug.dotsForced.collectAsState()
++    val forcedLevel by debug.dotsLevel.collectAsState()
++    val dotsState = forcedName?.let { n -> DotsState.values().firstOrNull { it.name == n } } ?: realDotsState
+ 
+     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
+ 
+@@ -500,7 +509,17 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
+                 contentAlignment = Alignment.Center
+             ) { SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
+         },
+-        bottomBar = { AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() }) }
++        bottomBar = {
++            Column {
++                if (dotsPreview) DotsDebugPanel(
++                    forced = forcedName,
++                    level = forcedLevel,
++                    onForce = { debug.forceDots(it) },
++                    onLevel = { debug.setDotsLevel(it) }
++                )
++                AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() })
++            }
++        }
+     ) {
+         GestureSurface(onGesture = { gesture ->
+             when (gesture) {
+@@ -542,7 +561,13 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
+             ) {
+                 ResonantDots(
+                     state = dotsState,
+-                    level = { if (dotsState == DotsState.Listening) speech.micLevel() else audio.speechLevel() },
++                    level = {
++                        when {
++                            forcedName != null -> forcedLevel ?: -1f // -1 = simulated
++                            dotsState == DotsState.Listening -> speech.micLevel()
++                            else -> audio.speechLevel()
++                        }
++                    },
+                     modifier = Modifier.size(if (hero) 240.dp else 120.dp)
+                 )
+                 if (hero) {
+diff --git a/app/src/main/java/com/resonant/app/ui/chat/DotsDebugPanel.kt b/app/src/main/java/com/resonant/app/ui/chat/DotsDebugPanel.kt
+new file mode 100644
+index 0000000..68bbc43
+--- /dev/null
++++ b/app/src/main/java/com/resonant/app/ui/chat/DotsDebugPanel.kt
+@@ -0,0 +1,91 @@
++package com.resonant.app.ui.chat
++
++import androidx.compose.foundation.BorderStroke
++import androidx.compose.foundation.background
++import androidx.compose.foundation.border
++import androidx.compose.foundation.clickable
++import androidx.compose.foundation.horizontalScroll
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material3.Slider
++import androidx.compose.material3.SliderDefaults
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.semantics.Role
++import androidx.compose.ui.semantics.role
++import androidx.compose.ui.semantics.semantics
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.dp
++import androidx.compose.ui.unit.sp
++import com.resonant.app.ui.components.DotsState
++
++/**
++ * Debug-only strip above the Ask pill (Settings > Debug Mode > swipe left in the middle turns it
++ * on). Forces any dots animation with a simulated or slider-driven level, so every state can be
++ * checked without Ollama, Whisper or TTS cooperating. Not shown otherwise.
++ *
++ * @param forced the forced state name, or null = follow the real app state ("Auto")
++ * @param level slider level 0..1, or null = simulated (the built-in fake envelope / baseline)
++ */
++@Composable
++fun DotsDebugPanel(
++    forced: String?,
++    level: Float?,
++    onForce: (String?) -> Unit,
++    onLevel: (Float?) -> Unit
++) {
++    val ink = Color(0xFF0F0F0F)
++    @Composable
++    fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
++        Box(
++            Modifier
++                .clip(RoundedCornerShape(percent = 50))
++                .then(if (on) Modifier.background(ink) else Modifier.border(BorderStroke(2.dp, ink), RoundedCornerShape(percent = 50)))
++                .semantics { role = Role.Button }
++                .clickable { onClick() }
++                .padding(horizontal = 14.dp, vertical = 8.dp),
++            contentAlignment = Alignment.Center
++        ) {
++            Text(label, color = if (on) Color(0xFFFFAE00) else ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
++        }
++    }
++
++    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp)) {
++        Row(
++            Modifier.horizontalScroll(rememberScrollState()),
++            horizontalArrangement = Arrangement.spacedBy(8.dp)
++        ) {
++            Chip("Auto", forced == null) { onForce(null) }
++            listOf(
++                DotsState.Idle, DotsState.Listening, DotsState.Transcribing,
++                DotsState.Thinking, DotsState.Speaking, DotsState.Offline
++            ).forEach { Chip(it.name, forced == it.name) { onForce(it.name) } }
++        }
++        if (forced != null) {
++            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
++                Chip(if (level == null) "Sim level" else "Level ${(level * 100).toInt()}%", level == null) {
++                    onLevel(if (level == null) .5f else null)
++                }
++                Slider(
++                    value = level ?: 0f,
++                    onValueChange = { onLevel(it) },
++                    valueRange = 0f..1f,
++                    colors = SliderDefaults.colors(
++                        thumbColor = ink, activeTrackColor = ink, inactiveTrackColor = ink.copy(alpha = .25f)
++                    ),
++                    modifier = Modifier.weight(1f).padding(start = 12.dp)
++                )
++            }
++        }
++    }
++}
+diff --git a/app/src/main/java/com/resonant/app/ui/components/ResonantDots.kt b/app/src/main/java/com/resonant/app/ui/components/ResonantDots.kt
+index 8e47f89..c4858dd 100644
+--- a/app/src/main/java/com/resonant/app/ui/components/ResonantDots.kt
++++ b/app/src/main/java/com/resonant/app/ui/components/ResonantDots.kt
+@@ -24,7 +24,7 @@ import kotlin.math.min
+ import kotlin.math.pow
+ import kotlin.math.sin
+ 
+-enum class DotsState { Idle, Listening, Thinking, Speaking, Offline }
++enum class DotsState { Idle, Listening, Transcribing, Thinking, Speaking, Offline }
+ 
+ /**
+  * The braille "R" mark, alive. Six dot slots (a full braille cell); the logo uses 1-2-3-5.
+@@ -32,6 +32,8 @@ enum class DotsState { Idle, Listening, Thinking, Speaking, Offline }
+  *  - Idle: spells R-e-s-o-n-a-n-t in braille, eased, with a speed ramp (slow -> fast -> slow).
+  *  - Listening: R tightens, drifts and sways; the right dot leans out like an ear. With a
+  *    [level] (live mic loudness) the ear reaches out further and the others get more restless.
++ *  - Transcribing: a tighter, faster orbit — you stopped talking and the words are being
++ *    turned into text, so it never looks frozen.
+  *  - Thinking: four dots orbit with a speed-ramped loop.
+  *  - Speaking: dots ride a traveling wave with squash/stretch, driven by [level] (0..1).
+  *  - Offline: the R with its right dot cut loose, drifting away and flickering — the AI server
+@@ -138,6 +140,7 @@ internal class DotsEngine(fromNothing: Boolean) {
+             DotsState.Offline -> offline(t)
+             DotsState.Listening -> listening(t, if (raw >= 0f) smooth else null)
+             DotsState.Thinking -> thinking(t)
++            DotsState.Transcribing -> thinking(t * 1.7f, 240f)
+             DotsState.Speaking -> speaking(t, if (raw >= 0f) smooth else null)
+         }
+         val e = if (reduceMotion) 1f else ease(clamp((t - switchT) / .9f))
+@@ -195,15 +198,15 @@ internal class DotsEngine(fromNothing: Boolean) {
+         }
+     }
+ 
+-    private fun thinking(t: Float) {
++    private fun thinking(t: Float, radius: Float = 330f) {
+         val u = t / 2.6f
+         val tau = (2 * PI).toFloat()
+         val ph = tau * u - .6f * sin(tau * u) // speed ramps, never reverses
+-        val ry = 330f * (.85f + .15f * sin(t * .7f))
++        val ry = radius * (.85f + .15f * sin(t * .7f))
+         ACT.forEachIndexed { i, k ->
+             val a = ph + i * PI.toFloat() / 2f
+             val s = .72f + .28f * (.5f + .5f * sin(a))
+-            val (x, y) = rot(330f * cos(a), ry * sin(a), -.5f * sin(t * .5f))
++            val (x, y) = rot(radius * cos(a), ry * sin(a), -.5f * sin(t * .5f))
+             put(k, x, y, s)
+         }
+     }
+diff --git a/app/src/main/java/com/resonant/app/ui/settings/DebugScreen.kt b/app/src/main/java/com/resonant/app/ui/settings/DebugScreen.kt
+index 15a31e6..d02acf4 100644
+--- a/app/src/main/java/com/resonant/app/ui/settings/DebugScreen.kt
++++ b/app/src/main/java/com/resonant/app/ui/settings/DebugScreen.kt
+@@ -46,6 +46,7 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
+     val isSpeaking by audio.isSpeaking.collectAsState()
+     val isPaused by audio.isPaused.collectAsState()
+     val speedIndex by audio.speedIndex.collectAsState()
++    val dotsPreview by debug.dotsPreview.collectAsState()
+ 
+     val speechState = when {
+         isSpeaking -> "speaking"
+@@ -65,7 +66,8 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
+         "Current zone" to zone,
+         "Ollama server" to OllamaConfig.BASE_URL,
+         "Ollama model" to OllamaConfig.MODEL,
+-        "Server setup" to "Swipe right in the middle of the screen"
++        "Server setup" to "Swipe right in the middle of the screen",
++        "Dots preview (Chat)" to if (dotsPreview) "On — swipe left in the middle to turn off" else "Off — swipe left in the middle to turn on"
+     )
+ 
+     ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
+@@ -76,11 +78,19 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
+                     audio.announce("Back to Settings.")
+                     onBack()
+                 }
+-                is ResonantGesture.Swipe -> if (
+-                    gesture.zone == InteractionZone.CENTER && gesture.direction == SwipeDirection.RIGHT
+-                ) {
+-                    haptics.play(HapticPattern.CONFIRM)
+-                    onOpenServerSetup()
++                is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
++                    when (gesture.direction) {
++                        SwipeDirection.RIGHT -> {
++                            haptics.play(HapticPattern.CONFIRM)
++                            onOpenServerSetup()
++                        }
++                        SwipeDirection.LEFT -> {
++                            val on = debug.toggleDotsPreview()
++                            haptics.play(HapticPattern.CONFIRM)
++                            audio.announce("Dots preview ${if (on) "on" else "off"}.")
++                        }
++                        else -> {}
++                    }
+                 }
+                 is ResonantGesture.Tap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                     audio.togglePause(); haptics.play(HapticPattern.CONFIRM)
+diff --git a/app/src/test/java/com/resonant/app/ui/components/DotsEngineTest.kt b/app/src/test/java/com/resonant/app/ui/components/DotsEngineTest.kt
+new file mode 100644
+index 0000000..cf982b5
+--- /dev/null
++++ b/app/src/test/java/com/resonant/app/ui/components/DotsEngineTest.kt
+@@ -0,0 +1,61 @@
++package com.resonant.app.ui.components
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++/** Pose-math invariants for the animated dots. Pure Kotlin: runs on the JVM, no device needed. */
++class DotsEngineTest {
++
++    private val letters = listOf(
++        listOf(1, 2, 3, 5), listOf(1, 5), listOf(2, 3, 4), listOf(1, 3, 5),
++        listOf(1, 3, 4, 5), listOf(1), listOf(1, 3, 4, 5), listOf(2, 3, 4, 5)
++    )
++
++    @Test fun everyStateStaysFiniteAndOnScreen() {
++        for (state in DotsState.values()) for (level in listOf<Float?>(null, 0f, .5f, 1f)) {
++            val engine = DotsEngine(false)
++            var t = 0f
++            while (t < 30f) {
++                for (v in engine.frame(state, t, level, false)) {
++                    assertTrue("$state level=$level t=$t v=$v", !v.isNaN() && !v.isInfinite() && Math.abs(v) < 3000f)
++                }
++                t += 1f / 60f
++            }
++        }
++    }
++
++    @Test fun idleSpellsResonantInBraille() {
++        letters.forEachIndexed { i, expected ->
++            val pose = DotsEngine(false).frame(DotsState.Idle, idleLetterFormedAt(i) + .01f, null, false)
++            val on = (0 until 6).filter { pose[it * 4 + 2] > .5f }.map { it + 1 }
++            assertEquals("letter #$i", expected, on)
++        }
++    }
++
++    @Test fun switchingStatesNeverJumps() {
++        val engine = DotsEngine(false)
++        var t = 0f
++        var prev = engine.frame(DotsState.Idle, t, null, false).copyOf()
++        var maxJump = 0f
++        for (state in listOf(
++            DotsState.Listening, DotsState.Transcribing, DotsState.Thinking,
++            DotsState.Speaking, DotsState.Offline, DotsState.Idle
++        )) repeat(120) {
++            t += 1f / 60f
++            val p = engine.frame(state, t, .5f, false)
++            for (k in 0 until 24) maxJump = maxOf(maxJump, Math.abs(p[k] - prev[k]))
++            prev = p.copyOf()
++        }
++        assertTrue("max per-frame delta $maxJump", maxJump < 60f)
++    }
++
++    @Test fun splashGrowsInFromNothing() {
++        val pose = DotsEngine(true).frame(DotsState.Idle, .001f, null, false)
++        assertTrue((0 until 6).all { pose[it * 4 + 2] < .05f })
++    }
++
++    @Test fun reduceMotionSkipsTheGrowIn() {
++        assertTrue(DotsEngine(true).frame(DotsState.Idle, .001f, null, true)[2] > .9f)
++    }
++}

@@ -473,12 +473,21 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
     LaunchedEffect(audioSpeaking) {
         if (audioSpeaking) speakingHold = true else { delay(600); speakingHold = false }
     }
-    val dotsState = when {
+    val whisperTranscribing by speech.whisperTranscribing.collectAsState()
+    val fallbackTranscribing by speech.fallbackTranscribing.collectAsState()
+    val transcribing = whisperTranscribing || fallbackTranscribing
+    val realDotsState = when {
+        listening && transcribing -> DotsState.Transcribing
         listening -> DotsState.Listening
         thinking -> DotsState.Thinking
         speakingHold -> DotsState.Speaking
         else -> if (serverUp == false) DotsState.Offline else DotsState.Idle
     }
+    // Debug > "Dots preview" can force any state (and a level) to check each animation.
+    val dotsPreview by debug.dotsPreview.collectAsState()
+    val forcedName by debug.dotsForced.collectAsState()
+    val forcedLevel by debug.dotsLevel.collectAsState()
+    val dotsState = forcedName?.let { n -> DotsState.values().firstOrNull { it.name == n } } ?: realDotsState
 
     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
 
@@ -500,7 +509,17 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                 contentAlignment = Alignment.Center
             ) { SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
         },
-        bottomBar = { AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() }) }
+        bottomBar = {
+            Column {
+                if (dotsPreview) DotsDebugPanel(
+                    forced = forcedName,
+                    level = forcedLevel,
+                    onForce = { debug.forceDots(it) },
+                    onLevel = { debug.setDotsLevel(it) }
+                )
+                AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() })
+            }
+        }
     ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
@@ -542,7 +561,13 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
             ) {
                 ResonantDots(
                     state = dotsState,
-                    level = { if (dotsState == DotsState.Listening) speech.micLevel() else audio.speechLevel() },
+                    level = {
+                        when {
+                            forcedName != null -> forcedLevel ?: -1f // -1 = simulated
+                            dotsState == DotsState.Listening -> speech.micLevel()
+                            else -> audio.speechLevel()
+                        }
+                    },
                     modifier = Modifier.size(if (hero) 240.dp else 120.dp)
                 )
                 if (hero) {
