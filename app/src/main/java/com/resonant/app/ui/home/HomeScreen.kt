@@ -2,6 +2,7 @@ package com.resonant.app.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.*
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -53,7 +55,7 @@ private val homeItems = listOf(
     HomeItem("Lessons", "lessons"),
     HomeItem("Quiz", "quiz"),
     HomeItem("Settings", "settings"),
-    HomeItem("Exit", ROUTE_EXIT)
+    HomeItem("Quit", ROUTE_EXIT)
 )
 
 /**
@@ -83,10 +85,16 @@ private val WordmarkStyle = TextStyle(
     fontSize = 130.sp
 )
 
+// Figma: ~60 size, ~83 line pitch (1.38x), block vertically centered.
 private val MenuTextStyle = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
-    fontSize = 64.sp
+    fontSize = 60.sp,
+    lineHeight = 83.sp,
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.None
+    )
 )
 
 private val AskBarStyle = TextStyle(fontFamily = MetropolisBlack, fontSize = 20.sp)
@@ -181,68 +189,30 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 else -> {}
             }
         }) {
-            Column(Modifier.fillMaxSize()) {
-                // Wordmark. Auto-shrinks to whatever size actually fits this
-                // font's real character widths, rather than a hardcoded 130sp
-                // tuned against a different (fallback) font's metrics — that
-                // was the actual bug: 130sp fit the system font's proportions,
-                // not Agharti's. Top-aligned with no crop for the same reason:
-                // the -14dp "crop to match Figma" offset was tuned against the
-                // fallback font's line-height, which is why swapping in the
-                // real font made it crop far more than intended. Once this is
-                // visible with the real font, dial the crop back in as an
-                // actual measured Modifier.height + clip if you still want it,
-                // rather than another guessed offset.
-                var wordmarkSize by remember { mutableStateOf(130.sp) }
-                Text(
-                    text = "RESONANT",
-                    style = WordmarkStyle.copy(fontSize = wordmarkSize),
-                    color = BrandInk,
-                    maxLines = 1,
-                    softWrap = false,
-                    onTextLayout = { result ->
-                        if (result.didOverflowWidth && wordmarkSize > 40.sp) {
-                            wordmarkSize *= 0.95f
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = HomeHorizontalPadding)
-                )
-
-                Spacer(Modifier.height(144.dp))
-
-                Column(
-                    Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    homeItems.forEachIndexed { i, item ->
-                        val focused = i == index
-                        Text(
-                            text = item.label,
-                            style = MenuTextStyle,
-                            color = if (focused) BrandInk else Color.White,
-                            modifier = Modifier
-                                .clickable {
-                                    audio.jumpTo(i)
-                                    open(i)
-                                }
-                                .semantics {
-                                    contentDescription =
-                                        item.label + if (focused) ", focused" else ""
-                                }
-                        )
-                    }
+            // Figma frame: menu only, centered on screen. Wordmark and Ask bar
+            // are not in the frame, so they're not shown (AskBar() kept below).
+            Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                homeItems.forEachIndexed { i, item ->
+                    val focused = i == index
+                    Text(
+                        text = item.label,
+                        style = MenuTextStyle,
+                        color = if (focused) BrandInk else Color.White,
+                        modifier = Modifier
+                            .clickable {
+                                audio.jumpTo(i)
+                                open(i)
+                            }
+                            .semantics {
+                                contentDescription =
+                                    item.label + if (focused) ", focused" else ""
+                            }
+                    )
                 }
-
-                Spacer(Modifier.weight(1f))
-
-                AskBar(
-                    onOpenChat = { openByRoute("chat") },
-                    onOpenSettings = { openByRoute("settings") }
-                )
-
-                Spacer(Modifier.height(30.dp))
             }
         }
     }
