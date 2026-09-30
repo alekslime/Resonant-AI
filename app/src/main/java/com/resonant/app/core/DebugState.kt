@@ -24,6 +24,24 @@ class DebugState {
     private val _selectedOption = MutableStateFlow("—")
     val selectedOption: StateFlow<String> = _selectedOption
 
+    // Dots preview (Chat): forces a dots animation for on-device checking. In-memory only, so it
+    // resets on every app start. State is held by name to keep core free of UI types.
+    private val _dotsPreview = MutableStateFlow(false)
+    val dotsPreview: StateFlow<Boolean> = _dotsPreview
+    private val _dotsForced = MutableStateFlow<String?>(null)
+    val dotsForced: StateFlow<String?> = _dotsForced
+    private val _dotsLevel = MutableStateFlow<Float?>(null)
+    val dotsLevel: StateFlow<Float?> = _dotsLevel
+
+    fun toggleDotsPreview(): Boolean {
+        val on = !_dotsPreview.value
+        _dotsPreview.value = on
+        if (!on) { _dotsForced.value = null; _dotsLevel.value = null }
+        return on
+    }
+    fun forceDots(name: String?) { _dotsForced.value = name }
+    fun setDotsLevel(level: Float?) { _dotsLevel.value = level }
+
     fun setScreen(name: String) { _currentScreen.value = name }
     fun setZone(name: String) { _currentZone.value = name }
     fun setGesture(name: String) { _lastGesture.value = name }

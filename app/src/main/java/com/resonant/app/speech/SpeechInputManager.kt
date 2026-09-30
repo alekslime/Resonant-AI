@@ -26,6 +26,14 @@ class SpeechInputManager(context: Context) {
     private val appContext = context.applicationContext
     private var recognizer: SpeechRecognizer? = null
 
+    /** Live mic loudness 0..1 while the recognizer is listening, 0 otherwise. */
+    @Volatile var micLevel = 0f
+        private set
+
+    private val _transcribing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** True from the end of speech until the recognizer returns a result. */
+    val transcribing: kotlinx.coroutines.flow.StateFlow<Boolean> = _transcribing
+
     fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(appContext)
 
     fun startListening(onOutcome: (Outcome) -> Unit) {
@@ -46,6 +54,8 @@ class SpeechInputManager(context: Context) {
 
         r.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle) {
+                micLevel = 0f
+                _transcribing.value = false
                 val text = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                 if (text.isNullOrBlank()) {
                     onOutcome(Outcome.Error("I didn't catch that."))
@@ -55,14 +65,16 @@ class SpeechInputManager(context: Context) {
             }
 
             override fun onError(error: Int) {
+                micLevel = 0f
+                _transcribing.value = false
                 onOutcome(Outcome.Error(errorMessage(error)))
             }
 
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onRmsChanged(rmsdB: Float) { micLevel = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f) }
             override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
+            override fun onEndOfSpeech() { micLevel = 0f; _transcribing.value = true }
             override fun onPartialResults(partialResults: Bundle?) {}
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
@@ -71,6 +83,8 @@ class SpeechInputManager(context: Context) {
     }
 
     fun stopListening() {
+        micLevel = 0f
+        _transcribing.value = false
         recognizer?.destroy()
         recognizer = null
     }

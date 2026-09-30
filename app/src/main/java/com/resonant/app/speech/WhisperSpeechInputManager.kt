@@ -88,6 +88,14 @@ class WhisperSpeechInputManager(context: Context) {
      * here (call onSpoken immediately) is only safe for a caller with no TTS
      * to collide with in the first place.
      */
+    /** Live mic loudness 0..1 while recording, 0 otherwise. Safe from any thread. */
+    @Volatile var micLevel = 0f
+        private set
+
+    private val _transcribing = MutableStateFlow(false)
+    /** True from the end of recording until the transcript (or an error) is delivered. */
+    val transcribing: StateFlow<Boolean> = _transcribing
+
     fun startListening(
         onOutcome: (SpeechInputManager.Outcome) -> Unit,
         onStatus: (String, onSpoken: () -> Unit) -> Unit = { _, onSpoken -> onSpoken() }
@@ -102,12 +110,13 @@ class WhisperSpeechInputManager(context: Context) {
         fun beginRecording() {
             activeJob = scope.launch {
                 try {
-                    val recording = withContext(Dispatchers.IO) { AudioRecorder().record() }
+                    val recording = withContext(Dispatchers.IO) { AudioRecorder { micLevel = it }.record() }
                     if (recording.samples.isEmpty()) {
                         deliver(onOutcome, SpeechInputManager.Outcome.Error("I didn't catch that."))
                         return@launch
                     }
 
+                    _transcribing.value = true
                     val activeEngine = engine ?: WhisperEngine(modelManager.modelPath()).also { engine = it }
                     val text = activeEngine.transcribe(recording.samples, recording.sampleRate)
 
@@ -118,6 +127,7 @@ class WhisperSpeechInputManager(context: Context) {
                     }
                     deliver(onOutcome, outcome)
                 } catch (e: CancellationException) {
+                    _transcribing.value = false
                     throw e
                 } catch (e: Exception) {
                     deliver(onOutcome, SpeechInputManager.Outcome.Error("Offline voice recognition failed."))
@@ -139,6 +149,8 @@ class WhisperSpeechInputManager(context: Context) {
     fun stopListening() {
         activeJob?.cancel()
         activeJob = null
+        micLevel = 0f
+        _transcribing.value = false
     }
 
     /** Releases the loaded model. Call when the owning screen is done with voice input for good. */
@@ -151,6 +163,7 @@ class WhisperSpeechInputManager(context: Context) {
     }
 
     private suspend fun deliver(onOutcome: (SpeechInputManager.Outcome) -> Unit, outcome: SpeechInputManager.Outcome) {
+        _transcribing.value = false
         withContext(Dispatchers.Main) { onOutcome(outcome) }
     }
 }

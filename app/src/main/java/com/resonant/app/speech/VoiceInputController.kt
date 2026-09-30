@@ -36,6 +36,10 @@ class VoiceInputController(context: Context) {
         whisper.preload()
     }
 
+    /** True while a finished recording is being turned into text (either recognizer). */
+    val whisperTranscribing get() = whisper.transcribing
+    val fallbackTranscribing get() = fallback.transcribing
+
     fun isAvailable(): Boolean = whisper.isAvailable() || fallback.isAvailable()
 
     /**
@@ -54,6 +58,9 @@ class VoiceInputController(context: Context) {
             fallback.startListening(onOutcome)
         }
     }
+
+    /** Live mic loudness 0..1 from whichever recognizer is active. Safe from any thread. */
+    fun micLevel(): Float = maxOf(whisper.micLevel, fallback.micLevel)
 
     fun stopListening() {
         whisper.stopListening()

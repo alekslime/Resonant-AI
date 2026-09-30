@@ -49,6 +49,17 @@ class AudioManager(context: Context) {
     // its level is the real PCM loudness. The word-timed estimate below (each word boundary
     // kicks the level, which decays) only covers the fallback path where synthesis fails.
     private val pcm = PcmSpeaker(mainHandler)
+
+    // Announcements go through the same synthesize -> PCM path, on their own player, so the
+    // dots get their real loudness too. Short and often repeated ("Listening."), so decoded
+    // audio is cached per text+speed; a repeat starts with no synthesis delay.
+    private val annPcm = PcmSpeaker(mainHandler)
+    private class PendingSynth(val text: String, val key: String)
+    private val annPending = mutableMapOf<String, PendingSynth>()
+    private val annFallbackIds = mutableSetOf<String>() // announcements spoken by plain TTS instead
+    private val annCache = object : LinkedHashMap<String, WavPcm>(16, .75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, WavPcm>) = size > 16
+    }
     private var pcmGen = 0
     // A unit that must start once the currently playing announcement has finished.
     private var deferredUnit = false
@@ -59,7 +70,7 @@ class AudioManager(context: Context) {
     fun speechLevel(): Float {
         val announcing = _isAnnouncing.value
         if (!(_isSpeaking.value || announcing) || (_isPaused.value && !announcing)) return 0f
-        pcm.level()?.let { return it } // real loudness of the PCM being played
+        (pcm.level() ?: annPcm.level())?.let { return it } // real loudness of the PCM being played
         val dt = (SystemClock.uptimeMillis() - levelAt).toFloat()
         return max(.12f, levelPeak * exp(-dt / 220f))
     }
@@ -144,7 +155,11 @@ class AudioManager(context: Context) {
                 t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         if (isAnnouncement(utteranceId)) {
-                            mainHandler.post { if (activeAnnounceId == utteranceId) _isAnnouncing.value = true }
+                            // Only the plain-TTS fallback is audible from here; the PCM path
+                            // flags itself when playback actually starts.
+                            mainHandler.post {
+                                if (activeAnnounceId == utteranceId && utteranceId in annFallbackIds) _isAnnouncing.value = true
+                            }
                             return
                         }
                         if (isPcm(utteranceId)) return
@@ -162,7 +177,7 @@ class AudioManager(context: Context) {
 
                     override fun onDone(utteranceId: String?) {
                         if (isAnnouncement(utteranceId)) {
-                            settleAnnouncement(utteranceId)
+                            mainHandler.post { onAnnouncementSynthesized(utteranceId!!) }
                             return
                         }
                         if (isPcm(utteranceId)) {
@@ -183,7 +198,7 @@ class AudioManager(context: Context) {
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String?) {
                         if (isAnnouncement(utteranceId)) {
-                            settleAnnouncement(utteranceId)
+                            mainHandler.post { onAnnouncementFailed(utteranceId!!) }
                             return
                         }
                         if (isPcm(utteranceId)) {
@@ -272,6 +287,7 @@ class AudioManager(context: Context) {
         }
         deferredUnit = false
         cancelUnitSpeech()
+        cancelAnnouncement()
         t.stop() // flush semantics: anything still queued (announcement, old synthesis) goes
         requestUnitSpeech(t, unit)
     }
@@ -366,6 +382,7 @@ class AudioManager(context: Context) {
     fun pause() {
         if (!_isSpeaking.value) return
         cancelUnitSpeech()
+        cancelAnnouncement()
         tts?.stop()
         _isPaused.value = true
         _isSpeaking.value = false
@@ -383,6 +400,7 @@ class AudioManager(context: Context) {
     fun stop() {
         deferredUnit = false
         cancelUnitSpeech()
+        cancelAnnouncement()
         tts?.stop()
         _isSpeaking.value = false
         _isPaused.value = false
@@ -489,14 +507,79 @@ class AudioManager(context: Context) {
     private fun isAnnouncement(utteranceId: String?): Boolean =
         utteranceId?.startsWith(ANNOUNCE_PREFIX) == true
 
+    private fun annFile(id: String) = File(appContext.cacheDir, "$id.wav")
+
     private fun speakAnnouncement(t: TextToSpeech, text: String, onFinished: (() -> Unit)?) {
         cancelUnitSpeech() // an announcement interrupts unit speech, as QUEUE_FLUSH used to
+        val previous = activeAnnounceId
+        annPcm.stop()
         val id = ANNOUNCE_PREFIX + (++announceCounter)
         activeAnnounceId = id
         if (onFinished != null) announceCallbacks[id] = onFinished
-        val result = t.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
-        // speak() can fail outright (engine died); no progress callback will ever come.
-        if (result == TextToSpeech.ERROR) settleAnnouncement(id)
+        if (previous != null) {
+            annPending.remove(previous)
+            annFallbackIds.remove(previous)
+            settleAnnouncement(previous) // superseded: its waiter must still be released
+        }
+        t.stop() // flush anything still queued
+        t.setSpeechRate(speed)
+        val key = "$speed|$text"
+        val cached = annCache[key]
+        if (cached != null) {
+            playAnnouncement(id, cached)
+            return
+        }
+        annPending[id] = PendingSynth(text, key)
+        val result = t.synthesizeToFile(text, null, annFile(id), id)
+        if (result == TextToSpeech.ERROR) onAnnouncementFailed(id)
+    }
+
+    private fun playAnnouncement(id: String, wav: WavPcm) {
+        annPcm.play(
+            wav,
+            onStarted = { if (activeAnnounceId == id) _isAnnouncing.value = true },
+            onFinished = { settleAnnouncement(id) }
+        )
+    }
+
+    /** Synthesis finished (main thread) — or, for a fallback id, the spoken fallback finished. */
+    private fun onAnnouncementSynthesized(id: String) {
+        if (annFallbackIds.remove(id)) { settleAnnouncement(id); return }
+        val pending = annPending.remove(id)
+        val file = annFile(id)
+        if (pending == null || id != activeAnnounceId) { file.delete(); return } // superseded/cancelled
+        val wav = try { parseWav16(file.readBytes()) } catch (e: Exception) { null }
+        file.delete()
+        if (wav == null) { fallbackAnnounce(id, pending.text); return }
+        if (wav.frames < wav.sampleRate * 6) annCache[pending.key] = wav
+        playAnnouncement(id, wav)
+    }
+
+    private fun onAnnouncementFailed(id: String) {
+        annFile(id).delete()
+        if (annFallbackIds.remove(id)) { settleAnnouncement(id); return }
+        val pending = annPending.remove(id) ?: return
+        if (id == activeAnnounceId) fallbackAnnounce(id, pending.text) else settleAnnouncement(id)
+    }
+
+    /** Plain TTS (no real level; the dots use the word-timed estimate). Never leaves a waiter hanging. */
+    private fun fallbackAnnounce(id: String, text: String) {
+        val t = tts
+        if (t == null) { settleAnnouncement(id); return }
+        annFallbackIds.add(id)
+        if (t.speak(text, TextToSpeech.QUEUE_ADD, null, id) == TextToSpeech.ERROR) {
+            annFallbackIds.remove(id)
+            settleAnnouncement(id)
+        }
+    }
+
+    /** Stops the announcement in flight (synthesis, playback or fallback) and releases its waiter. */
+    private fun cancelAnnouncement() {
+        val id = activeAnnounceId ?: return
+        annPcm.stop()
+        annPending.remove(id)
+        annFallbackIds.remove(id)
+        settleAnnouncement(id)
     }
 
     /** Safe to call from any thread; the state change and callback run on main. */
@@ -537,6 +620,9 @@ class AudioManager(context: Context) {
     }
 
     private fun settleAllAnnouncements() {
+        annPcm.stop()
+        annPending.clear()
+        annFallbackIds.clear()
         activeAnnounceId = null
         _isAnnouncing.value = false
         val pending = announceCallbacks.values.toList()
