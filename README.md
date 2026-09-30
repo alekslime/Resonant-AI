@@ -38,7 +38,7 @@ Unit tests are plain JVM tests — no device needed:
 ## Chat / voice AI setup
 
 Tap the center of the Chat screen to talk. Your speech is transcribed on the
-device's own recognizer and sent to *your* Ollama server; the reply is spoken
+device (offline with Whisper, or with Android's recognizer) and sent to *your* Ollama server; the reply is spoken
 sentence by sentence while the model is still writing the rest.
 
 1. On a machine on your Wi-Fi, run `ollama pull llama3.2` (or any model you
@@ -64,9 +64,17 @@ sentence by sentence while the model is still writing the rest.
 3. **Plain HTTP works in debug builds only** (`src/debug/AndroidManifest.xml`).
    A release build needs an `https://` URL.
 
-Speech-to-text uses Android's built-in `SpeechRecognizer` (usually Google's; most
-recognizers need the device online). Text-to-speech goes through the same
-on-device `AudioManager` every other screen uses.
+Speech-to-text has two engines, chosen automatically by `VoiceInputController`:
+
+- **Whisper (offline, on the phone)** — whisper.cpp with the `ggml-base.en` model,
+  used once the model is downloaded. Download it from **Settings → Offline voice
+  model** (a one-time download of about 150 MB, best on Wi-Fi). It works without
+  internet and behaves the same on every device.
+- **Android `SpeechRecognizer`** — the fallback until the model is downloaded
+  (usually Google's; most recognizers need the device online), so voice works from
+  the very first launch.
+
+Text-to-speech goes through the same on-device `AudioManager` every other screen uses.
 
 What Chat does so that silence never looks like a crash:
 
@@ -129,7 +137,7 @@ for it in words the text doesn't use.
 | Centralized haptics (named pattern vocabulary, one place to retune) | `haptics/HapticPattern.kt`, `haptics/HapticManager.kt` |
 | Sound cues (a tone per haptic pattern, synthesized in code, one place to retune) | `sound/SoundCues.kt`, `sound/SoundCueManager.kt` |
 | Hardcoded lesson / quiz content, chat framing prompt | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
-| Voice input (one-shot speech-to-text) | `speech/SpeechInputManager.kt` |
+| Voice input (one-shot speech-to-text): picks Whisper or the platform recognizer | `speech/VoiceInputController.kt`, `speech/WhisperSpeechInputManager.kt`, `speech/SpeechInputManager.kt`, `speech/whisper/` |
 | Streamed reply → speakable sentences | `speech/SentenceChunker.kt` |
 | Ollama streaming client + build-time config | `network/OllamaClient.kt`, `network/OllamaConfig.kt` |
 | Shared gesture surface, debug wiring, TalkBack actions | `ui/components/GestureSurface.kt` |
