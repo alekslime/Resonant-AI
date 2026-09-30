@@ -50,7 +50,6 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.home.SettingsPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack

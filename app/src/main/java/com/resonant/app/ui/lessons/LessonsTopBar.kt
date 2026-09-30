@@ -1,6 +1,5 @@
 package com.resonant.app.ui.lessons
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,26 +12,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.resonant.app.R
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalHapticManager
 import com.resonant.app.haptics.HapticPattern
-import com.resonant.app.ui.home.SettingsPlaceholderIcon
+import com.resonant.app.ui.home.SettingsIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
@@ -80,7 +81,7 @@ internal fun LessonsTopBar(
                 .then(if (onSettings != null) Modifier.clickable { onSettings() } else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp))
+            SettingsIcon(tint = Color.White, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -122,17 +123,13 @@ internal fun FittedTitle(
     }
 }
 
+/** Figma back arrow (res/drawable/ic_back.xml); mirrored for the forward arrow. */
 @Composable
 internal fun ArrowIcon(pointRight: Boolean, tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val sw = w * 0.1f
-        val dir = if (pointRight) 1f else -1f
-        val tail = Offset(if (pointRight) w * 0.08f else w * 0.92f, h / 2f)
-        val tip = Offset(if (pointRight) w * 0.92f else w * 0.08f, h / 2f)
-        drawLine(tint, tail, tip, strokeWidth = sw, cap = StrokeCap.Round)
-        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.2f), strokeWidth = sw, cap = StrokeCap.Round)
-        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.8f), strokeWidth = sw, cap = StrokeCap.Round)
-    }
+    Icon(
+        painterResource(R.drawable.ic_back),
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier.graphicsLayer { scaleX = if (pointRight) -1f else 1f }
+    )
 }

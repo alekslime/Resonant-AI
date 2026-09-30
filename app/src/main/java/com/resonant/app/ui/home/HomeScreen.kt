@@ -75,9 +75,8 @@ private val homeItems = listOf(
  *    needs revisiting, pairing the color with weight and/or an underline on
  *    the focused item (as this screen briefly did) restores a second,
  *    color-independent signal without changing the color scheme itself.
- *  - The mic/settings icons Figma exports as SVGs couldn't be downloaded in
- *    this sandbox (no network access to Figma's asset URLs) — see
- *    IconPlaceholders.kt for the placeholders standing in for them.
+ *  - The mic/settings icons are the Figma SVGs, exported as vector drawables
+ *    (res/drawable/ic_mic.xml, ic_settings.xml) and wrapped in Icons.kt.
  */
 private val WordmarkStyle = TextStyle(
     fontFamily = MetropolisBlack,
@@ -239,7 +238,7 @@ private fun AskBar(onOpenChat: () -> Unit, onOpenSettings: () -> Unit) {
                 .clickable { onOpenChat() },
             contentAlignment = Alignment.Center
         ) {
-            MicPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
+            MicIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
         }
 
         Text(
@@ -259,7 +258,7 @@ private fun AskBar(onOpenChat: () -> Unit, onOpenSettings: () -> Unit) {
                 .clickable { onOpenSettings() },
             contentAlignment = Alignment.Center
         ) {
-            SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
+            SettingsIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
         }
     }
 }

@@ -54,7 +54,6 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.lessons.ArrowIcon
 import com.resonant.app.ui.lessons.FittedTitle
 import com.resonant.app.ui.lessons.LessonsTopBar
-import com.resonant.app.ui.home.SettingsPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack

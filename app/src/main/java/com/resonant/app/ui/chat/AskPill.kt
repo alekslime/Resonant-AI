@@ -37,7 +37,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.resonant.app.ui.home.MicPlaceholderIcon
+import com.resonant.app.ui.home.MicIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
@@ -111,7 +111,7 @@ fun AskPill(
                 .clickable { onMic() },
             contentAlignment = Alignment.Center
         ) {
-            MicPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
+            MicIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
         }
     }
 }

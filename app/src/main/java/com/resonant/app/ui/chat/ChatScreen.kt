@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.resonant.app.core.ResonantPrefs
-import com.resonant.app.ui.home.SettingsPlaceholderIcon
+import com.resonant.app.ui.home.SettingsIcon
 import com.resonant.app.ui.theme.BrandInk
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -528,7 +528,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                     .semantics { role = Role.Button; contentDescription = "Settings" }
                     .clickable { onOpenSettings() },
                 contentAlignment = Alignment.Center
-            ) { SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
+            ) { SettingsIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
         },
         bottomBar = {
             Column {

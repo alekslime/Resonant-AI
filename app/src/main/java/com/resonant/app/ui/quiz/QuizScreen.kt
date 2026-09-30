@@ -1,15 +1,6 @@
 package com.resonant.app.ui.quiz
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import com.resonant.app.ui.lessons.FittedTitle
-import com.resonant.app.ui.lessons.LessonsTopBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,10 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.resonant.app.R
 import com.resonant.app.content.QuizQuestion
 import com.resonant.app.content.QuizSet
 import com.resonant.app.content.SemanticUnit
@@ -49,7 +45,8 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
-import com.resonant.app.ui.home.SettingsPlaceholderIcon
+import com.resonant.app.ui.lessons.FittedTitle
+import com.resonant.app.ui.lessons.LessonsTopBar
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
@@ -268,22 +265,17 @@ fun QuizScreen(
     }
 }
 
-/** Big chevron-arrow from the Figma quiz frame (about 76dp square, 7dp stroke). */
+/**
+ * Big arrow from the Figma quiz frame (res/drawable/ic_arrow_up.xml / ic_arrow_down.xml). The
+ * artwork sits inside a padded 117 box, so it is drawn larger than the 76dp slot it fills and
+ * overflows it invisibly, which keeps the layout unchanged.
+ */
 @Composable
 private fun VerticalArrow(up: Boolean, tint: Color) {
-    Canvas(Modifier.size(76.dp)) {
-        val w = size.width
-        val h = size.height
-        val sw = 7.dp.toPx()
-        val tipY = if (up) sw / 2f else h - sw / 2f
-        val armY = if (up) h * 0.5f else h * 0.5f
-        val tail = if (up) h else 0f
-        drawLine(tint, Offset(w / 2f, tail), Offset(w / 2f, tipY), strokeWidth = sw)
-        val head = Path().apply {
-            moveTo(sw / 2f, armY)
-            lineTo(w / 2f, tipY)
-            lineTo(w - sw / 2f, armY)
-        }
-        drawPath(head, tint, style = Stroke(width = sw, cap = StrokeCap.Butt, join = StrokeJoin.Miter))
-    }
+    Icon(
+        painterResource(if (up) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down),
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.requiredSize(114.dp)
+    )
 }
