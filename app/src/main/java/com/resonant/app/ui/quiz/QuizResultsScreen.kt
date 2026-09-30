@@ -1,9 +1,17 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,10 +21,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +44,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.BrandInk
+import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
@@ -67,7 +82,48 @@ fun QuizResultsScreen(
         )
     }
 
-    ResonantScaffold(title = "Results", subtitle = "$correct of $total correct") {
+    val colors = LocalResonantColors.current
+    val percent = if (total > 0) correct * 100 / total else 0
+    val resultLabel = when {
+        percent == 100 -> "Perfect score!"
+        percent >= 80 -> "Great work."
+        percent >= 60 -> "Good effort."
+        else -> "Keep practicing."
+    }
+    val fraction by animateFloatAsState(
+        targetValue = if (total > 0) correct.toFloat() / total else 0f,
+        animationSpec = tween(900, delayMillis = 200, easing = FastOutSlowInEasing),
+        label = "score"
+    )
+
+    fun retry() {
+        haptics.play(HapticPattern.SELECT)
+        audio.announce("Retrying $missedCount missed question${if (missedCount == 1) "" else "s"}.")
+        onRetryMissed()
+    }
+
+    ResonantScaffold(
+        title = "Results",
+        subtitle = "$correct of $total correct",
+        // Real buttons for sighted users. They sit outside the GestureSurface on purpose (the
+        // gesture detector consumes touches); the tap gestures below still do the same things.
+        bottomBar = {
+            Column(
+                Modifier
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (canRetry) {
+                    ResultPill("Retry $missedCount missed →", filled = true, onClick = { retry() })
+                }
+                ResultPill("Back to quizzes", filled = !canRetry, onClick = {
+                    haptics.play(HapticPattern.CONFIRM)
+                    onDone()
+                })
+            }
+        }
+    ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Tap -> when (gesture.zone) {
@@ -97,81 +153,84 @@ fun QuizResultsScreen(
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp)
+                    .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                // Score card
+                Text(
+                    text = "$correct / $total",
+                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
+                    color = colors.text,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = resultLabel,
+                    fontFamily = MetropolisBlack,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 26.sp,
+                    color = colors.text,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                // Score bar: how much of the quiz was right, filling in once on arrival.
                 Box(
-                    modifier = Modifier
+                    Modifier
+                        .padding(top = 28.dp)
                         .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF1A1A1A))
-                        .padding(32.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(BrandInk.copy(alpha = .18f))
+                        .clearAndSetSemantics { }
                 ) {
-                    Column {
-                        // Score
-                        Text(
-                            text = "$correct / $total",
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Black
-                            ),
-                            color = Color.White
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        // Result label
-                        val percent = if (total > 0) correct * 100 / total else 0
-                        val resultLabel = when {
-                            percent == 100 -> "Perfect score!"
-                            percent >= 80 -> "Great work."
-                            percent >= 60 -> "Good effort."
-                            else -> "Keep practicing."
-                        }
-                        Text(
-                            text = resultLabel,
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 22.sp,
-                            color = Color(0xFFFFAE00)
-                        )
-
-                        Spacer(Modifier.height(32.dp))
-
-                        // Instructions
-                        Text(
-                            text = if (canRetry)
-                                "Tap center to go back.\nTap right edge to retry the $missedCount missed."
-                            else
-                                "Tap anywhere to go back.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFFAAAAAA)
-                        )
-                    }
-                }
-
-                // Bottom action pill
-                if (canRetry) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 8.dp)
-                            .clip(RoundedCornerShape(50.dp))
+                        Modifier
+                            .fillMaxWidth(fraction)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(percent = 50))
                             .background(BrandInk)
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Retry $missedCount missed →",
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 15.sp,
-                            color = Color(0xFFFFAE00)
-                        )
-                    }
+                    )
                 }
+
+                Text(
+                    text = if (canRetry)
+                        "Tap the right edge to retry the $missedCount missed, or the center to go back."
+                    else
+                        "Tap anywhere to go back.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.text.copy(alpha = .75f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 28.dp)
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun ResultPill(label: String, filled: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(percent = 50)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(shape)
+            .then(
+                if (filled) Modifier.background(BrandInk)
+                else Modifier.border(BorderStroke(2.dp, BrandInk), shape)
+            )
+            .semantics { role = Role.Button }
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontFamily = MetropolisBlack,
+            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            color = if (filled) Color(0xFFFFAE00) else BrandInk,
+            textAlign = TextAlign.Center
+        )
     }
 }
