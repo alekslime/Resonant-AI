@@ -125,133 +125,83 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                 else -> {}
             }
         }) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Top bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Color(0xFF0A0A0A))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "←",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+            Column(Modifier.fillMaxSize()) {
+                LessonsTopBar(onBack = onExit)
 
-                    Text(
-                        text = "Lessons",
-                        fontFamily = MetropolisBlack,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                // Lesson title — large, directly on orange
-                Text(
-                    text = lesson.title,
-                    fontFamily = MetropolisBlack,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 42.sp,
-                    lineHeight = 48.sp,
-                    color = BrandInk,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-                )
-
-                // White content card
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.White)
-                        .padding(24.dp)
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
                 ) {
-                    // Section summary — first unit of the section if no stepTitle, else a fixed line
-                    val summaryText = currentSection?.let { sec ->
-                        if (sec.units.any { it.stepTitle != null }) {
-                            // Section has steps — use section title as summary prompt
-                            sec.title
-                        } else {
-                            sec.units.firstOrNull()?.text ?: sec.title
-                        }
-                    } ?: lesson.title
+                    // Title card
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White)
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ) {
+                        FittedTitle(lesson.title, maxSp = 50f, lineRatio = 1.2f)
+                    }
+
+                    val sec = currentSection
+                    val hasSteps = sec?.units?.any { it.stepTitle != null } == true
+                    // Lead line: for step sections the section title; otherwise the first unit.
+                    val lead = when {
+                        sec == null -> lesson.title
+                        hasSteps -> sec.title
+                        else -> sec.units.firstOrNull()?.text ?: sec.title
+                    }
 
                     Text(
-                        text = summaryText,
+                        text = lead,
                         fontFamily = MetropolisBlack,
                         fontWeight = FontWeight.Black,
-                        fontSize = 20.sp,
-                        lineHeight = 28.sp,
+                        fontSize = 32.sp,
+                        lineHeight = 42.sp,
                         color = BrandInk,
-                        modifier = Modifier.padding(bottom = 24.dp)
+                        modifier = Modifier.padding(top = 36.dp)
                     )
 
-                    // Steps or plain units
-                    currentSection?.let { sec ->
-                        val hasSteps = sec.units.any { it.stepTitle != null }
+                    Spacer(Modifier.height(28.dp))
+
+                    if (sec != null) {
                         if (hasSteps) {
                             sec.units.forEachIndexed { i, unit ->
-                                StepRow(number = i + 1, title = unit.stepTitle ?: "", body = unit.text)
-                                if (i < sec.units.size - 1) Spacer(Modifier.height(20.dp))
+                                StepRow(number = i + 1, title = unit.stepTitle ?: unit.text)
+                                if (i < sec.units.size - 1) Spacer(Modifier.height(36.dp))
                             }
                         } else {
-                            // Plain units — show from second onward (first is the summary)
                             sec.units.drop(1).forEach { unit ->
                                 Text(
                                     text = unit.text,
                                     fontFamily = MetropolisBlack,
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 24.sp,
+                                    lineHeight = 32.sp,
                                     color = BrandInk,
-                                    modifier = Modifier.padding(bottom = 12.dp)
+                                    modifier = Modifier.padding(bottom = 20.dp)
                                 )
                             }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(32.dp))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun StepRow(number: Int, title: String, body: String) {
+private fun StepRow(number: Int, title: String) {
     Row(verticalAlignment = Alignment.Top) {
-        // Numbered circle
+        // Numbered circle, centered on the first line of the title
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .padding(top = 6.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(BrandInk),
             contentAlignment = Alignment.Center
@@ -260,28 +210,19 @@ private fun StepRow(number: Int, title: String, body: String) {
                 text = number.toString(),
                 fontFamily = MetropolisBlack,
                 fontWeight = FontWeight.Black,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 color = Color.White
             )
         }
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                fontFamily = MetropolisBlack,
-                fontWeight = FontWeight.Black,
-                fontSize = 15.sp,
-                color = BrandInk
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = body,
-                fontFamily = MetropolisBlack,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                color = Color(0xFF444444)
-            )
-        }
+        Spacer(Modifier.width(20.dp))
+        Text(
+            text = title.uppercase(),
+            fontFamily = MetropolisBlack,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 28.sp,
+            lineHeight = 36.sp,
+            color = BrandInk,
+            modifier = Modifier.weight(1f)
+        )
     }
 }

@@ -141,40 +141,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
         }) {
             Column(Modifier.fillMaxSize()) {
 
-                // Top bar: back/title pill (60% wide) + separate settings circle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp, bottom = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(TopBarBackground)
-                            .clickable { haptics.play(HapticPattern.BACK); audio.announce("Back to Home."); onBack() }
-                            .padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        ArrowIcon(pointRight = false, tint = Color.White, modifier = Modifier.size(22.dp))
-                        Text(text = "Lessons", style = TopBarTitleStyle, color = Color.White)
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(TopBarBackground)
-                            .clickable { /* settings shortcut — no-op for now */ },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
-                }
+                LessonsTopBar(onBack = onBack)
 
                 // Lesson cards
                 Column(
@@ -233,48 +200,5 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
             Text(text = "Continue lesson", style = CardButtonStyle, color = Color.White)
             ArrowIcon(pointRight = true, tint = Color.White, modifier = Modifier.size(22.dp))
         }
-    }
-}
-
-/**
- * Big title at the Figma size, shrunk just enough that the longest single word fits the card
- * (otherwise "Photosynthesis" would be broken mid-word). Short titles keep the full size.
- */
-@Composable
-private fun FittedTitle(title: String) {
-    val measurer = rememberTextMeasurer()
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val maxPx = with(LocalDensity.current) { maxWidth.toPx() }
-        val sizeSp = remember(title, maxPx) {
-            var sp = CardTitleMaxSp
-            while (sp > CardTitleMinSp) {
-                val widest = title.split(" ").maxOf { w ->
-                    measurer.measure(w, CardTitleStyle.copy(fontSize = sp.sp)).size.width
-                }
-                if (widest <= maxPx) break
-                sp -= 2f
-            }
-            sp
-        }
-        Text(
-            text = title,
-            style = CardTitleStyle.copy(fontSize = sizeSp.sp, lineHeight = (sizeSp * 72f / CardTitleMaxSp).sp),
-            color = BrandInk
-        )
-    }
-}
-
-@Composable
-private fun ArrowIcon(pointRight: Boolean, tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val sw = w * 0.1f
-        val dir = if (pointRight) 1f else -1f
-        val tail = Offset(if (pointRight) w * 0.08f else w * 0.92f, h / 2f)
-        val tip = Offset(if (pointRight) w * 0.92f else w * 0.08f, h / 2f)
-        drawLine(tint, tail, tip, strokeWidth = sw, cap = StrokeCap.Round)
-        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.2f), strokeWidth = sw, cap = StrokeCap.Round)
-        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.8f), strokeWidth = sw, cap = StrokeCap.Round)
     }
 }
