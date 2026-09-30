@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
@@ -40,7 +39,6 @@ import androidx.compose.ui.unit.sp
 import com.resonant.app.ui.home.MicPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 private val PillColor = Color(0xFF0F0F0F)
 private val PillText = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
