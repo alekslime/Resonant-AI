@@ -72,7 +72,7 @@ fun ResonantScaffold(
                         Text(
                             text = subtitle,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 15.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold
+                                fontSize = 15.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold
                             ),
                             color = colors.text,
                             modifier = Modifier.padding(top = 0.dp)

@@ -31,7 +31,12 @@ import com.resonant.app.R
  *
  * GC Sublime is retired — all screens now use Metropolis.
  */
-val MetropolisBlack: FontFamily = FontFamily(Font(R.font.metropolis_black, FontWeight.Black))
+// Name kept so existing references compile; the family now holds Black + SemiBold.
+// Weights in between resolve to the nearest file (Bold -> Black until a Bold file is added).
+val MetropolisBlack: FontFamily = FontFamily(
+    Font(R.font.metropolis_black, FontWeight.Black),
+    Font(R.font.metropolis_semibold, FontWeight.SemiBold)
+)
 
 @Deprecated("Replaced by MetropolisBlack — retained until font file is confirmed on device.")
 val AghartiBlack: FontFamily = FontFamily(Font(R.font.agharti_black, FontWeight.Black))

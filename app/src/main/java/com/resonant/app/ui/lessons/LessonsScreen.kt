@@ -1,6 +1,12 @@
 package com.resonant.app.ui.lessons
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,21 +59,26 @@ private val CardBackground = Color.White
 private val CardButtonBackground = Color(0xFF0A0A0A)
 private val TopBarBackground = Color(0xFF0A0A0A)
 
+// Figma "Lessons" frame: 20dp margins, 20dp gaps, 28dp card radius.
+private val ScreenMargin = 20.dp
+private const val CardTitleMaxSp = 56f
+private const val CardTitleMinSp = 26f
+
 private val TopBarTitleStyle = TextStyle(
     fontFamily = MetropolisBlack,
-    fontWeight = FontWeight.Black,
-    fontSize = 18.sp
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 22.sp
 )
 private val CardTitleStyle = TextStyle(
     fontFamily = MetropolisBlack,
-    fontWeight = FontWeight.Black,
-    fontSize = 36.sp,
-    lineHeight = 40.sp
+    fontWeight = FontWeight.SemiBold,
+    fontSize = CardTitleMaxSp.sp,
+    lineHeight = 72.sp
 )
 private val CardButtonStyle = TextStyle(
     fontFamily = MetropolisBlack,
-    fontWeight = FontWeight.Bold,
-    fontSize = 15.sp
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 22.sp
 )
 
 @Composable
@@ -130,49 +141,38 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
         }) {
             Column(Modifier.fillMaxSize()) {
 
-                // Top bar
+                // Top bar: back/title pill (60% wide) + separate settings circle
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(TopBarBackground)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(start = ScreenMargin, end = ScreenMargin, top = 16.dp, bottom = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Back arrow
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .clickable { haptics.play(HapticPattern.BACK); audio.announce("Back to Home."); onBack() },
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth(0.6f)
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(TopBarBackground)
+                            .clickable { haptics.play(HapticPattern.BACK); audio.announce("Back to Home."); onBack() }
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "←",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        ArrowIcon(pointRight = false, tint = Color.White, modifier = Modifier.size(22.dp))
+                        Text(text = "Lessons", style = TopBarTitleStyle, color = Color.White)
                     }
 
-                    Text(
-                        text = "Lessons",
-                        style = TopBarTitleStyle,
-                        color = Color.White
-                    )
-
-                    // Settings icon
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
+                            .background(TopBarBackground)
                             .clickable { /* settings shortcut — no-op for now */ },
                         contentAlignment = Alignment.Center
                     ) {
-                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
+                        SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp))
                     }
                 }
 
@@ -181,11 +181,9 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = ScreenMargin),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Spacer(Modifier.height(4.dp))
-
                     lessons.forEachIndexed { i, lesson ->
                         LessonCard(
                             title = lesson.title,
@@ -211,39 +209,72 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(CardBackground)
             .clickable(onClick = onClick)
-            .padding(24.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
     ) {
-        Text(
-            text = title,
-            style = CardTitleStyle,
-            color = BrandInk
-        )
+        FittedTitle(title)
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // "Continue lesson →" pill
+        // "Continue lesson  →" — full width, text left, arrow right
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(50.dp))
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(50))
                 .background(CardButtonBackground)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "Continue lesson",
-                style = CardButtonStyle,
-                color = Color.White
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "→",
-                style = CardButtonStyle,
-                color = Color.White
-            )
+            Text(text = "Continue lesson", style = CardButtonStyle, color = Color.White)
+            ArrowIcon(pointRight = true, tint = Color.White, modifier = Modifier.size(22.dp))
         }
+    }
+}
+
+/**
+ * Big title at the Figma size, shrunk just enough that the longest single word fits the card
+ * (otherwise "Photosynthesis" would be broken mid-word). Short titles keep the full size.
+ */
+@Composable
+private fun FittedTitle(title: String) {
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val maxPx = with(LocalDensity.current) { maxWidth.toPx() }
+        val sizeSp = remember(title, maxPx) {
+            var sp = CardTitleMaxSp
+            while (sp > CardTitleMinSp) {
+                val widest = title.split(" ").maxOf { w ->
+                    measurer.measure(w, CardTitleStyle.copy(fontSize = sp.sp)).size.width
+                }
+                if (widest <= maxPx) break
+                sp -= 2f
+            }
+            sp
+        }
+        Text(
+            text = title,
+            style = CardTitleStyle.copy(fontSize = sizeSp.sp, lineHeight = (sizeSp * 72f / CardTitleMaxSp).sp),
+            color = BrandInk
+        )
+    }
+}
+
+@Composable
+private fun ArrowIcon(pointRight: Boolean, tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val sw = w * 0.1f
+        val dir = if (pointRight) 1f else -1f
+        val tail = Offset(if (pointRight) w * 0.08f else w * 0.92f, h / 2f)
+        val tip = Offset(if (pointRight) w * 0.92f else w * 0.08f, h / 2f)
+        drawLine(tint, tail, tip, strokeWidth = sw, cap = StrokeCap.Round)
+        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.2f), strokeWidth = sw, cap = StrokeCap.Round)
+        drawLine(tint, tip, Offset(tip.x - dir * w * 0.3f, h * 0.8f), strokeWidth = sw, cap = StrokeCap.Round)
     }
 }

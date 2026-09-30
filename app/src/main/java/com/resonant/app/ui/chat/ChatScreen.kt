@@ -585,7 +585,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                         Text(
                             "Hi ${userName ?: "there"}!",
                             style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.Bold
+                                fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold
                             ),
                             color = colors.text,
                             textAlign = TextAlign.Center
@@ -595,7 +595,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                         Box(Modifier.height(32.dp), contentAlignment = Alignment.Center) {
                             if (statusText.isNotEmpty()) Text(
                                 statusText,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = colors.text,
                                 textAlign = TextAlign.Center
                             )
