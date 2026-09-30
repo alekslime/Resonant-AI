@@ -27,6 +27,7 @@ import com.resonant.app.ResonantApp
 import com.resonant.app.ui.home.HomeScreen
 import com.resonant.app.ui.home.ROUTE_EXIT
 import com.resonant.app.ui.onboarding.OnboardingScreen
+import com.resonant.app.ui.lessons.LessonModeScreen
 import com.resonant.app.ui.lessons.LessonScreen
 import com.resonant.app.ui.lessons.LessonsScreen
 import com.resonant.app.ui.quiz.QuizBrowserScreen
@@ -40,7 +41,8 @@ import com.resonant.app.ui.settings.SettingsScreen
 object Routes {
     const val HOME = "home"
     const val LESSONS = "lessons"
-    const val LESSON = "lesson/{lessonId}"
+    const val LESSON_MODE = "lesson_mode/{lessonId}"
+    const val LESSON = "lesson/{lessonId}?auto={auto}"
     const val QUIZ_BROWSER = "quiz_browser"
     // Item 2: a second quiz destination, played out with whatever QuizSet the
     // results screen just built from the missed questions. A route of its own
@@ -60,7 +62,8 @@ object Routes {
     const val NAME_SETUP = "name_setup"
     const val ONBOARDING = "onboarding"
 
-    fun lesson(id: String) = "lesson/$id"
+    fun lessonMode(id: String) = "lesson_mode/$id"
+    fun lesson(id: String, auto: Boolean) = "lesson/$id?auto=$auto"
     fun quizResults(correct: Int, total: Int) = "quiz_results/$correct/$total"
 }
 
@@ -119,17 +122,36 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         }
         composable(Routes.LESSONS) {
             LessonsScreen(
-                onOpenLesson = { id -> navController.navigate(Routes.lesson(id)) },
+                onOpenLesson = { id -> navController.navigate(Routes.lessonMode(id)) },
+                onBack = goBack
+            )
+        }
+        composable(
+            Routes.LESSON_MODE,
+            arguments = listOf(navArgument("lessonId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("lessonId") ?: ""
+            LessonModeScreen(
+                onPick = { auto ->
+                    // Replace the picker, so Back from the lesson lands on the Lessons list.
+                    navController.navigate(Routes.lesson(id, auto)) {
+                        popUpTo(Routes.LESSON_MODE) { inclusive = true }
+                    }
+                },
                 onBack = goBack
             )
         }
         composable(
             Routes.LESSON,
-            arguments = listOf(navArgument("lessonId") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("lessonId") { type = NavType.StringType },
+                navArgument("auto") { type = NavType.BoolType; defaultValue = true }
+            )
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("lessonId")
+            val auto = backStackEntry.arguments?.getBoolean("auto") ?: true
             val lesson = LessonData.allLessons.firstOrNull { it.id == id } ?: LessonData.binarySearchLesson
-            LessonScreen(lesson = lesson, onExit = goBack)
+            LessonScreen(lesson = lesson, autoAdvance = auto, onExit = goBack)
         }
         composable(Routes.QUIZ_BROWSER) {
             val context = LocalContext.current

@@ -57,7 +57,7 @@ private fun firstIndexOfSection(flat: List<FlatUnit>, sectionIndex: Int): Int =
     flat.indexOfFirst { it.sectionIndex == sectionIndex }
 
 @Composable
-fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
+fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -66,9 +66,19 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
     var flatIndex by remember { mutableIntStateOf(0) }
     var lastSectionIndex by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(lesson.id) {
+    LaunchedEffect(lesson.id, autoAdvance) {
         debug.setScreen("Lesson: ${lesson.title}")
-        audio.setQueue(flat.map { it.unit }, startIndex = 0, autoAdvance = true)
+        // Say which mode this is before the first sentence; the lesson waits for it.
+        audio.announce(
+            if (autoAdvance) "Auto. The lesson will play on its own."
+            else "Manual. Tap the center of the screen to hear the next sentence."
+        )
+        audio.setQueue(
+            flat.map { it.unit },
+            startIndex = 0,
+            autoAdvance = autoAdvance,
+            queueBehindAnnouncement = true
+        )
         audio.index.collect { newIndex ->
             flatIndex = newIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
             val newSection = flat.getOrNull(flatIndex)?.sectionIndex ?: 0
@@ -107,7 +117,15 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                 }
                 is ResonantGesture.Tap -> when (gesture.zone) {
                     InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
-                    InteractionZone.CENTER -> {}
+                    // Manual: each tap in the center plays the next sentence.
+                    InteractionZone.CENTER -> if (!autoAdvance) {
+                        if (audio.next()) {
+                            haptics.play(HapticPattern.NEXT)
+                        } else {
+                            haptics.play(HapticPattern.EDGE)
+                            audio.announce("End of the lesson. Long press the right edge to go back.")
+                        }
+                    }
                     InteractionZone.RIGHT_EDGE -> {}
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
@@ -118,7 +136,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit) {
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "You are in ${lesson.title}, section ${lastSectionIndex + 1} of ${lesson.sections.size}. " +
-                        "Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${audio.speedLabel()}."
+                        "${if (autoAdvance) "Auto" else "Manual"} mode. Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${audio.speedLabel()}."
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }

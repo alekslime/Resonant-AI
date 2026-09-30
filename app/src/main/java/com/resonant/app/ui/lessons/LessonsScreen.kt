@@ -118,7 +118,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                 is ResonantGesture.Tap -> when (gesture.zone) {
                     InteractionZone.CENTER -> {
                         haptics.play(HapticPattern.SELECT)
-                        audio.announce("Starting ${lessons[index].title}.")
+                        audio.announce("Opening ${lessons[index].title}.")
                         onOpenLesson(lessons[index].id)
                     }
                     InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
@@ -158,7 +158,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
                             onClick = {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
-                                audio.announce("Starting ${lesson.title}.")
+                                audio.announce("Opening ${lesson.title}.")
                                 onOpenLesson(lesson.id)
                             }
                         )
