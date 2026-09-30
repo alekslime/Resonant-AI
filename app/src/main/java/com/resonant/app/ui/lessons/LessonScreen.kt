@@ -41,6 +41,7 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.components.SystemBarsColor
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
@@ -98,6 +99,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     }
 
     val currentSection = lesson.sections.getOrNull(lastSectionIndex)
+
+    SystemBarsColor(BrandOrange)
 
     Box(
         Modifier

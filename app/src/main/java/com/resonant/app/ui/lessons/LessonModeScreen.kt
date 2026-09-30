@@ -34,6 +34,7 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.components.SystemBarsColor
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
@@ -73,6 +74,8 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit) {
         haptics.play(HapticPattern.SELECT)
         onPick(modes[i].auto)
     }
+
+    SystemBarsColor(BrandOrange)
 
     Box(Modifier.fillMaxSize().background(BrandOrange)) {
         GestureSurface(onGesture = { gesture ->

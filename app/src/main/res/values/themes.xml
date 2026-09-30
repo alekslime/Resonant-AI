@@ -1,6 +1,10 @@
 <resources>
     <style name="Theme.Resonant" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#000000</item>
-        <item name="android:windowBackground">#FFFFFF</item>
+        <!-- Cold-start colors match the brand orange so there is no black or white flash before
+             the first screen draws. Screens repaint the bars themselves (SystemBarsColor.kt). -->
+        <item name="android:statusBarColor">#FFAE00</item>
+        <item name="android:navigationBarColor">#FFAE00</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">#FFAE00</item>
     </style>
 </resources>

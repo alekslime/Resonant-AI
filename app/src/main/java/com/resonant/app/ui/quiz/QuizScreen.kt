@@ -45,6 +45,7 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.components.SystemBarsColor
 import com.resonant.app.ui.lessons.FittedTitle
 import com.resonant.app.ui.lessons.LessonsTopBar
 import com.resonant.app.ui.theme.BrandInk
@@ -141,6 +142,8 @@ fun QuizScreen(
         submitted && lastAnswerCorrect == false -> Color.White
         else -> BrandInk
     }
+
+    SystemBarsColor(screenBackground)
 
     Box(
         Modifier

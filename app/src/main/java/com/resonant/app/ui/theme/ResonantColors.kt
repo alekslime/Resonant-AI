@@ -18,7 +18,9 @@ data class ResonantExtendedColors(
     val focusedText: Color,
     val correctFill: Color,
     val incorrectFill: Color,
-    val feedbackText: Color
+    val feedbackText: Color,
+    /** Color of the top of [gradient]; the status and navigation bars are painted with it. */
+    val statusBar: Color = BrandOrange
 )
 
 val LightResonantColors = ResonantExtendedColors(
@@ -38,7 +40,8 @@ val DarkResonantColors = ResonantExtendedColors(
     focusedText = ResonantFocusedTextDark,
     correctFill = ResonantCorrectFillDark,
     incorrectFill = ResonantIncorrectFillDark,
-    feedbackText = ResonantBlack
+    feedbackText = ResonantBlack,
+    statusBar = GradientDarkTop
 )
 
 val LocalResonantColors = staticCompositionLocalOf { LightResonantColors }

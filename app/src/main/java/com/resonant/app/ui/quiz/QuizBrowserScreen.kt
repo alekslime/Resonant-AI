@@ -51,6 +51,7 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.components.SystemBarsColor
 import com.resonant.app.ui.lessons.ArrowIcon
 import com.resonant.app.ui.lessons.FittedTitle
 import com.resonant.app.ui.lessons.LessonsTopBar
@@ -149,6 +150,8 @@ fun QuizBrowserScreen(
         }
         onOpenQuiz(quiz.id)
     }
+
+    SystemBarsColor(BrandOrange)
 
     Box(
         Modifier

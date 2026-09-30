@@ -23,6 +23,7 @@ fun ResonantSurface(
     content: @Composable BoxScope.() -> Unit
 ) {
     val colors = LocalResonantColors.current
+    SystemBarsColor(colors.statusBar)
     Box(
         modifier
             .fillMaxSize()
