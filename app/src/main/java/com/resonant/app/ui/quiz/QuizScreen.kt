@@ -54,7 +54,8 @@ import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
-private val CorrectGreen = Color(0xFF4CAF50)
+// Figma "correct" frame: bright lime background, text stays black.
+private val CorrectGreen = Color(0xFF80FF00)
 private val WrongRed = Color(0xFFE53935)
 
 @Composable
@@ -138,9 +139,8 @@ fun QuizScreen(
         else -> BrandOrange
     }
 
-    // Question text color: orange on correct (over green bg), white on wrong, black otherwise
+    // Question text: black on orange and on the lime "correct" screen (Figma); white on red.
     val questionTextColor = when {
-        submitted && lastAnswerCorrect == true -> BrandOrange
         submitted && lastAnswerCorrect == false -> Color.White
         else -> BrandInk
     }

@@ -82,6 +82,9 @@ import com.resonant.app.speech.SpeechInputManager
 import com.resonant.app.speech.VoiceInputController
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
+import com.resonant.app.ui.lessons.LessonsTopBar
+import com.resonant.app.ui.theme.MetropolisBlack
+import androidx.compose.foundation.layout.Spacer
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import kotlinx.coroutines.CancellationException
@@ -497,6 +500,16 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
 
     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
 
+    val hero = exchanges.isEmpty()
+    val chatHeader: @Composable () -> Unit = {
+        LessonsTopBar(
+            onBack = onBack,
+            title = "Chat",
+            backAnnouncement = "Back to Home.",
+            onSettings = onOpenSettings
+        )
+    }
+
     ResonantScaffold(
         title = "Resonant",
         subtitle = when {
@@ -504,6 +517,8 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
             exchanges.isEmpty() -> "Chat"
             else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
         },
+        // Conversation view (Figma "chat 3"): back pill + settings circle, titled "Chat".
+        header = if (hero) null else chatHeader,
         trailing = {
             Box(
                 Modifier
@@ -559,7 +574,6 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
         }) {
             // Empty chat = the hero from the design: dots, greeting, prompt. Once there is a
             // conversation the dots shrink to the top and the exchange takes the space.
-            val hero = exchanges.isEmpty()
             // Sized from the space and the system font scale, so nothing clips at large text.
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val fontScale = maxOf(1f, LocalDensity.current.fontScale)
@@ -570,6 +584,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
                 ) {
+                    if (hero) {
                     ResonantDots(
                         state = dotsState,
                         level = {
@@ -581,6 +596,7 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                         },
                         modifier = Modifier.size(dotsSize)
                     )
+                    }
                     if (hero) {
                         Text(
                             "Hi ${userName ?: "there"}!",
@@ -601,35 +617,46 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                             )
                         }
                     } else {
-                        Column(Modifier.fillMaxWidth().weight(1f).padding(top = 16.dp)) {
-                            if (statusText.isNotEmpty()) {
-                                Text(
-                                    statusText,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = colors.text,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            } else if (current != null) {
-                                Text(
-                                    "You: ${current.userText}",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = colors.text,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            // The reply shrinks to fit the space that is left, at any font size.
-                            FitText(
-                                text = current?.unit?.text ?: "",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                                color = colors.text,
-                                modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 20.dp)
-                            )
-                        }
+                        // Figma: your question small and right-aligned, the whole answer big,
+                        // then the next thing you said (or Listening… / Thinking…) small below.
+                        val exchange = exchanges.getOrNull(current?.exchangeIndex ?: exchanges.lastIndex)
+                        val nextUser = exchanges.getOrNull((current?.exchangeIndex ?: exchanges.lastIndex) + 1)?.userText
+                        Spacer(Modifier.height(8.dp))
+                        UserLine(exchange?.userText ?: "")
+                        FitText(
+                            text = exchange?.assistantChunks?.joinToString(" ") { it.text } ?: "",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 31.sp,
+                                lineHeight = 35.sp
+                            ),
+                            color = colors.text,
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp)
+                        )
+                        UserLine(statusText.ifEmpty { nextUser ?: "" })
                     }
                 }
             }
         }
+    }
+}
+
+/** Small right-aligned line (Figma chat 3): the user's side of the conversation. */
+@Composable
+private fun UserLine(text: String) {
+    if (text.isEmpty()) return
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+        Text(
+            text = text,
+            fontFamily = MetropolisBlack,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 19.sp,
+            lineHeight = 22.sp,
+            color = LocalResonantColors.current.text,
+            textAlign = TextAlign.End,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(0.55f)
+        )
     }
 }

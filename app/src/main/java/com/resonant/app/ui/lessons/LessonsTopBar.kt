@@ -41,7 +41,8 @@ import com.resonant.app.ui.theme.MetropolisBlack
 internal fun LessonsTopBar(
     onBack: () -> Unit,
     title: String = "Lessons",
-    backAnnouncement: String = "Back to Home."
+    backAnnouncement: String = "Back to Home.",
+    onSettings: (() -> Unit)? = null
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
@@ -72,7 +73,11 @@ internal fun LessonsTopBar(
             )
         }
         Box(
-            modifier = Modifier.size(52.dp).clip(CircleShape).background(bar),
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(bar)
+                .then(if (onSettings != null) Modifier.clickable { onSettings() } else Modifier),
             contentAlignment = Alignment.Center
         ) {
             SettingsPlaceholderIcon(tint = Color.White, modifier = Modifier.size(24.dp))

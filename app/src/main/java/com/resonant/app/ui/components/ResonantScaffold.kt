@@ -41,12 +41,14 @@ fun ResonantScaffold(
     title: String,
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null,
+    header: (@Composable () -> Unit)? = null,
     bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val colors = LocalResonantColors.current
     ResonantSurface {
         Column(Modifier.fillMaxSize()) {
+            if (header != null) header() else {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -80,6 +82,7 @@ fun ResonantScaffold(
                     }
                 }
                 if (trailing != null) trailing() else BrailleRMark(color = colors.text)
+            }
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
