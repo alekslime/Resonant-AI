@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.ui.home.MicPlaceholderIcon
@@ -72,14 +73,19 @@ fun AskPill(
             .imePadding()
             .padding(horizontal = 24.dp, vertical = 20.dp)
             .fillMaxWidth()
-            .height(64.dp)
+            .heightIn(min = 64.dp) // grows with the system font size
             .clip(RoundedCornerShape(percent = 50))
             .background(PillColor)
-            .padding(start = 22.dp, end = 6.dp),
+            .padding(start = 22.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (text.isEmpty()) Text("Ask anything…", style = PillText.copy(color = Color.White.copy(alpha = .85f)))
+            if (text.isEmpty()) Text(
+                "Ask anything…",
+                style = PillText.copy(color = Color.White.copy(alpha = .85f)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             BasicTextField(
                 value = text,
                 onValueChange = { text = it },

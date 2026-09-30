@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import com.resonant.app.ui.components.DotsState
+import com.resonant.app.ui.components.FitText
 import com.resonant.app.ui.components.ResonantDots
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -554,50 +558,69 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
             // Empty chat = the hero from the design: dots, greeting, prompt. Once there is a
             // conversation the dots shrink to the top and the exchange takes the space.
             val hero = exchanges.isEmpty()
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
-            ) {
-                ResonantDots(
-                    state = dotsState,
-                    level = {
-                        when {
-                            forcedName != null -> forcedLevel ?: -1f // -1 = simulated
-                            dotsState == DotsState.Listening -> speech.micLevel()
-                            else -> audio.speechLevel()
-                        }
-                    },
-                    modifier = Modifier.size(if (hero) 240.dp else 120.dp)
-                )
-                if (hero) {
-                    Text(
-                        "Hi ${userName ?: "there"}!",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = colors.text,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 24.dp)
+            // Sized from the space and the system font scale, so nothing clips at large text.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val fontScale = maxOf(1f, LocalDensity.current.fontScale)
+                val dotsSize = if (hero) minOf(240.dp, maxHeight * .38f / fontScale)
+                else minOf(120.dp, maxHeight * .16f / fontScale)
+                Column(
+                    Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
+                ) {
+                    ResonantDots(
+                        state = dotsState,
+                        level = {
+                            when {
+                                forcedName != null -> forcedLevel ?: -1f // -1 = simulated
+                                dotsState == DotsState.Listening -> speech.micLevel()
+                                else -> audio.speechLevel()
+                            }
+                        },
+                        modifier = Modifier.size(dotsSize)
                     )
-                    Text(
-                        statusText.ifEmpty { "What would you like to study today?" },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.text,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                } else {
-                    Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                        if (statusText.isNotEmpty()) {
-                            Text(statusText, style = MaterialTheme.typography.bodyLarge, color = colors.text)
-                        } else if (current != null) {
-                            Text("You: ${current.userText}", style = MaterialTheme.typography.bodyLarge, color = colors.text)
-                        }
+                    if (hero) {
                         Text(
-                            current?.unit?.text ?: "",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                            "Hi ${userName ?: "there"}!",
+                            style = MaterialTheme.typography.displayLarge,
                             color = colors.text,
-                            modifier = Modifier.padding(top = 20.dp)
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 24.dp)
                         )
+                        Text(
+                            statusText.ifEmpty { "What would you like to study today?" },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.text,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    } else {
+                        Column(Modifier.fillMaxWidth().weight(1f).padding(top = 16.dp)) {
+                            if (statusText.isNotEmpty()) {
+                                Text(
+                                    statusText,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.text,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            } else if (current != null) {
+                                Text(
+                                    "You: ${current.userText}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.text,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            // The reply shrinks to fit the space that is left, at any font size.
+                            FitText(
+                                text = current?.unit?.text ?: "",
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                                color = colors.text,
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(top = 20.dp)
+                            )
+                        }
                     }
                 }
             }
