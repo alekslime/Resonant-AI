@@ -18,7 +18,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.ScreenHorizontalPadding
 import com.resonant.app.ui.theme.ScreenTopPadding
@@ -49,10 +51,10 @@ fun ResonantScaffold(
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = ScreenHorizontalPadding,
-                        end = ScreenHorizontalPadding,
-                        top = ScreenTopPadding,
-                        bottom = 24.dp
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = 20.dp,
+                        bottom = 16.dp
                     ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
@@ -60,16 +62,20 @@ fun ResonantScaffold(
                 Column {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black
+                        ),
                         color = colors.text,
                         modifier = Modifier.semantics { heading() }
                     )
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 15.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold
+                            ),
                             color = colors.text,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(top = 0.dp)
                         )
                     }
                 }

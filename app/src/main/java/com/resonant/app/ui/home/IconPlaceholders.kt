@@ -5,7 +5,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.runtime.Composable
@@ -65,29 +68,24 @@ fun MicPlaceholderIcon(tint: Color, modifier: Modifier = Modifier) {
 
 @Composable
 fun SettingsPlaceholderIcon(tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
+    // Solid cog with a hole, like the Figma icon. Offscreen layer so the hole is truly
+    // transparent (shows the button behind it) rather than painted in a guessed color.
+    Canvas(modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
         val center = Offset(size.width / 2f, size.height / 2f)
-        val outerRadius = size.minDimension * 0.32f
-        val toothLength = size.minDimension * 0.16f
-        val toothWidth = size.minDimension * 0.1f
-        val ringWidth = size.minDimension * 0.09f
-
+        val m = size.minDimension
         for (i in 0 until 8) {
             val angle = Math.toRadians((i * 45).toDouble())
             val dx = cos(angle).toFloat()
             val dy = sin(angle).toFloat()
             drawLine(
                 color = tint,
-                start = Offset(center.x + dx * outerRadius, center.y + dy * outerRadius),
-                end = Offset(
-                    center.x + dx * (outerRadius + toothLength),
-                    center.y + dy * (outerRadius + toothLength)
-                ),
-                strokeWidth = toothWidth,
-                cap = StrokeCap.Round
+                start = Offset(center.x + dx * m * 0.28f, center.y + dy * m * 0.28f),
+                end = Offset(center.x + dx * m * 0.46f, center.y + dy * m * 0.46f),
+                strokeWidth = m * 0.2f,
+                cap = StrokeCap.Butt
             )
         }
-        drawCircle(color = tint, radius = outerRadius, center = center, style = Stroke(width = ringWidth))
-        drawCircle(color = tint, radius = outerRadius * 0.32f, center = center)
+        drawCircle(color = tint, radius = m * 0.34f, center = center)
+        drawCircle(color = Color.Black, radius = m * 0.14f, center = center, blendMode = BlendMode.Clear)
     }
 }

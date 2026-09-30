@@ -53,6 +53,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.height
 import androidx.core.content.ContextCompat
 import com.resonant.app.content.ChatData
 import com.resonant.app.content.ChatExchange
@@ -561,10 +563,10 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
             // Sized from the space and the system font scale, so nothing clips at large text.
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val fontScale = maxOf(1f, LocalDensity.current.fontScale)
-                val dotsSize = if (hero) minOf(240.dp, maxHeight * .38f / fontScale)
+                val dotsSize = if (hero) minOf(300.dp, maxHeight * .48f / fontScale)
                 else minOf(120.dp, maxHeight * .16f / fontScale)
                 Column(
-                    Modifier.fillMaxSize().padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                    Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
                 ) {
@@ -582,18 +584,22 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
                     if (hero) {
                         Text(
                             "Hi ${userName ?: "there"}!",
-                            style = MaterialTheme.typography.displayLarge,
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.Bold
+                            ),
                             color = colors.text,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 24.dp)
+                            textAlign = TextAlign.Center
                         )
-                        Text(
-                            statusText.ifEmpty { "What would you like to study today?" },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.text,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                        // Figma has no prompt line under the greeting. This slot only shows
+                        // "Listening…" / "Thinking…", and is reserved so the layout doesn't jump.
+                        Box(Modifier.height(32.dp), contentAlignment = Alignment.Center) {
+                            if (statusText.isNotEmpty()) Text(
+                                statusText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = colors.text,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     } else {
                         Column(Modifier.fillMaxWidth().weight(1f).padding(top = 16.dp)) {
                             if (statusText.isNotEmpty()) {

@@ -42,7 +42,7 @@ import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
 private val PillColor = Color(0xFF0F0F0F)
-private val PillText = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
+private val PillText = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White)
 
 /**
  * "Ask anything…" — type a question, or tap the mic to ask by voice (same path as tapping the
@@ -81,8 +81,8 @@ fun AskPill(
     ) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (text.isEmpty()) Text(
-                "Ask anything…",
-                style = PillText.copy(color = Color.White.copy(alpha = .85f)),
+                "Ask anything...",
+                style = PillText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -101,7 +101,7 @@ fun AskPill(
         }
         Box(
             Modifier
-                .size(52.dp)
+                .size(54.dp)
                 .clip(CircleShape)
                 .background(Color.White)
                 .semantics {

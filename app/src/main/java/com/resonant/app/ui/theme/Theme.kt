@@ -42,7 +42,9 @@ private val ResonantDarkScheme = darkColorScheme(
  */
 @Composable
 fun ResonantTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+    // Figma only defines the flat-orange / black-ink look, so dark mode is off for now.
+    // To bring it back: val dark = isSystemInDarkTheme()
+    val dark = false
     val extended = if (dark) DarkResonantColors else LightResonantColors
     CompositionLocalProvider(LocalResonantColors provides extended) {
         MaterialTheme(
