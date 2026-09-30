@@ -51,6 +51,9 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.lessons.ArrowIcon
+import com.resonant.app.ui.lessons.FittedTitle
+import com.resonant.app.ui.lessons.LessonsTopBar
 import com.resonant.app.ui.home.SettingsPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
@@ -188,69 +191,28 @@ fun QuizBrowserScreen(
             }
         }) {
             Column(Modifier.fillMaxSize()) {
+                LessonsTopBar(onBack = onBack, title = "Quizzes")
 
-                // Top bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(TopBarBackground)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                haptics.play(HapticPattern.BACK)
-                                audio.announce("Back to Home.")
-                                onBack()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("←", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Text("Quizzes", style = TopBarTitleStyle, color = Color.White)
-
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SettingsPlaceholderIcon(tint = BrandInk, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                // Headline
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 12.dp)
-                ) {
-                    Text("Test what you know.", style = HeadlineStyle, color = BrandInk)
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "$completedCount of ${quizSets.size} quizzes completed. Choose a quiz to begin or review.",
-                        style = SubheadStyle,
-                        color = BrandInk
-                    )
-                }
-
-                // Quiz cards
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
+                    // Figma: just the headline, then the cards (no subtitle).
+                    Text(
+                        "Test what you know.",
+                        style = TextStyle(
+                            fontFamily = MetropolisBlack,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 44.sp,
+                            lineHeight = 52.sp
+                        ),
+                        color = BrandInk,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+
                     quizSets.forEachIndexed { i, quiz ->
                         val progress = progressMap[quiz.id] ?: QuizProgress()
                         QuizCard(
@@ -277,10 +239,11 @@ private fun QuizCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(CardBackground)
+            .clip(RoundedCornerShape(28.dp))
+            .background(Color.White)
             .clickable(onClick = onClick)
-            .padding(20.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
+            // Progress/status/category aren't drawn (Figma), but stay in the spoken description.
             .semantics {
                 contentDescription = "${quiz.title}. ${quiz.category}. " +
                     "${quiz.questions.size} questions. ${progress.statusLabel}. " +
@@ -288,97 +251,27 @@ private fun QuizCard(
                     if (focused) " Focused." else ""
             }
     ) {
-        // Title row with help icon
+        FittedTitle(quiz.title, maxSp = 42f, lineRatio = 55f / 42f)
+
+        Spacer(Modifier.height(22.dp))
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                text = quiz.title,
-                style = CardTitleStyle,
-                color = Color.White,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(8.dp))
-            // Help / info icon placeholder
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF3A3A3A)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("?", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Meta: question count · category
-        Text(
-            text = "${quiz.questions.size} questions · ${quiz.category}",
-            style = CardMetaStyle,
-            color = Color(0xFFAAAAAA),
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        // Progress bar
-        Spacer(Modifier.height(12.dp))
-        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp)
+                .height(56.dp)
                 .clip(RoundedCornerShape(50))
-                .background(ProgressBarBackground)
-        ) {
-            val fraction = (progress.percentComplete / 100f).coerceIn(0f, 1f)
-            if (fraction > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(ProgressBarFill)
-                )
-            }
-        }
-
-        // Status + button row
-        Spacer(Modifier.height(14.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
+                .background(Color.Black)
+                .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
-                Text(
-                    text = progress.statusLabel,
-                    style = CardStatusStyle,
-                    color = Color.White
-                )
-                Text(
-                    text = "${progress.percentComplete}% complete",
-                    style = CardMetaStyle,
-                    color = Color(0xFFAAAAAA)
-                )
-            }
-
-            // Action button pill
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Color.White)
-                    .clickable(onClick = onClick)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = progress.buttonLabel,
-                    style = CardButtonStyle,
-                    color = BrandInk
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("→", style = CardButtonStyle, color = BrandInk)
-            }
+            Text(
+                text = progress.buttonLabel.split(" ")
+                    .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } },
+                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
+                color = Color.White
+            )
+            ArrowIcon(pointRight = true, tint = Color.White, modifier = Modifier.size(22.dp))
         }
     }
 }

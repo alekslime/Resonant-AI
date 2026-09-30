@@ -35,9 +35,9 @@ import com.resonant.app.ui.home.SettingsPlaceholderIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
-/** Shared by the Lessons list and the single-lesson screen (same Figma header). */
+/** Shared by the Lessons list, the single-lesson screen and the Quizzes list (same Figma header). */
 @Composable
-internal fun LessonsTopBar(onBack: () -> Unit) {
+internal fun LessonsTopBar(onBack: () -> Unit, title: String = "Lessons") {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val bar = Color(0xFF0A0A0A)
@@ -61,7 +61,7 @@ internal fun LessonsTopBar(onBack: () -> Unit) {
         ) {
             ArrowIcon(pointRight = false, tint = Color.White, modifier = Modifier.size(22.dp))
             Text(
-                text = "Lessons",
+                text = title,
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
                 color = Color.White
             )
