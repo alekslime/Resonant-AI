@@ -106,7 +106,8 @@ private val CardButtonStyle = TextStyle(
 @Composable
 fun QuizBrowserScreen(
     onOpenQuiz: (quizId: String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
@@ -193,7 +194,7 @@ fun QuizBrowserScreen(
             }
         }) {
             Column(Modifier.fillMaxSize()) {
-                LessonsTopBar(onBack = onBack, title = "Quizzes")
+                LessonsTopBar(onBack = onBack, title = "Quizzes", onSettings = onOpenSettings)
 
                 Column(
                     modifier = Modifier

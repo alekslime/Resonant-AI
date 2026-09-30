@@ -5,26 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,10 +86,6 @@ private val MenuTextStyle = TextStyle(
     )
 )
 
-private val AskBarStyle = TextStyle(fontFamily = MetropolisBlack, fontSize = 20.sp)
-
-private val HomeHorizontalPadding = 24.dp
-private val AskBarPillColor = Color(0xFF2B2A2A)
 
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit) {
@@ -132,17 +117,6 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             audio.announce("Opening ${item.label}.")
         }
         onNavigate(item.route)
-    }
-
-    // Direct-tap shortcuts from the Ask-anything bar route through the exact
-    // same open() as the matching menu item — same haptic, same announce,
-    // same audio-focus update — rather than a second, parallel nav path.
-    fun openByRoute(route: String) {
-        val i = homeItems.indexOfFirst { it.route == route }
-        if (i >= 0) {
-            audio.jumpTo(i)
-            open(i)
-        }
     }
 
     SystemBarsColor(BrandOrange)
@@ -192,7 +166,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             }
         }) {
             // Figma frame: menu only, centered on screen. Wordmark and Ask bar
-            // are not in the frame, so they're not shown (AskBar() kept below).
+            // are not in the frame, so they're not shown.
             Column(
                 Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -216,52 +190,6 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AskBar(onOpenChat: () -> Unit, onOpenSettings: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = HomeHorizontalPadding)
-            .height(67.dp)
-            .clip(RoundedCornerShape(percent = 50))
-            .background(AskBarPillColor)
-            .clickable { onOpenChat() }
-            .padding(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            Modifier
-                .size(55.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-                .clickable { onOpenChat() },
-            contentAlignment = Alignment.Center
-        ) {
-            MicIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
-        }
-
-        Text(
-            text = "Ask anything",
-            style = AskBarStyle,
-            color = Color.White,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 14.dp)
-        )
-
-        Box(
-            Modifier
-                .size(55.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-                .clickable { onOpenSettings() },
-            contentAlignment = Alignment.Center
-        ) {
-            SettingsIcon(tint = BrandInk, modifier = Modifier.size(26.dp))
         }
     }
 }

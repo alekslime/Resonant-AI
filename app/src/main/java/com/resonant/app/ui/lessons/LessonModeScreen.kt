@@ -52,7 +52,7 @@ private val modes = listOf(
  * tap the center to choose; tapping a card chooses it directly.
  */
 @Composable
-fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit) {
+fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpenSettings: (() -> Unit)? = null) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -108,7 +108,7 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit) {
             }
         }) {
             Column(Modifier.fillMaxSize()) {
-                LessonsTopBar(onBack = onBack, backAnnouncement = "Back to Lessons.")
+                LessonsTopBar(onBack = onBack, backAnnouncement = "Back to Lessons.", onSettings = onOpenSettings)
 
                 Column(
                     Modifier

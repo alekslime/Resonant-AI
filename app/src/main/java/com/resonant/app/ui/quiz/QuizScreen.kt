@@ -60,7 +60,8 @@ private val WrongRed = Color(0xFFE53935)
 fun QuizScreen(
     quiz: QuizSet,
     onFinished: (correct: Int, total: Int, missed: List<QuizQuestion>) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
@@ -199,7 +200,8 @@ fun QuizScreen(
                 LessonsTopBar(
                     onBack = onBack,
                     title = "Quizzes",
-                    backAnnouncement = "Leaving the quiz. Back to Quizzes."
+                    backAnnouncement = "Leaving the quiz. Back to Quizzes.",
+                    onSettings = onOpenSettings
                 )
 
                 // Question prompt (Figma: 35/48, heavy, straight under the header)

@@ -123,7 +123,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         composable(Routes.LESSONS) {
             LessonsScreen(
                 onOpenLesson = { id -> navController.navigate(Routes.lessonMode(id)) },
-                onBack = goBack
+                onBack = goBack,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
         composable(
@@ -138,7 +139,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                         popUpTo(Routes.LESSON_MODE) { inclusive = true }
                     }
                 },
-                onBack = goBack
+                onBack = goBack,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
         composable(
@@ -151,13 +153,19 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             val id = backStackEntry.arguments?.getString("lessonId")
             val auto = backStackEntry.arguments?.getBoolean("auto") ?: true
             val lesson = LessonData.allLessons.firstOrNull { it.id == id } ?: LessonData.binarySearchLesson
-            LessonScreen(lesson = lesson, autoAdvance = auto, onExit = goBack)
+            LessonScreen(
+                lesson = lesson,
+                autoAdvance = auto,
+                onExit = goBack,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+            )
         }
         composable(Routes.QUIZ_BROWSER) {
             val context = LocalContext.current
             QuizBrowserScreen(
                 onOpenQuiz = { quizId -> navController.navigate("quiz/$quizId") },
-                onBack = goBack
+                onBack = goBack,
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
         composable(
@@ -181,7 +189,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                     navController.navigate(Routes.QUIZ_BROWSER) {
                         popUpTo("quiz/$quizId") { inclusive = true }
                     }
-                }
+                },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )
         }
         composable(Routes.QUIZ_REVIEW) {
@@ -215,7 +224,8 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                         navController.navigate(Routes.QUIZ_BROWSER) {
                             popUpTo(Routes.QUIZ_REVIEW) { inclusive = true }
                         }
-                    }
+                    },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
                 )
             }
         }

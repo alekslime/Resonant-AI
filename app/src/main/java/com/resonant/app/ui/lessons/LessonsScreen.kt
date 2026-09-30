@@ -82,7 +82,7 @@ private val CardButtonStyle = TextStyle(
 )
 
 @Composable
-fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
+fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSettings: (() -> Unit)? = null) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -143,7 +143,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit) {
         }) {
             Column(Modifier.fillMaxSize()) {
 
-                LessonsTopBar(onBack = onBack)
+                LessonsTopBar(onBack = onBack, onSettings = onOpenSettings)
 
                 // Lesson cards
                 Column(

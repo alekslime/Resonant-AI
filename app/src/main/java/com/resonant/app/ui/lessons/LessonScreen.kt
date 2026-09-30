@@ -57,7 +57,7 @@ private fun firstIndexOfSection(flat: List<FlatUnit>, sectionIndex: Int): Int =
     flat.indexOfFirst { it.sectionIndex == sectionIndex }
 
 @Composable
-fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true) {
+fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true, onOpenSettings: (() -> Unit)? = null) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -146,7 +146,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
             }
         }) {
             Column(Modifier.fillMaxSize()) {
-                LessonsTopBar(onBack = onExit, backAnnouncement = "Back to Lessons.")
+                LessonsTopBar(onBack = onExit, backAnnouncement = "Back to Lessons.", onSettings = onOpenSettings)
 
                 Column(
                     Modifier
