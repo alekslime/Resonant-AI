@@ -43,7 +43,8 @@ internal fun LessonsTopBar(
     onBack: () -> Unit,
     title: String = "Lessons",
     backAnnouncement: String = "Back to Home.",
-    onSettings: (() -> Unit)? = null
+    onSettings: (() -> Unit)? = null,
+    showSettings: Boolean = true
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
@@ -73,7 +74,7 @@ internal fun LessonsTopBar(
                 color = Color.White
             )
         }
-        Box(
+        if (showSettings) Box(
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)

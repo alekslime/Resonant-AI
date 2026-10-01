@@ -70,7 +70,12 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
         "Dots preview (Chat)" to if (dotsPreview) "On — swipe left in the middle to turn off" else "Off — swipe left in the middle to turn on"
     )
 
-    ResonantScaffold(title = "Debug", subtitle = "Live interaction state") {
+    ResonantScaffold(
+        title = "Debug",
+        subtitle = "Live interaction state",
+        onBack = onBack,
+        backAnnouncement = "Back to Settings."
+    ) {
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {

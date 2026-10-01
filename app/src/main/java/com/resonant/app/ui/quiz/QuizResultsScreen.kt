@@ -3,35 +3,27 @@ package com.resonant.app.ui.quiz
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.content.SemanticUnit
@@ -42,11 +34,11 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
+import com.resonant.app.ui.components.ResonantButton
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.MetropolisBlack
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
 
 @Composable
 fun QuizResultsScreen(
@@ -105,19 +97,21 @@ fun QuizResultsScreen(
     ResonantScaffold(
         title = "Results",
         subtitle = "$correct of $total correct",
+        onBack = onDone,
+        backAnnouncement = "Back to quizzes.",
         // Real buttons for sighted users. They sit outside the GestureSurface on purpose (the
         // gesture detector consumes touches); the tap gestures below still do the same things.
         bottomBar = {
             Column(
                 Modifier
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (canRetry) {
-                    ResultPill("Retry $missedCount missed →", filled = true, onClick = { retry() })
+                    ResonantButton("Retry $missedCount missed", filled = true, onClick = { retry() })
                 }
-                ResultPill("Back to quizzes", filled = !canRetry, onClick = {
+                ResonantButton("Back to quizzes", filled = !canRetry, onClick = {
                     haptics.play(HapticPattern.CONFIRM)
                     onDone()
                 })
@@ -153,43 +147,53 @@ fun QuizResultsScreen(
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "$correct / $total",
-                    style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Black),
-                    color = colors.text,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = resultLabel,
-                    fontFamily = MetropolisBlack,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 26.sp,
-                    color = colors.text,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-
-                // Score bar: how much of the quiz was right, filling in once on arrival.
-                Box(
+                // The score sits in one of the white cards used on every other screen.
+                Column(
                     Modifier
-                        .padding(top = 28.dp)
                         .fillMaxWidth()
-                        .height(14.dp)
-                        .clip(RoundedCornerShape(percent = 50))
-                        .background(BrandInk.copy(alpha = .18f))
-                        .clearAndSetSemantics { }
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Text(
+                        text = "$correct / $total",
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 72.sp, lineHeight = 78.sp),
+                        color = BrandInk,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = resultLabel,
+                        fontFamily = MetropolisBlack,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 26.sp,
+                        color = BrandInk,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+
+                    // Score bar: how much of the quiz was right, filling in once on arrival.
                     Box(
                         Modifier
-                            .fillMaxWidth(fraction)
+                            .padding(top = 28.dp)
+                            .fillMaxWidth()
                             .height(14.dp)
                             .clip(RoundedCornerShape(percent = 50))
-                            .background(BrandInk)
-                    )
+                            .background(BrandInk.copy(alpha = .15f))
+                            .clearAndSetSemantics { }
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(fraction)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(percent = 50))
+                                .background(BrandInk)
+                        )
+                    }
                 }
 
                 Text(
@@ -197,40 +201,12 @@ fun QuizResultsScreen(
                         "Tap the right edge to retry the $missedCount missed, or the center to go back."
                     else
                         "Tap anywhere to go back.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.text.copy(alpha = .75f),
+                    style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp),
+                    color = BrandInk,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 28.dp)
+                    modifier = Modifier.padding(top = 24.dp)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ResultPill(label: String, filled: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(percent = 50)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clip(shape)
-            .then(
-                if (filled) Modifier.background(BrandInk)
-                else Modifier.border(BorderStroke(2.dp, BrandInk), shape)
-            )
-            .semantics { role = Role.Button }
-            .clickable { onClick() }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            fontFamily = MetropolisBlack,
-            fontWeight = FontWeight.Black,
-            fontSize = 18.sp,
-            color = if (filled) Color(0xFFFFAE00) else BrandInk,
-            textAlign = TextAlign.Center
-        )
     }
 }

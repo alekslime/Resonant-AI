@@ -14,18 +14,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,11 +37,11 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
+import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
+import kotlin.coroutines.resume
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 /**
  * One step of the tutorial. [matches] decides whether a gesture completes the
@@ -216,7 +215,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = ScreenHorizontalPadding, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Step counter pill
@@ -224,15 +223,15 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50.dp))
-                                .background(Color(0xFF1A1A1A))
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .background(BrandInk)
+                                .padding(horizontal = 18.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 text = "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
                                 fontFamily = MetropolisBlack,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color(0xFFFFAE00)
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp,
+                                color = Color.White
                             )
                         }
                     } else {
@@ -245,8 +244,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .fillMaxWidth()
                             .weight(1f)
                             .padding(vertical = 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFF1A1A1A))
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White)
                             .padding(24.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -256,7 +255,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.Black
                                 ),
-                                color = Color.White,
+                                color = BrandInk,
                                 modifier = Modifier.semantics {
                                     contentDescription = current?.spoken ?: INTRO
                                 }
@@ -264,8 +263,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             Spacer(Modifier.height(20.dp))
                             Text(
                                 text = current?.hint ?: "Turn your volume up.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color(0xFFCCCCCC)
+                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
+                                color = BrandInk
                             )
                         }
                     }
@@ -276,16 +275,16 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .clip(RoundedCornerShape(50.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                            .background(BrandInk)
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Hold left edge to skip tutorial",
                             fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp,
-                            color = Color(0xFF888888)
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
+                            color = Color.White
                         )
                     }
                 }

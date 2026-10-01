@@ -3,40 +3,37 @@ package com.resonant.app.ui.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.resonant.app.ResonantApp
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.network.OllamaConfig
 import com.resonant.app.network.checkOllamaConnection
 import com.resonant.app.network.describeCheck
 import com.resonant.app.network.normalizeBaseUrl
+import com.resonant.app.ui.components.ResonantButton
 import com.resonant.app.ui.components.ResonantScaffold
+import com.resonant.app.ui.components.ResonantTextField
+import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.LocalResonantColors
-import com.resonant.app.ui.theme.ScreenHorizontalPadding
+import com.resonant.app.ui.theme.MetropolisBlack
 import kotlinx.coroutines.launch
 
 /**
@@ -63,53 +60,39 @@ fun ServerSetupScreen(onDone: () -> Unit) {
 
     LaunchedEffect(Unit) { debug.setScreen("Server setup") }
 
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = colors.text,
-        unfocusedTextColor = colors.text,
-        focusedBorderColor = colors.text,
-        unfocusedBorderColor = colors.text,
-        focusedLabelColor = colors.text,
-        unfocusedLabelColor = colors.text,
-        cursorColor = colors.text
-    )
-    val primaryButton = ButtonDefaults.buttonColors(
-        containerColor = colors.focusedFill,
-        contentColor = colors.focusedText
-    )
-    val secondaryButton = ButtonDefaults.outlinedButtonColors(contentColor = colors.text)
-
-    ResonantScaffold(title = "Server setup", subtitle = "Where Chat finds its AI") {
+    ResonantScaffold(
+        title = "Server setup",
+        subtitle = "Where Chat finds its AI",
+        onBack = onDone,
+        backAnnouncement = "Back to Debug."
+    ) {
         Column(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(start = ScreenHorizontalPadding, end = ScreenHorizontalPadding, bottom = 32.dp)
+                .padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
         ) {
-            OutlinedTextField(
+            ResonantTextField(
                 value = address,
                 onValueChange = { address = it; status = null },
-                label = { Text("Server address") },
-                placeholder = { Text("192.168.1.50:11434") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                colors = fieldColors,
-                modifier = Modifier.fillMaxWidth()
+                label = "Server address",
+                placeholder = "192.168.1.50:11434",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
             )
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
+            ResonantTextField(
                 value = model,
                 onValueChange = { model = it; status = null },
-                label = { Text("Model") },
-                placeholder = { Text("llama3.2") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                colors = fieldColors,
-                modifier = Modifier.fillMaxWidth()
+                label = "Model",
+                placeholder = "llama3.2",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
             )
 
             Spacer(Modifier.height(24.dp))
-            Button(
+            ResonantButton(
+                text = "Test connection",
+                enabled = !checking,
                 onClick = {
                     val candidate = normalizeBaseUrl(address)
                     if (candidate == null) {
@@ -123,23 +106,21 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                             checking = false
                         }
                     }
-                },
-                enabled = !checking,
-                colors = primaryButton,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Test connection") }
+                }
+            )
 
             status?.let {
                 Text(
                     it,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.text,
+                    style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
+                    color = BrandInk,
                     modifier = Modifier.padding(top = 16.dp)
                 )
             }
 
             Spacer(Modifier.height(24.dp))
-            Button(
+            ResonantButton(
+                text = "Save",
                 onClick = {
                     val candidate = normalizeBaseUrl(address)
                     if (candidate == null || model.isBlank()) {
@@ -150,13 +131,13 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                         OllamaConfig.applyOverrides(candidate, model)
                         onDone()
                     }
-                },
-                colors = primaryButton,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Save") }
+                }
+            )
 
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(
+            ResonantButton(
+                text = "Use build defaults",
+                filled = false,
                 onClick = {
                     prefs.ollamaBaseUrl = null
                     prefs.ollamaModel = null
@@ -164,16 +145,14 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                     address = OllamaConfig.BASE_URL
                     model = OllamaConfig.MODEL
                     status = "Back to the build defaults."
-                },
-                colors = secondaryButton,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Use build defaults") }
+                }
+            )
 
             Text(
                 "Plain http:// only works in debug builds. Ollama listens only on its own " +
                     "machine unless started with OLLAMA_HOST=0.0.0.0.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.text,
+                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+                color = BrandInk,
                 modifier = Modifier.padding(top = 24.dp)
             )
         }
