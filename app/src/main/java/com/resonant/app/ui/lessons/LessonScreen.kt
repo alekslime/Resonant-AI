@@ -1,7 +1,6 @@
 package com.resonant.app.ui.lessons
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,8 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.content.Lesson
-import com.resonant.app.content.LessonSection
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -63,19 +62,23 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     val debug = LocalDebugState.current
     val flat = remember(lesson) { flatten(lesson) }
 
-    var flatIndex by remember { mutableIntStateOf(0) }
-    var lastSectionIndex by remember { mutableIntStateOf(0) }
+    // Saved across opening Settings from the gear, so coming back resumes at the same sentence.
+    var flatIndex by rememberSaveable { mutableStateOf(0) }
+    var lastSectionIndex by rememberSaveable { mutableStateOf(0) }
 
     LaunchedEffect(lesson.id, autoAdvance) {
         debug.setScreen("Lesson: ${lesson.title}")
-        // Say which mode this is before the first sentence; the lesson waits for it.
+        val resumeAt = flatIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
+        // Say which mode this is before the first sentence (or that we are back, and resume
+        // from the sentence we left on); the lesson waits for it.
         audio.announce(
-            if (autoAdvance) "Auto. The lesson will play on its own."
+            if (resumeAt > 0) "Back to the lesson."
+            else if (autoAdvance) "Auto. The lesson will play on its own."
             else "Manual. Tap the center of the screen to hear the next sentence."
         )
         audio.setQueue(
             flat.map { it.unit },
-            startIndex = 0,
+            startIndex = resumeAt,
             autoAdvance = autoAdvance,
             queueBehindAnnouncement = true
         )

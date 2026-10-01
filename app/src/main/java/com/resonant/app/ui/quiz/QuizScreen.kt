@@ -1,11 +1,8 @@
 package com.resonant.app.ui.quiz
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,16 +10,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,18 +63,28 @@ fun QuizScreen(
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
 
-    var questionIndex by remember { mutableIntStateOf(0) }
-    var queueIndex by remember { mutableIntStateOf(0) }
-    var selectedOption by remember { mutableStateOf<Int?>(null) }
-    var submitted by remember { mutableStateOf(false) }
-    var lastAnswerCorrect by remember { mutableStateOf<Boolean?>(null) }
-    var correctCount by remember { mutableIntStateOf(0) }
-    val missed = remember(quiz.id) { mutableListOf<QuizQuestion>() }
+    // rememberSaveable (not remember) so the place survives opening Settings from the gear and
+    // coming back: the navigation back stack saves these and hands them back.
+    var questionIndex by rememberSaveable { mutableStateOf(0) }
+    var queueIndex by rememberSaveable { mutableStateOf(0) }
+    var selectedOption by rememberSaveable { mutableStateOf<Int?>(null) }
+    var submitted by rememberSaveable { mutableStateOf(false) }
+    var lastAnswerCorrect by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var correctCount by rememberSaveable { mutableStateOf(0) }
+    // Indexes of missed questions, e.g. "0,3". A plain string because it saves cleanly.
+    var missedIndexes by rememberSaveable { mutableStateOf("") }
+    var started by rememberSaveable { mutableStateOf(false) }
+    fun missedQuestions(): List<QuizQuestion> =
+        missedIndexes.split(',').filter { it.isNotEmpty() }.map { quiz.questions[it.toInt()] }
 
     val question = quiz.questions[questionIndex]
 
     // Which option is currently visible (queueIndex 0 = prompt, 1..N = options)
     val visibleOptionIndex = if (queueIndex >= 1) queueIndex - 1 else null
+
+    fun unitsFor(q: QuizQuestion): List<SemanticUnit> = listOf(q.prompt) + q.options.mapIndexed { oi, opt ->
+        SemanticUnit("${q.id}_opt_$oi", "Option ${opt.letter}. ${opt.text}.")
+    }
 
     fun loadQuestion(i: Int) {
         questionIndex = i
@@ -86,16 +92,23 @@ fun QuizScreen(
         submitted = false
         lastAnswerCorrect = null
         debug.setSelectedOption("—")
-        val q = quiz.questions[i]
-        val units = listOf(q.prompt) + q.options.mapIndexed { oi, opt ->
-            SemanticUnit("${q.id}_opt_$oi", "Option ${opt.letter}. ${opt.text}.")
-        }
-        audio.setQueue(units, startIndex = 0, autoAdvance = false)
+        audio.setQueue(unitsFor(quiz.questions[i]), startIndex = 0, autoAdvance = false)
+    }
+
+    /** Coming back from Settings: same question, same option, same score; nothing is reset. */
+    fun restoreQuestion() {
+        audio.announce("Back to the quiz.")
+        audio.setQueue(
+            unitsFor(quiz.questions[questionIndex]),
+            startIndex = if (submitted) 0 else queueIndex,
+            autoAdvance = false,
+            queueBehindAnnouncement = true
+        )
     }
 
     LaunchedEffect(quiz.id) {
         debug.setScreen("Quiz")
-        loadQuestion(0)
+        if (started) restoreQuestion() else { loadQuestion(0); started = true }
         audio.index.collect { idx ->
             queueIndex = idx
             if (idx >= 1) haptics.playOption(idx - 1)
@@ -116,7 +129,7 @@ fun QuizScreen(
             haptics.play(HapticPattern.CORRECT)
             audio.announce("Correct. ${question.explanation}")
         } else {
-            missed.add(question)
+            missedIndexes = if (missedIndexes.isEmpty()) "$questionIndex" else "$missedIndexes,$questionIndex"
             haptics.play(HapticPattern.INCORRECT)
             audio.announce("Incorrect. ${question.explanation}")
         }
@@ -127,7 +140,7 @@ fun QuizScreen(
         if (questionIndex + 1 < quiz.questions.size) {
             loadQuestion(questionIndex + 1)
         } else {
-            onFinished(correctCount, quiz.questions.size, missed.toList())
+            onFinished(correctCount, quiz.questions.size, missedQuestions())
         }
     }
 
