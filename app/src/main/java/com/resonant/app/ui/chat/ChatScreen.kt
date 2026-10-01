@@ -153,7 +153,7 @@ fun ChatScreen(
         val job = scope.launch { liveKitManager.connect("resonant-android") }
         onDispose {
             job.cancel()
-            CoroutineScope(Dispatchers.Main.immediate + NonCancellable).launch {
+            CoroutineScope(Dispatchers.Default + NonCancellable).launch {
                 liveKitManager.disconnect()
             }
         }
@@ -539,6 +539,19 @@ fun ChatScreen(
     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
 
     val hero = exchanges.isEmpty()
+    // Live status. ResonantScaffold ignores `subtitle` whenever a custom header is
+    // supplied (i.e. once there is chat history), so the status is also drawn in chatHeader.
+    val liveStatus: String? = if (liveMode) {
+        when {
+            !liveMicGranted -> "Live · Microphone needed"
+            else -> when (liveKitState) {
+                LiveKitState.Disconnected -> "Live · Disconnected"
+                LiveKitState.Connecting -> "Live · Connecting…"
+                LiveKitState.Connected -> "Live · Connected"
+                is LiveKitState.Error -> "Live · Connection error"
+            }
+        }
+    } else null
     val chatHeader: @Composable () -> Unit = {
         LessonsTopBar(
             onBack = onBack,
@@ -546,26 +559,24 @@ fun ChatScreen(
             backAnnouncement = "Back to Home.",
             onSettings = onOpenSettings
         )
+        if (liveStatus != null) {
+            Text(
+                text = liveStatus,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 15.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold
+                ),
+                color = colors.text,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+            )
+        }
     }
 
     ResonantScaffold(
         title = "Resonant",
-        subtitle = if (liveMode) {
-            when {
-                !liveMicGranted -> "Live · Microphone needed"
-                else -> when (liveKitState) {
-                    LiveKitState.Disconnected -> "Live · Disconnected"
-                    LiveKitState.Connecting -> "Live · Connecting…"
-                    LiveKitState.Connected -> "Live · Connected"
-                    is LiveKitState.Error -> "Live · Connection error"
-                }
-            }
-        } else {
-            when {
-                thinking -> "Tap center to cancel"
-                exchanges.isEmpty() -> "Chat"
-                else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
-            }
+        subtitle = liveStatus ?: when {
+            thinking -> "Tap center to cancel"
+            exchanges.isEmpty() -> "Chat"
+            else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
         },
         // Conversation view (Figma "chat 3"): back pill + settings circle, titled "Chat".
         header = if (hero) null else chatHeader,
