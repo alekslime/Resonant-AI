@@ -30,6 +30,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.collectAsState
+import com.resonant.app.ResonantApp
+import com.resonant.app.livekit.LiveKitState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import androidx.compose.ui.Alignment
 import com.resonant.app.ui.components.DotsState
 import com.resonant.app.ui.components.FitText
@@ -114,13 +118,47 @@ private const val RECHECK_TIMEOUT_MS = 2_000
 private const val NOTICE_WAIT_MS = 20_000L
 
 @Composable
-fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
+fun ChatScreen(
+    onBack: () -> Unit,
+    onOpenSettings: () -> Unit = {},
+    liveMode: Boolean = false
+) {
     val context = LocalContext.current
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val colors = LocalResonantColors.current
     val scope = rememberCoroutineScope()
+
+    // --- Live mode (LiveKit) -------------------------------------------------
+    val liveKitManager = remember { (context.applicationContext as ResonantApp).liveKitManager }
+    val liveKitState by liveKitManager.state.collectAsState()
+    var liveMicGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val liveMicLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> liveMicGranted = granted }
+    LaunchedEffect(liveMode) {
+        if (liveMode && !liveMicGranted) liveMicLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+    // Connect only once the mic is allowed (connect() enables the mic immediately).
+    // Teardown runs on its own scope: this composition's scope is already cancelled
+    // by the time onDispose fires, and a suspend disconnect() would be cancelled with it.
+    DisposableEffect(liveMode, liveMicGranted) {
+        if (!liveMode || !liveMicGranted) return@DisposableEffect onDispose {}
+        val job = scope.launch { liveKitManager.connect("resonant-android") }
+        onDispose {
+            job.cancel()
+            CoroutineScope(Dispatchers.Main.immediate + NonCancellable).launch {
+                liveKitManager.disconnect()
+            }
+        }
+    }
+    // -------------------------------------------------------------------------
 
     val speech = remember { VoiceInputController(context) }
     var alive by remember { mutableStateOf(true) }
@@ -512,10 +550,22 @@ fun ChatScreen(onBack: () -> Unit, onOpenSettings: () -> Unit = {}) {
 
     ResonantScaffold(
         title = "Resonant",
-        subtitle = when {
-            thinking -> "Tap center to cancel"
-            exchanges.isEmpty() -> "Chat"
-            else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
+        subtitle = if (liveMode) {
+            when {
+                !liveMicGranted -> "Live · Microphone needed"
+                else -> when (liveKitState) {
+                    LiveKitState.Disconnected -> "Live · Disconnected"
+                    LiveKitState.Connecting -> "Live · Connecting…"
+                    LiveKitState.Connected -> "Live · Connected"
+                    is LiveKitState.Error -> "Live · Connection error"
+                }
+            }
+        } else {
+            when {
+                thinking -> "Tap center to cancel"
+                exchanges.isEmpty() -> "Chat"
+                else -> "Exchange ${(current?.exchangeIndex ?: 0) + 1} of ${exchanges.size}"
+            }
         },
         // Conversation view (Figma "chat 3"): back pill + settings circle, titled "Chat".
         header = if (hero) null else chatHeader,

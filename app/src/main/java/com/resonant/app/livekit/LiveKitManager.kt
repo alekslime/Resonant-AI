@@ -5,6 +5,7 @@ import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.token.TokenRequestOptions
 import io.livekit.android.token.TokenSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,7 +57,12 @@ class LiveKitManager(
                 room.localParticipant.setMicrophoneEnabled(true)
 
                 _state.value = LiveKitState.Connected
+            } catch (e: CancellationException) {
+                room.disconnect()
+                _state.value = LiveKitState.Disconnected
+                throw e
             } catch (e: Exception) {
+                room.disconnect() // don't leave a half-open room behind
                 _state.value = LiveKitState.Error(
                     e.message ?: "Unknown LiveKit connection error"
                 )
