@@ -17,3 +17,6 @@ local.properties
 
 # OS
 .DS_Store
+
+# Local AI model files
+agent/models/

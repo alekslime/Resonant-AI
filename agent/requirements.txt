@@ -1,0 +1,4 @@
+livekit-agents[silero]
+python-dotenv
+faster-whisper
+kokoro-onnx
