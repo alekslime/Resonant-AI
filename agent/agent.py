@@ -14,6 +14,7 @@ Env (all optional, in .env):
   KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0
 """
 import asyncio
+import json
 import logging
 import os
 import re
@@ -103,6 +104,8 @@ class Conversation:
         self.quiet_until = 0.0
         self.synth_lock = asyncio.Lock()  # one TTS inference at a time (CPU)
         self._state = ""
+        self._captions: list[dict] = []  # last few, published to the phone as one attribute
+        self._cap_n = 0
 
     def agent_is_talking(self) -> bool:
         return self.speaking or time.time() < self.quiet_until
@@ -117,6 +120,17 @@ class Conversation:
             await self.local.set_attributes({"state": state})
         except Exception as e:
             log.debug("could not publish state %r: %s", state, e)
+
+    async def caption(self, role: str, text: str = "") -> None:
+        """Send live captions to the phone: role is "user", "assistant" (one spoken sentence) or
+        "done" (this exchange is finished). Published as ONE attribute holding the last few items,
+        numbered, so the phone can't miss one even if it polls between two updates."""
+        self._cap_n = max(self._cap_n + 1, int(time.time() * 1000))
+        self._captions = (self._captions + [{"n": self._cap_n, "role": role, "text": text[:300]}])[-4:]
+        try:
+            await self.local.set_attributes({"captions": json.dumps(self._captions)})
+        except Exception as e:
+            log.debug("could not publish caption: %s", e)
 
     def interrupt(self) -> None:
         """The user tapped: stop thinking / talking right now."""
@@ -152,13 +166,13 @@ class Conversation:
         return " ".join(s.text.strip() for s in segments).strip()
 
     # ---- text to speech -------------------------------------------------------------
-    async def _synth(self, text: str) -> np.ndarray:
+    async def _synth(self, text: str) -> tuple[str, np.ndarray]:
         async with self.synth_lock:
             samples, sr = await asyncio.to_thread(
                 self.kokoro.create, text, voice=KOKORO_VOICE, speed=KOKORO_SPEED, lang="en-us"
             )
         assert sr == TTS_RATE, f"unexpected Kokoro sample rate {sr}"
-        return (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
+        return text, (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
 
     async def _play(self, q: "asyncio.Queue[asyncio.Task | None]", t_start: float) -> None:
         first = True
@@ -167,7 +181,8 @@ class Conversation:
                 item = await q.get()
                 if item is None:
                     break
-                pcm = await item
+                text, pcm = await item
+                await self.caption("assistant", text)  # shown as it starts to be spoken
                 if first:
                     first = False
                     self.speaking = True
@@ -209,6 +224,7 @@ class Conversation:
         try:
             await self._turn_inner(frames)
         finally:
+            await self.caption("done")
             await self.set_state("listening")
 
     async def _turn_inner(self, frames: list[rtc.AudioFrame]) -> None:
@@ -223,6 +239,7 @@ class Conversation:
             log.info("(ignored: %r)", text)
             return
         log.info("USER (%.1fs to transcribe): %s", t1 - t_start, text)
+        await self.caption("user", text)
         await self.set_state("thinking")
 
         self.history.append({"role": "user", "content": text})
@@ -283,6 +300,8 @@ class Conversation:
                     pass
 
         reply = reply.strip()
+        if reply and not player:  # text-only mode: no sentences were spoken, so caption it whole
+            await self.caption("assistant", reply)
         if reply:
             self.history.append({"role": "assistant", "content": reply})
             log.info("RESONANT (%.1fs total): %s", time.time() - t1, reply)

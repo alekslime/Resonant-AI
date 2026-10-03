@@ -38,7 +38,8 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 4. Tap to interrupt: while she thinks or speaks a tap stops her, otherwise a tap mutes (agent publishes state; voice barge-in later)
 - [x] 1. Agent publishes its state -> dots, status line, vibration-only thinking/speaking/your-turn cues
 - [x] 2. Detect a missing PC agent (12 s timeout -> announce, Offline dots; also if it drops later)
-- [ ] 3. Live exchanges into the normal Chat history (captions)
+- [x] 3. Live exchanges into the normal Chat history (captions on screen, saved). Not done: swipe-to-review in Live (the app speech queue stays empty there)
+- [ ] 3b. Swipe-to-review past exchanges in Live (needs the mic muted while the app reads aloud)
 - [ ] 5. Speaker routing check: loudspeaker default, toggle, headset first
 - [ ] 7. Settings: voice and speed, hold-to-talk mode, show which PC is connected
 

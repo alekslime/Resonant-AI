@@ -13,11 +13,18 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONArray
+
+/** One line of live captions from the PC agent. role: "user", "assistant" (one sentence) or "done". */
+data class LiveCaption(val role: String, val text: String)
 
 class LiveKitManager(
     context: Context
@@ -43,6 +50,12 @@ class LiveKitManager(
      */
     val agentState: StateFlow<String> = _agentState.asStateFlow()
 
+    private val _captions = MutableSharedFlow<LiveCaption>(extraBufferCapacity = 64)
+    /** Captions from the PC agent, in order, each delivered once. */
+    val captions: SharedFlow<LiveCaption> = _captions.asSharedFlow()
+    private var lastCaptionN = 0L
+    private var lastCaptionRaw: String? = null
+
     private val _agentPresent = MutableStateFlow(false)
     /** True while anyone else (the PC agent) is in the room. */
     val agentPresent: StateFlow<Boolean> = _agentPresent.asStateFlow()
@@ -63,6 +76,7 @@ class LiveKitManager(
                     _agentPresent.value = room.remoteParticipants.isNotEmpty()
                     _agentState.value =
                         room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["state"] } ?: ""
+                    readCaptions(room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["captions"] })
                 } catch (e: Exception) {
                     _agentState.value = ""
                 }
@@ -71,11 +85,33 @@ class LiveKitManager(
         }
     }
 
+    // The agent publishes the last few captions as one JSON array, each numbered ("n"). We emit
+    // every item newer than the last one we saw, so nothing is lost or repeated between polls.
+    private fun readCaptions(raw: String?) {
+        if (raw == null || raw == lastCaptionRaw) return
+        lastCaptionRaw = raw
+        try {
+            val array = JSONArray(raw)
+            for (i in 0 until array.length()) {
+                val item = array.getJSONObject(i)
+                val n = item.optLong("n", 0L)
+                if (n > lastCaptionN) {
+                    lastCaptionN = n
+                    _captions.tryEmit(LiveCaption(item.optString("role"), item.optString("text")))
+                }
+            }
+        } catch (e: Exception) {
+            // Malformed caption: skip it, the next one will come through.
+        }
+    }
+
     private fun stopPolling() {
         pollJob?.cancel()
         pollJob = null
         _agentState.value = ""
         _agentPresent.value = false
+        lastCaptionN = 0L
+        lastCaptionRaw = null
     }
 
     /** Tell the PC agent to stop thinking / talking now. No-op unless connected. */

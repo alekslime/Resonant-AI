@@ -281,6 +281,49 @@ fun ChatScreen(
             exchange.assistantChunks.map { FlatChatUnit(it, ei, exchange.userText) }
         }
 
+    // Live mode: captions from the PC agent become normal Chat exchanges, so they show on screen
+    // as she speaks and are saved to the same history the old Chat used. No speech is queued here:
+    // the agent's own voice is already playing, and the app's TTS must stay quiet with the mic open.
+    LaunchedEffect(liveMode) {
+        if (!liveMode) return@LaunchedEffect
+        var pendingUser: String? = null
+        var open = false
+        liveKitManager.captions.collect { cap ->
+            when (cap.role) {
+                "user" -> {
+                    pendingUser = cap.text
+                    open = false
+                }
+                "assistant" -> {
+                    if (!open) {
+                        val idx = exchanges.size
+                        exchanges = exchanges + ChatExchange(
+                            pendingUser ?: "",
+                            listOf(SemanticUnit("e${idx}u0", cap.text))
+                        )
+                        pendingUser = null
+                        open = true
+                    } else {
+                        val last = exchanges.last()
+                        val unit = SemanticUnit(
+                            "e${exchanges.lastIndex}u${last.assistantChunks.size}",
+                            cap.text
+                        )
+                        exchanges = exchanges.dropLast(1) + last.copy(assistantChunks = last.assistantChunks + unit)
+                    }
+                    val f = flatten(exchanges)
+                    flatIndex = f.lastIndex
+                    lastExchangeIndex = f.last().exchangeIndex
+                }
+                "done" -> if (open) {
+                    open = false
+                    val snapshot = exchanges
+                    scope.launch(Dispatchers.IO) { ChatHistoryStore.save(context, snapshot) }
+                }
+            }
+        }
+    }
+
     fun resetBusy() {
         listening = false
         thinking = false
