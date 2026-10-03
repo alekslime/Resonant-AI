@@ -1,5 +1,5 @@
 """
-Resonant PC agent - STEP 3: the full local voice loop.
+Resonant PC agent - the full local voice loop (+ state to the phone, interruptible).
 
   phone mic -> LiveKit -> Silero VAD -> faster-whisper (STT) -> Ollama (LLM, streamed)
   -> Kokoro (TTS, sentence by sentence) -> LiveKit -> phone speaker
@@ -89,20 +89,42 @@ def frames_to_16k_mono(frames: list[rtc.AudioFrame]) -> np.ndarray:
 
 
 class Conversation:
-    def __init__(self, whisper, kokoro, voice_source: rtc.AudioSource) -> None:
+    def __init__(self, whisper, kokoro, voice_source: rtc.AudioSource, local: rtc.LocalParticipant) -> None:
         self.whisper = whisper
         self.kokoro = kokoro
         self.voice_source = voice_source
+        self.local = local
         self.llm = AsyncOpenAI(base_url=OLLAMA_URL, api_key="ollama")
         self.history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.pending: list[rtc.AudioFrame] = []
         self.busy = False
+        self.current: asyncio.Task | None = None  # the turn in progress (so it can be interrupted)
         self.speaking = False
         self.quiet_until = 0.0
         self.synth_lock = asyncio.Lock()  # one TTS inference at a time (CPU)
+        self._state = ""
 
     def agent_is_talking(self) -> bool:
         return self.speaking or time.time() < self.quiet_until
+
+    async def set_state(self, state: str) -> None:
+        """Tell the phone what we are doing: listening / transcribing / thinking / speaking.
+        It is published as a participant attribute and drives the dots and the tap-to-interrupt rule."""
+        if state == self._state:
+            return
+        self._state = state
+        try:
+            await self.local.set_attributes({"state": state})
+        except Exception as e:
+            log.debug("could not publish state %r: %s", state, e)
+
+    def interrupt(self) -> None:
+        """The user tapped: stop thinking / talking right now."""
+        log.info("interrupted from the phone")
+        self.pending.clear()
+        if self.current and not self.current.done():
+            self.current.cancel()
+        self.voice_source.clear_queue()
 
     async def warm_up(self) -> None:
         t0 = time.time()
@@ -149,6 +171,7 @@ class Conversation:
                 if first:
                     first = False
                     self.speaking = True
+                    await self.set_state("speaking")
                     log.info("first audio %.1fs after you stopped talking", time.time() - t_start)
                 step = TTS_RATE // 50  # 20 ms frames
                 for i in range(0, len(pcm), step):
@@ -171,26 +194,51 @@ class Conversation:
         try:
             while self.pending:
                 batch, self.pending = self.pending, []
-                await self._turn(batch)
+                self.current = asyncio.create_task(self._turn(batch))
+                try:
+                    await self.current
+                except asyncio.CancelledError:
+                    if asyncio.current_task().cancelling():
+                        raise  # we ourselves are being shut down
+                    # otherwise the turn was interrupted by the user: carry on
         finally:
             self.busy = False
+            self.current = None
 
     async def _turn(self, frames: list[rtc.AudioFrame]) -> None:
+        try:
+            await self._turn_inner(frames)
+        finally:
+            await self.set_state("listening")
+
+    async def _turn_inner(self, frames: list[rtc.AudioFrame]) -> None:
         t_start = time.time()
         audio = frames_to_16k_mono(frames)
         if len(audio) / 16000 < MIN_UTTERANCE_S:
             return
+        await self.set_state("transcribing")
         text = await asyncio.to_thread(self._transcribe, audio)
         t1 = time.time()
         if not text or text.lower().strip(" .,!?") in JUNK:
             log.info("(ignored: %r)", text)
             return
         log.info("USER (%.1fs to transcribe): %s", t1 - t_start, text)
+        await self.set_state("thinking")
 
         self.history.append({"role": "user", "content": text})
         q: asyncio.Queue = asyncio.Queue()
+        synth: list[asyncio.Task] = []
         player = asyncio.create_task(self._play(q, t_start)) if self.kokoro else None
         reply, buf = "", ""
+        stream = None
+
+        def abort_audio() -> None:
+            if player:
+                player.cancel()
+            for t in synth:
+                t.cancel()
+            self.voice_source.clear_queue()
+
         try:
             stream = await self.llm.chat.completions.create(
                 model=OLLAMA_MODEL, messages=self.history, max_tokens=200, stream=True
@@ -204,20 +252,35 @@ class Conversation:
                 while player and (m := SENTENCE_END.search(buf)):
                     sentence, buf = buf[: m.end()].strip(), buf[m.end():]
                     if sentence:
-                        await q.put(asyncio.create_task(self._synth(sentence)))
+                        task = asyncio.create_task(self._synth(sentence))
+                        synth.append(task)
+                        await q.put(task)
             if player and buf.strip():
-                await q.put(asyncio.create_task(self._synth(buf.strip())))
+                task = asyncio.create_task(self._synth(buf.strip()))
+                synth.append(task)
+                await q.put(task)
+            if player:
+                await q.put(None)
+                await player  # returns once everything has been played out
+        except asyncio.CancelledError:
+            abort_audio()
+            partial = reply.strip()
+            if partial:  # keep what she managed to say, so the next turn makes sense
+                self.history.append({"role": "assistant", "content": partial})
+            else:
+                self.history.pop()
+            raise
         except Exception as e:
             log.error("LLM/TTS failed: %s", e)
+            abort_audio()
             if not reply:
                 self.history.pop()
         finally:
-            if player:
-                await q.put(None)
+            if stream is not None:
                 try:
-                    await player
-                except Exception as e:
-                    log.error("playback failed: %s", e)
+                    await stream.close()
+                except BaseException:
+                    pass
 
         reply = reply.strip()
         if reply:
@@ -265,7 +328,10 @@ async def entrypoint(ctx: JobContext) -> None:
         voice_track, rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
     )
 
-    convo = Conversation(ctx.proc.userdata["whisper"], ctx.proc.userdata["kokoro"], voice_source)
+    convo = Conversation(
+        ctx.proc.userdata["whisper"], ctx.proc.userdata["kokoro"], voice_source, ctx.room.local_participant
+    )
+    await convo.set_state("listening")
     asyncio.create_task(convo.warm_up())
     tasks: list[asyncio.Task] = []
 
@@ -274,6 +340,17 @@ async def entrypoint(ctx: JobContext) -> None:
         if track.kind == rtc.TrackKind.KIND_AUDIO:
             log.info("audio track from %s", participant.identity)
             tasks.append(asyncio.create_task(listen(track, ctx.proc.userdata["vad"], convo)))
+
+    @ctx.room.on("participant_attributes_changed")
+    def on_attributes_changed(changed: dict, participant: rtc.Participant):
+        # The phone bumps "interrupt" when the user taps while she is thinking or speaking.
+        if "interrupt" in changed and participant.identity != ctx.room.local_participant.identity:
+            convo.interrupt()
+
+    @ctx.room.on("data_received")
+    def on_data_received(packet: rtc.DataPacket):
+        if packet.topic == "interrupt":
+            convo.interrupt()
 
     @ctx.room.on("participant_disconnected")
     def on_participant_disconnected(participant: rtc.RemoteParticipant):
