@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import socket
 import time
 from pathlib import Path
 
@@ -427,6 +428,10 @@ async def entrypoint(ctx: JobContext) -> None:
     convo = Conversation(
         ctx.proc.userdata["whisper"], ctx.proc.userdata["kokoro"], voice_source, ctx.room.local_participant
     )
+    try:
+        await ctx.room.local_participant.set_attributes({"host": socket.gethostname()})
+    except Exception as e:
+        log.debug("could not publish host name: %s", e)
     await convo.set_state("listening")
     asyncio.create_task(convo.warm_up())
     tasks: list[asyncio.Task] = []
