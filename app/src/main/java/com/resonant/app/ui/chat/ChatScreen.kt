@@ -121,6 +121,9 @@ private const val RECHECK_TIMEOUT_MS = 2_000
 /** How long the check made on entry waits for the greeting to finish before it stays quiet. */
 private const val NOTICE_WAIT_MS = 20_000L
 
+/** Hold-to-talk: how long the mic stays open after the finger lifts, so the last word isn't cut. */
+private const val HOLD_TAIL_MS = 300L
+
 @Composable
 fun ChatScreen(
     onBack: () -> Unit,
@@ -143,6 +146,9 @@ fun ChatScreen(
     var agentMissing by remember { mutableStateOf(false) }
     var liveIntroDone by remember { mutableStateOf(false) }
     var liveReviewing by remember { mutableStateOf(false) }
+    val holdToTalk = remember { ResonantPrefs(context).liveHoldToTalk }
+    var holdTalking by remember { mutableStateOf(false) }
+    var holdJob by remember { mutableStateOf<Job?>(null) }
     var liveMicGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -205,9 +211,14 @@ fun ChatScreen(
                     agentMissing = false
                 }
                 liveIntroDone = true
-                val intro = if (late) "Your PC is connected. Just start talking. Tap the center to mute."
-                else "Live. Connected. Just start talking. Tap the center to mute."
+                val intro = when {
+                    holdToTalk && late -> "Your PC is connected. Hold the center and talk."
+                    holdToTalk -> "Live. Connected. Hold the center and talk."
+                    late -> "Your PC is connected. Just start talking. Tap the center to mute."
+                    else -> "Live. Connected. Just start talking. Tap the center to mute."
+                }
                 audio.announce(intro) {
+                    if (holdToTalk) return@announce
                     scope.launch {
                         if (!alive) return@launch
                         haptics.play(HapticPattern.LISTENING) // cue first, mic after: the beep isn't heard
@@ -584,7 +595,7 @@ fun ChatScreen(
     }
 
     fun liveReview(direction: SwipeDirection) {
-        val busy = agentState == "thinking" || agentState == "speaking" || agentState == "transcribing"
+        val busy = holdTalking || agentState == "thinking" || agentState == "speaking" || agentState == "transcribing"
         if (!liveIntroDone || agentMissing || liveKitState != LiveKitState.Connected || busy) {
             haptics.play(HapticPattern.EDGE)
             return
@@ -611,8 +622,75 @@ fun ChatScreen(
         }
     }
 
+    // Hold-to-talk. The mic is closed except while the centre is held. Cue first, mic after, so the
+    // agent never hears the cue; the agent is told when the turn starts and ends, because a muted
+    // mic sends no silence for it to detect.
+    fun startHoldTalk() {
+        if (liveKitState != LiveKitState.Connected || !liveIntroDone) {
+            haptics.play(HapticPattern.EDGE)
+            return
+        }
+        if (agentMissing) {
+            haptics.play(HapticPattern.ERROR)
+            return
+        }
+        if (agentState == "transcribing" || agentState == "thinking" || agentState == "speaking") {
+            haptics.play(HapticPattern.EDGE)
+            return
+        }
+        if (liveReviewing) {
+            liveReviewing = false
+            audio.stop()
+            audio.setQueue(emptyList())
+        }
+        holdTalking = true
+        haptics.play(HapticPattern.LISTENING)
+        holdJob = scope.launch {
+            delay(250)
+            if (!alive || !holdTalking) return@launch
+            liveKitManager.setMicrophoneEnabled(true)
+            if (holdTalking) liveKitManager.pushToTalk(true)
+        }
+    }
+
+    fun endHoldTalk() {
+        if (!holdTalking) return
+        holdTalking = false
+        val startJob = holdJob
+        holdJob = scope.launch {
+            startJob?.join()
+            delay(HOLD_TAIL_MS) // let the last word finish before the mic closes
+            if (holdTalking) return@launch // held again straight away: that turn owns the mic
+            liveKitManager.pushToTalk(false)
+            liveKitManager.setMicrophoneEnabled(false)
+            if (alive) haptics.play(HapticPattern.CONFIRM)
+        }
+    }
+
+    fun holdModeTapped() {
+        if (liveKitState != LiveKitState.Connected) {
+            audio.announce("Not connected yet.")
+            return
+        }
+        if (agentMissing) {
+            audio.announce("Your PC isn't connected.")
+            return
+        }
+        if (agentState == "thinking" || agentState == "speaking") {
+            liveKitManager.interruptAgent()
+            haptics.play(HapticPattern.CONFIRM)
+            return
+        }
+        if (liveReviewing) {
+            liveReviewing = false
+            audio.stop()
+            audio.setQueue(emptyList())
+        }
+        audio.announce("Hold the center to talk.")
+    }
+
     fun onAskTapped() {
-        if (liveMode) { toggleLiveMic(); return }
+        if (liveMode) { if (holdToTalk) holdModeTapped() else toggleLiveMic(); return }
         // A tap while waiting for the model cancels the wait — otherwise the only
         // way out of a slow or hung request would be sitting through the timeout.
         if (thinking) {
@@ -748,7 +826,12 @@ fun ChatScreen(
                 LiveKitState.Connected -> when {
                     agentMissing -> "Live · PC not responding"
                     !liveIntroDone -> "Live · Connecting to your PC…"
-                    !liveMicOn -> if (liveReviewing) "Live · Reviewing, tap center to talk" else "Live · Muted"
+                    !liveMicOn -> when {
+                        holdToTalk && liveReviewing -> "Live · Reviewing, hold center to talk"
+                        holdToTalk -> "Live · Hold center to talk"
+                        liveReviewing -> "Live · Reviewing, tap center to talk"
+                        else -> "Live · Muted"
+                    }
                     agentState == "thinking" -> "Live · Thinking"
                     agentState == "speaking" -> "Live · Speaking, tap to stop"
                     else -> "Live · Listening"
@@ -827,7 +910,10 @@ fun ChatScreen(
                     haptics.play(HapticPattern.BACK)
                     audio.announce("Back to Home.")
                     onBack()
+                } else if (liveMode && holdToTalk && gesture.zone == InteractionZone.CENTER) {
+                    startHoldTalk()
                 }
+                is ResonantGesture.LongPressEnd -> if (liveMode && holdToTalk) endHoldTalk()
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     if (exchanges.isEmpty()) "AI Chat. Tap the center of the screen to ask a question."
