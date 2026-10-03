@@ -40,9 +40,15 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 2. Detect a missing PC agent (12 s timeout -> announce, Offline dots; also if it drops later)
 - [x] 3. Live exchanges into the normal Chat history (captions on screen, saved). Not done: swipe-to-review in Live (the app speech queue stays empty there)
 - [ ] 3b. Swipe-to-review past exchanges in Live (needs the mic muted while the app reads aloud)
-- [ ] 5. Speaker routing check: loudspeaker default, toggle, headset first
-- [ ] 7. Settings: voice and speed, hold-to-talk mode, show which PC is connected
+- [x] 5. Speaker routing: user reports the voice already plays from the loudspeaker, so no code change. If that ever breaks: set a preferred device list (speakerphone before earpiece) on LiveKit's AudioSwitchHandler
+- [ ] 7a. Voice and speed in Settings. Today they are env vars on the PC (`KOKORO_VOICE`, `KOKORO_SPEED` in `agent/.env`). Phone must send the choice to the agent (participant attribute and data packet, like `interrupt`)
+- [ ] 7b. Hold-to-talk mode as an alternative to the always-open mic
+- [ ] 7c. Show which PC is connected (agent publishes its hostname as an attribute)
 
 ## Known issues
 - First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Try the int8 model or a shorter first chunk.
 - The token server is LiveKit's dev sandbox, fine for testing only.
+
+## Resuming
+Everything above is untested until the user confirms a device run. Before starting a new item,
+ask which items compiled and worked on the phone, and fix those first.
