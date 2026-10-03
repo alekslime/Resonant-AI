@@ -11,7 +11,7 @@ Run:  python agent.py dev
 Env (all optional, in .env):
   WHISPER_MODEL=base.en       OLLAMA_MODEL=llama3.2     OLLAMA_URL=http://localhost:11434/v1
   KOKORO_MODEL=models/kokoro-v1.0.onnx   KOKORO_VOICES=models/voices-v1.0.bin
-  KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0
+  KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0   (defaults; the phone's Settings override them)
 """
 import asyncio
 import json
@@ -43,6 +43,7 @@ KOKORO_MODEL = Path(os.getenv("KOKORO_MODEL", HERE / "models" / "kokoro-v1.0.onn
 KOKORO_VOICES = Path(os.getenv("KOKORO_VOICES", HERE / "models" / "voices-v1.0.bin"))
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 KOKORO_SPEED = float(os.getenv("KOKORO_SPEED", "1.0"))
+MIN_SPEED, MAX_SPEED = 0.5, 2.0
 
 MIN_UTTERANCE_S = 0.5
 JUNK = {"you", "so", "uh", "um", "ahem", "hmm", "oh", "thank you", "thanks for watching", "bye"}
@@ -103,6 +104,8 @@ class Conversation:
         self.speaking = False
         self.quiet_until = 0.0
         self.synth_lock = asyncio.Lock()  # one TTS inference at a time (CPU)
+        self.voice = KOKORO_VOICE  # the phone can change these from Settings
+        self.speed = KOKORO_SPEED
         self._state = ""
         self._captions: list[dict] = []  # last few, published to the phone as one attribute
         self._cap_n = 0
@@ -131,6 +134,25 @@ class Conversation:
             await self.local.set_attributes({"captions": json.dumps(self._captions)})
         except Exception as e:
             log.debug("could not publish caption: %s", e)
+
+    def apply_settings(self, voice: str | None = None, speed: str | float | None = None) -> None:
+        """The phone chose a voice and/or speed in Settings. Bad values are ignored, not fatal."""
+        if voice and voice != self.voice:
+            known = self.kokoro.get_voices() if self.kokoro else []
+            if voice in known:
+                self.voice = voice
+                log.info("voice set to %s", voice)
+            else:
+                log.warning("phone asked for unknown voice %r", voice)
+        if speed is not None:
+            try:
+                value = min(MAX_SPEED, max(MIN_SPEED, float(speed)))
+            except (TypeError, ValueError):
+                log.warning("phone sent a bad speed %r", speed)
+                return
+            if value != self.speed:
+                self.speed = value
+                log.info("speed set to %.2f", value)
 
     def interrupt(self) -> None:
         """The user tapped: stop thinking / talking right now."""
@@ -168,8 +190,9 @@ class Conversation:
     # ---- text to speech -------------------------------------------------------------
     async def _synth(self, text: str) -> tuple[str, np.ndarray]:
         async with self.synth_lock:
+            lang = "en-gb" if self.voice.startswith("b") else "en-us"
             samples, sr = await asyncio.to_thread(
-                self.kokoro.create, text, voice=KOKORO_VOICE, speed=KOKORO_SPEED, lang="en-us"
+                self.kokoro.create, text, voice=self.voice, speed=self.speed, lang=lang
             )
         assert sr == TTS_RATE, f"unexpected Kokoro sample rate {sr}"
         return text, (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
@@ -360,8 +383,23 @@ async def entrypoint(ctx: JobContext) -> None:
             log.info("audio track from %s", participant.identity)
             tasks.append(asyncio.create_task(listen(track, ctx.proc.userdata["vad"], convo)))
 
+    def apply_phone_settings(participant: rtc.Participant) -> None:
+        if participant.identity == ctx.room.local_participant.identity:
+            return
+        attrs = participant.attributes
+        convo.apply_settings(attrs.get("voice"), attrs.get("speed"))
+
+    for existing in ctx.room.remote_participants.values():
+        apply_phone_settings(existing)  # the phone may have joined before we did
+
+    @ctx.room.on("participant_connected")
+    def on_participant_connected(participant: rtc.RemoteParticipant):
+        apply_phone_settings(participant)
+
     @ctx.room.on("participant_attributes_changed")
     def on_attributes_changed(changed: dict, participant: rtc.Participant):
+        if "voice" in changed or "speed" in changed:
+            apply_phone_settings(participant)
         # The phone bumps "interrupt" when the user taps while she is thinking or speaking.
         if "interrupt" in changed and participant.identity != ctx.room.local_participant.identity:
             convo.interrupt()
@@ -370,6 +408,12 @@ async def entrypoint(ctx: JobContext) -> None:
     def on_data_received(packet: rtc.DataPacket):
         if packet.topic == "interrupt":
             convo.interrupt()
+        elif packet.topic == "voice":
+            try:
+                data = json.loads(packet.data.decode("utf-8"))
+                convo.apply_settings(data.get("voice"), data.get("speed"))
+            except (ValueError, AttributeError) as e:
+                log.warning("bad voice packet: %s", e)
 
     @ctx.room.on("participant_disconnected")
     def on_participant_disconnected(participant: rtc.RemoteParticipant):
