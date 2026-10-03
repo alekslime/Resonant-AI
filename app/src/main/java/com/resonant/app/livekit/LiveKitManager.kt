@@ -1,6 +1,7 @@
 package com.resonant.app.livekit
 
 import android.content.Context
+import com.resonant.app.BuildConfig
 import com.resonant.app.core.ResonantPrefs
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
@@ -13,6 +14,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 /** One line of live captions from the PC agent. role: "user", "assistant" (one sentence) or "done". */
 data class LiveCaption(val role: String, val text: String)
@@ -192,6 +198,38 @@ class LiveKitManager(
     private val tokenSource =
         TokenSource.fromDevelopmentTokenServer(TOKEN_SERVER_ID)
 
+    /**
+     * Server address and join token. From our own token server when `live.tokenUrl` is set in
+     * local.properties, otherwise from LiveKit's dev sandbox (testing only).
+     */
+    private suspend fun fetchCredentials(participantName: String): Pair<String, String> {
+        val tokenUrl = BuildConfig.LIVE_TOKEN_URL
+        if (tokenUrl.isBlank()) {
+            val credentials = tokenSource.fetch(
+                TokenRequestOptions(participantName = participantName)
+            ).getOrThrow()
+            return credentials.serverUrl to credentials.participantToken
+        }
+        return withContext(Dispatchers.IO) {
+            val connection = URL("$tokenUrl?name=${URLEncoder.encode(participantName, "UTF-8")}")
+                .openConnection() as HttpURLConnection
+            try {
+                connection.connectTimeout = 5_000
+                connection.readTimeout = 5_000
+                if (BuildConfig.LIVE_TOKEN_KEY.isNotBlank()) {
+                    connection.setRequestProperty("X-Resonant-Key", BuildConfig.LIVE_TOKEN_KEY)
+                }
+                if (connection.responseCode != 200) {
+                    throw IOException("Token server answered ${connection.responseCode}")
+                }
+                val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                json.getString("serverUrl") to json.getString("participantToken")
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
     suspend fun connect(
         participantName: String = "resonant-android",
         enableMicrophone: Boolean = true
@@ -206,16 +244,9 @@ class LiveKitManager(
             _state.value = LiveKitState.Connecting
 
             try {
-                val credentials = tokenSource.fetch(
-                    TokenRequestOptions(
-                        participantName = participantName
-                    )
-                ).getOrThrow()
+                val (serverUrl, participantToken) = fetchCredentials(participantName)
 
-                room.connect(
-                    credentials.serverUrl,
-                    credentials.participantToken
-                )
+                room.connect(serverUrl, participantToken)
 
                 if (enableMicrophone) {
                     room.localParticipant.setMicrophoneEnabled(true)
