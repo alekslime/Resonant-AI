@@ -142,6 +142,7 @@ fun ChatScreen(
     val agentPresent by liveKitManager.agentPresent.collectAsState()
     var agentMissing by remember { mutableStateOf(false) }
     var liveIntroDone by remember { mutableStateOf(false) }
+    var liveReviewing by remember { mutableStateOf(false) }
     var liveMicGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -570,10 +571,43 @@ fun ChatScreen(
             audio.announce("Microphone off. Tap the center to talk again.")
         } else {
             haptics.play(HapticPattern.LISTENING)
+            if (liveReviewing) {
+                liveReviewing = false
+                audio.stop()
+                audio.setQueue(emptyList())
+            }
             // Open the mic only after this has been spoken, so it isn't picked up.
             audio.announce("Microphone on.") {
                 scope.launch { if (alive) liveKitManager.setMicrophoneEnabled(true) }
             }
+        }
+    }
+
+    fun liveReview(direction: SwipeDirection) {
+        val busy = agentState == "thinking" || agentState == "speaking" || agentState == "transcribing"
+        if (!liveIntroDone || agentMissing || liveKitState != LiveKitState.Connected || busy) {
+            haptics.play(HapticPattern.EDGE)
+            return
+        }
+        if (liveReviewing) {
+            when (direction) {
+                SwipeDirection.UP -> haptics.play(if (audio.next()) HapticPattern.NEXT else HapticPattern.EDGE)
+                SwipeDirection.DOWN -> haptics.play(if (audio.previous()) HapticPattern.PREVIOUS else HapticPattern.EDGE)
+                else -> {}
+            }
+            return
+        }
+        val units = flatten(exchanges).map { it.unit }
+        if (units.isEmpty()) {
+            haptics.play(HapticPattern.EDGE)
+            return
+        }
+        liveReviewing = true
+        scope.launch {
+            liveKitManager.setMicrophoneEnabled(false)
+            if (!alive || !liveReviewing) return@launch
+            haptics.play(HapticPattern.BACK)
+            audio.setQueue(units, startIndex = units.lastIndex)
         }
     }
 
@@ -714,7 +748,7 @@ fun ChatScreen(
                 LiveKitState.Connected -> when {
                     agentMissing -> "Live · PC not responding"
                     !liveIntroDone -> "Live · Connecting to your PC…"
-                    !liveMicOn -> "Live · Muted"
+                    !liveMicOn -> if (liveReviewing) "Live · Reviewing, tap center to talk" else "Live · Muted"
                     agentState == "thinking" -> "Live · Thinking"
                     agentState == "speaking" -> "Live · Speaking, tap to stop"
                     else -> "Live · Listening"
@@ -777,7 +811,7 @@ fun ChatScreen(
         GestureSurface(onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
-                    when (gesture.direction) {
+                    if (liveMode) liveReview(gesture.direction) else when (gesture.direction) {
                         SwipeDirection.UP -> haptics.play(if (audio.next()) HapticPattern.NEXT else HapticPattern.EDGE)
                         SwipeDirection.DOWN -> haptics.play(if (audio.previous()) HapticPattern.PREVIOUS else HapticPattern.EDGE)
                         else -> {}
