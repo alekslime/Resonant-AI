@@ -203,7 +203,9 @@ class LiveKitManager(
      * local.properties, otherwise from LiveKit's dev sandbox (testing only).
      */
     private suspend fun fetchCredentials(participantName: String): Pair<String, String> {
-        val tokenUrl = BuildConfig.LIVE_TOKEN_URL
+        val prefs = ResonantPrefs(appContext)
+        val tokenUrl = prefs.liveTokenUrl ?: BuildConfig.LIVE_TOKEN_URL
+        val tokenKey = prefs.liveTokenKey ?: BuildConfig.LIVE_TOKEN_KEY
         if (tokenUrl.isBlank()) {
             val credentials = tokenSource.fetch(
                 TokenRequestOptions(participantName = participantName)
@@ -216,8 +218,8 @@ class LiveKitManager(
             try {
                 connection.connectTimeout = 5_000
                 connection.readTimeout = 5_000
-                if (BuildConfig.LIVE_TOKEN_KEY.isNotBlank()) {
-                    connection.setRequestProperty("X-Resonant-Key", BuildConfig.LIVE_TOKEN_KEY)
+                if (tokenKey.isNotBlank()) {
+                    connection.setRequestProperty("X-Resonant-Key", tokenKey)
                 }
                 if (connection.responseCode != 200) {
                     throw IOException("Token server answered ${connection.responseCode}")
