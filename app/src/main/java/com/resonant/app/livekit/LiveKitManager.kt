@@ -52,6 +52,10 @@ class LiveKitManager(
      */
     val agentState: StateFlow<String> = _agentState.asStateFlow()
 
+    private val _agentHost = MutableStateFlow("")
+    /** The PC agent's computer name, or empty if it is not known (no agent, or an older agent). */
+    val agentHost: StateFlow<String> = _agentHost.asStateFlow()
+
     private val _captions = MutableSharedFlow<LiveCaption>(extraBufferCapacity = 64)
     /** Captions from the PC agent, in order, each delivered once. */
     val captions: SharedFlow<LiveCaption> = _captions.asSharedFlow()
@@ -79,6 +83,8 @@ class LiveKitManager(
                     _agentPresent.value = room.remoteParticipants.isNotEmpty()
                     _agentState.value =
                         room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["state"] } ?: ""
+                    _agentHost.value =
+                        room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["host"] } ?: ""
                     readCaptions(room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["captions"] })
                 } catch (e: Exception) {
                     _agentState.value = ""
@@ -113,6 +119,7 @@ class LiveKitManager(
         pollJob = null
         _agentState.value = ""
         _agentPresent.value = false
+        _agentHost.value = ""
         lastCaptionN = 0L
         lastCaptionRaw = null
     }
