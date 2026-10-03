@@ -7,3 +7,8 @@ ollama.baseUrl=http://192.168.1.50:11434
 
 # Any model you've already pulled with `ollama pull`.
 ollama.model=llama3.2
+
+# Live mode: your own token server (run `python token_server.py` in agent/).
+# Leave live.tokenUrl empty to use LiveKit's dev sandbox instead (testing only).
+live.tokenUrl=http://192.168.1.50:8787/token
+live.tokenKey=the-same-TOKEN_KEY-as-in-agent-.env

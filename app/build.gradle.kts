@@ -16,6 +16,13 @@ val localProps = Properties().apply {
 val ollamaBaseUrl: String = localProps.getProperty("ollama.baseUrl", "http://10.0.2.2:11434")
 val ollamaModel: String = localProps.getProperty("ollama.model", "llama3.2")
 
+// Live mode token server (agent/token_server.py). Leave live.tokenUrl empty to keep using
+// LiveKit's dev sandbox.
+//   live.tokenUrl=http://192.168.1.50:8787/token
+//   live.tokenKey=the same TOKEN_KEY as in agent/.env
+val liveTokenUrl: String = localProps.getProperty("live.tokenUrl", "").trim()
+val liveTokenKey: String = localProps.getProperty("live.tokenKey", "").trim()
+
 android {
     namespace = "com.resonant.app"
     compileSdk = 34
@@ -32,6 +39,8 @@ android {
 
         buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
         buildConfigField("String", "OLLAMA_MODEL", "\"$ollamaModel\"")
+        buildConfigField("String", "LIVE_TOKEN_URL", "\"$liveTokenUrl\"")
+        buildConfigField("String", "LIVE_TOKEN_KEY", "\"$liveTokenKey\"")
 
         // Local Whisper (offline speech-to-text) — see app/src/main/cpp/CMakeLists.txt
         // for what needs to be vendored before this actually builds.
