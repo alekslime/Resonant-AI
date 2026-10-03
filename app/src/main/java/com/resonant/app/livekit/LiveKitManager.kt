@@ -65,6 +65,7 @@ class LiveKitManager(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pollJob: Job? = null
     private var interruptCount = 0
+    private var pttCount = 0
 
     private val room: Room = LiveKit.create(appContext)
 
@@ -144,14 +145,38 @@ class LiveKitManager(
         val prefs = ResonantPrefs(appContext)
         val voice = prefs.liveVoice
         val speed = prefs.liveSpeed
+        val mode = if (prefs.liveHoldToTalk) "hold" else "open"
         scope.launch {
             try {
-                room.localParticipant.updateAttributes(mapOf("voice" to voice, "speed" to speed.toString()))
+                room.localParticipant.updateAttributes(
+                    mapOf("voice" to voice, "speed" to speed.toString(), "mode" to mode)
+                )
             } catch (e: Exception) {
             }
             try {
-                val json = JSONObject().put("voice", voice).put("speed", speed.toDouble()).toString()
+                val json = JSONObject().put("voice", voice).put("speed", speed.toDouble()).put("mode", mode).toString()
                 room.localParticipant.publishData(json.toByteArray(), topic = "voice")
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Hold-to-talk: tell the agent when the held-down turn starts and ends. A muted mic sends no
+     * audio, so the agent could never hear the silence that normally ends a turn. Both routes carry
+     * a running number ("end:7") so the agent can ignore a repeat or a late duplicate.
+     */
+    fun pushToTalk(active: Boolean) {
+        if (_state.value !is LiveKitState.Connected) return
+        pttCount += 1
+        val value = (if (active) "start:" else "end:") + pttCount
+        scope.launch {
+            try {
+                room.localParticipant.updateAttributes(mapOf("ptt" to value))
+            } catch (e: Exception) {
+            }
+            try {
+                room.localParticipant.publishData(value.toByteArray(), topic = "ptt")
             } catch (e: Exception) {
             }
         }
