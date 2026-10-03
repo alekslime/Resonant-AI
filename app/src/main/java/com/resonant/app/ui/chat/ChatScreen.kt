@@ -905,6 +905,9 @@ fun ChatScreen(
         }
     ) {
         GestureSurface(onGesture = { gesture ->
+            // Live with the mic open: anything the app says would be heard and answered by the
+            // agent, so gestures that talk give a vibration instead.
+            val quietLive = liveMode && liveMicOn && !liveReviewing
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     if (liveMode) liveReview(gesture.direction) else when (gesture.direction) {
@@ -914,11 +917,15 @@ fun ChatScreen(
                     }
                 }
                 is ResonantGesture.Tap -> when (gesture.zone) {
-                    InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
+                    InteractionZone.LEFT_EDGE -> {
+                        if (quietLive) haptics.play(HapticPattern.EDGE) else { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
+                    }
                     InteractionZone.CENTER -> onAskTapped()
                     InteractionZone.RIGHT_EDGE -> {}
                 }
-                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
+                is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    if (quietLive) haptics.play(HapticPattern.EDGE) else audio.repeatCurrent()
+                }
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)
                     audio.announce("Back to Home.")
@@ -927,14 +934,14 @@ fun ChatScreen(
                     startHoldTalk()
                 }
                 is ResonantGesture.LongPressEnd -> if (liveMode && holdToTalk) endHoldTalk()
-                ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
-                ResonantGesture.ThreeFingerHold -> audio.announce(
+                ResonantGesture.ThreeFingerTap -> if (quietLive) haptics.play(HapticPattern.EDGE) else audio.repeatCurrent()
+                ResonantGesture.ThreeFingerHold -> if (quietLive) haptics.play(HapticPattern.CONFIRM) else audio.announce(
                     if (liveMode && agentHost.isNotEmpty()) "Live, connected to ${agentHost.replace('-', ' ').replace('_', ' ')}."
                     else if (exchanges.isEmpty()) "AI Chat. Tap the center of the screen to ask a question."
                     else "AI Chat, exchange ${lastExchangeIndex + 1} of ${exchanges.size}. Tap center to ask another question."
                 )
-                ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
-                ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedUp -> if (quietLive) haptics.play(HapticPattern.EDGE) else { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
+                ResonantGesture.HoldSpeedDown -> if (quietLive) haptics.play(HapticPattern.EDGE) else { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
                 else -> {}
             }
         }) {
