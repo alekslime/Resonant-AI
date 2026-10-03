@@ -41,7 +41,7 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 3. Live exchanges into the normal Chat history (captions on screen, saved). Not done: swipe-to-review in Live (the app speech queue stays empty there)
 - [x] 3b. Swipe-to-review past exchanges in Live: first swipe mutes the mic and reads the latest reply, up/down moves, tap center unmutes. Ignored while she is thinking or speaking. Not compiled or run yet
 - [x] 5. Speaker routing: user reports the voice already plays from the loudspeaker, so no code change. If that ever breaks: set a preferred device list (speakerphone before earpiece) on LiveKit's AudioSwitchHandler
-- [ ] 7a. Voice and speed in Settings. Today they are env vars on the PC (`KOKORO_VOICE`, `KOKORO_SPEED` in `agent/.env`). Phone must send the choice to the agent (participant attribute and data packet, like `interrupt`)
+- [x] 7a. Voice and speed in Settings (cycle on tap, saved in prefs). Phone sends them on connect as attributes `voice`/`speed` plus a `voice` data packet; the agent validates and applies them, `KOKORO_VOICE`/`KOKORO_SPEED` stay as defaults. Takes effect next time Live opens. Not compiled or run yet
 - [ ] 7b. Hold-to-talk mode as an alternative to the always-open mic
 - [ ] 7c. Show which PC is connected (agent publishes its hostname as an attribute)
 
