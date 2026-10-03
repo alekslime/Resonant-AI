@@ -98,6 +98,7 @@ private fun zoneOf(gesture: ResonantGesture): String? = when (gesture) {
     is ResonantGesture.Tap -> gesture.zone.name
     is ResonantGesture.DoubleTap -> gesture.zone.name
     is ResonantGesture.LongPress -> gesture.zone.name
+    is ResonantGesture.LongPressEnd -> gesture.zone.name
     is ResonantGesture.Swipe -> gesture.zone.name
     // Hold gestures only ever originate from the right edge — see
     // GestureManager: holdModeActive is gated on zone == RIGHT_EDGE.
@@ -110,6 +111,7 @@ private fun describeGesture(gesture: ResonantGesture): String = when (gesture) {
     is ResonantGesture.Tap -> "TAP(${gesture.zone})"
     is ResonantGesture.DoubleTap -> "DOUBLE_TAP(${gesture.zone})"
     is ResonantGesture.LongPress -> "LONG_PRESS(${gesture.zone})"
+    is ResonantGesture.LongPressEnd -> "LONG_PRESS_END(${gesture.zone})"
     is ResonantGesture.Swipe -> "SWIPE_${gesture.direction}(${gesture.zone})"
     ResonantGesture.HoldStart -> "HOLD_START"
     ResonantGesture.HoldSpeedUp -> "HOLD_SPEED_UP"

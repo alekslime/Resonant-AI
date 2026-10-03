@@ -176,7 +176,13 @@ fun Modifier.resonantGestureDetector(
                 }
             }
 
-            longPressFired || threeFingerHoldFired -> { /* already emitted */ }
+            longPressFired || threeFingerHoldFired -> {
+                // Already emitted. A centre long press also reports its release, so hold-to-talk
+                // knows when to stop; every other screen ignores it.
+                if (longPressFired && zone == InteractionZone.CENTER) {
+                    onGesture(ResonantGesture.LongPressEnd(zone))
+                }
+            }
 
             maxPointerCount >= 3 -> {
                 if (durationMs > LONG_PRESS_MS) {

@@ -12,6 +12,8 @@ sealed class ResonantGesture {
     data class Tap(val zone: InteractionZone) : ResonantGesture()
     data class DoubleTap(val zone: InteractionZone) : ResonantGesture()
     data class LongPress(val zone: InteractionZone) : ResonantGesture()
+    /** The finger came up after a CENTER [LongPress] (hold-to-talk). */
+    data class LongPressEnd(val zone: InteractionZone) : ResonantGesture()
     data class Swipe(val zone: InteractionZone, val direction: SwipeDirection) : ResonantGesture()
 
     // Right-edge hold-to-adjust-speed
