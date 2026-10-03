@@ -53,6 +53,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getFloat(KEY_LIVE_SPEED, 1.0f).takeIf { it in LIVE_SPEEDS } ?: 1.0f
         set(value) = prefs.edit().putFloat(KEY_LIVE_SPEED, value).apply()
 
+    /** Live mode: false = the mic stays open, true = it is open only while the centre is held. */
+    var liveHoldToTalk: Boolean
+        get() = prefs.getBoolean(KEY_LIVE_HOLD, false)
+        set(value) = prefs.edit().putBoolean(KEY_LIVE_HOLD, value).apply()
+
     private fun putOrRemove(key: String, value: String?) {
         val editor = prefs.edit()
         if (value.isNullOrBlank()) editor.remove(key) else editor.putString(key, value)
@@ -79,6 +84,7 @@ class ResonantPrefs(context: Context) {
 
         private const val KEY_LIVE_VOICE = "live_voice"
         private const val KEY_LIVE_SPEED = "live_speed"
+        private const val KEY_LIVE_HOLD = "live_hold_to_talk"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
         const val KEY_SOUND_CUES = "sound_cues"
