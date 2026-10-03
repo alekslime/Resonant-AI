@@ -13,6 +13,7 @@ Env (all optional, in .env):
   KOKORO_MODEL=models/kokoro-v1.0.onnx   KOKORO_VOICES=models/voices-v1.0.bin
     (if models/kokoro-v1.0.int8.onnx exists it is used instead: about 3x faster on CPU)
   KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0   (defaults; the phone's Settings override them)
+  STOP_WORDS=1                say "stop" / "wait" / "never mind" to interrupt her (0 = off)
 Mic mode (always open / hold to talk) is chosen on the phone too.
 """
 import asyncio
@@ -56,6 +57,13 @@ SENTENCE_END = re.compile(r"[.!?]+[\"')\]]*\s")
 CLAUSE_END = re.compile(r"[,;:]\s")
 FIRST_CHUNK_MIN_WORDS = 5  # the first spoken piece may stop at a comma, so audio starts sooner
 ECHO_TAIL_S = 0.8  # ignore the mic briefly after we stop talking (room echo)
+STOP_WORDS = os.getenv("STOP_WORDS", "1") != "0"
+STOP_MAX_S = 2.5  # only short utterances are checked for a stop word
+STOP_PHRASES = {
+    "stop", "stop it", "stop talking", "wait", "hold on", "pause", "quiet", "be quiet",
+    "shush", "enough", "that's enough", "never mind", "nevermind", "cancel", "okay stop",
+}
+STOP_FILLER = {"ok", "okay", "hey", "please", "resonant", "alright", "um", "uh", "now", "yeah"}
 TTS_RATE = 24000
 
 SYSTEM_PROMPT = (
@@ -100,6 +108,16 @@ def split_chunk(buf: str, first: bool) -> tuple[str, str] | None:
     if sentence:
         return buf[: sentence.end()].strip(), buf[sentence.end():]
     return None
+
+
+def is_stop_phrase(text: str) -> bool:
+    """True for a short "stop talking" request such as "stop", "okay wait" or "never mind"."""
+    words = re.sub(r"[^a-z' ]", " ", text.lower()).split()
+    while words and words[0] in STOP_FILLER:
+        words.pop(0)
+    while words and words[-1] in STOP_FILLER:
+        words.pop()
+    return " ".join(words) in STOP_PHRASES
 
 
 def frames_to_16k_mono(frames: list[rtc.AudioFrame]) -> np.ndarray:
@@ -226,9 +244,25 @@ class Conversation:
                 self.speed = value
                 log.info("speed set to %.2f", value)
 
-    def interrupt(self) -> None:
-        """The user tapped: stop thinking / talking right now."""
-        log.info("interrupted from the phone")
+    async def heard_while_busy(self, frames: list[rtc.AudioFrame]) -> None:
+        """Speech detected while she is thinking or speaking. A short "stop" interrupts her.
+        Anything else is her own voice coming back (dropped) or, if she is only thinking,
+        the user's next question (queued, as before)."""
+        audio = frames_to_16k_mono(frames)
+        if STOP_WORDS and len(audio) / 16000 <= STOP_MAX_S:
+            text = await asyncio.to_thread(self._transcribe, audio)
+            if is_stop_phrase(text):
+                self.interrupt("a spoken stop word")
+                return
+            log.info("(heard while busy: %r)", text)
+        if not self.speaking and time.time() >= self.quiet_until:
+            await self.submit(frames)
+        else:
+            log.info("(ignored: it was the agent's own voice / echo)")
+
+    def interrupt(self, source: str = "the phone") -> None:
+        """The user tapped or said stop: stop thinking / talking right now."""
+        log.info("interrupted by %s", source)
         self.pending.clear()
         if self.current and not self.current.done():
             self.current.cancel()
@@ -425,6 +459,9 @@ async def listen(track: rtc.Track, vad_model: vad.VAD, convo: Conversation) -> N
             elif ev.type == vad.VADEventType.END_OF_SPEECH:
                 log.info("<<< speech ended (%.2fs)", ev.speech_duration)
                 if convo.hold_mode or not ev.frames:
+                    continue
+                if convo.speaking or convo.busy:
+                    asyncio.create_task(convo.heard_while_busy(ev.frames))
                     continue
                 if convo.agent_is_talking():
                     log.info("(ignored: it was the agent's own voice / echo)")
