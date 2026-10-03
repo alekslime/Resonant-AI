@@ -15,6 +15,7 @@ Env (all optional, in .env):
   KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0   (defaults; the phone's Settings override them)
   STOP_WORDS=1                say "stop" / "wait" / "never mind" to interrupt her (0 = off)
 Mic mode (always open / hold to talk) is chosen on the phone too.
+Say "quiz me" (or "quiz me on photosynthesis") for a spoken quiz; run export_quizzes.py once first.
 """
 import asyncio
 import json
@@ -33,6 +34,7 @@ from livekit import agents, rtc
 from livekit.agents import JobContext, WorkerOptions, cli, vad
 from livekit.plugins import silero
 from openai import AsyncOpenAI
+from voice_quiz import Quiz
 
 load_dotenv()
 log = logging.getLogger("resonant-agent")
@@ -153,6 +155,9 @@ class Conversation:
         self.ptt_finishing = False
         self.ptt_frames: list[rtc.AudioFrame] = []
         self.ptt_seq = 0
+        self.quiz = Quiz.load(HERE / "quizzes.json")
+        if not self.quiz.sets:
+            log.info("no quizzes.json found - run python export_quizzes.py to enable 'quiz me'")
         self._state = ""
         self._captions: list[dict] = []  # last few, published to the phone as one attribute
         self._cap_n = 0
@@ -254,6 +259,10 @@ class Conversation:
             if is_stop_phrase(text):
                 self.interrupt("a spoken stop word")
                 return
+            if self.quiz.wants_exit(text):
+                self.interrupt("a spoken quiz exit")
+                self.quiz.end()
+                return
             log.info("(heard while busy: %r)", text)
         if not self.speaking and time.time() >= self.quiet_until:
             await self.submit(frames)
@@ -329,6 +338,26 @@ class Conversation:
             self.speaking = False
             self.quiet_until = time.time() + ECHO_TAIL_S
 
+    async def _speak_fixed(self, lines: list[str], t_start: float) -> None:
+        """Speak ready-made lines (no LLM), the same way a reply is spoken."""
+        if not self.kokoro:
+            await self.caption("assistant", " ".join(lines))
+            return
+        q: asyncio.Queue = asyncio.Queue()
+        synth = [asyncio.create_task(self._synth(line)) for line in lines]
+        for task in synth:
+            await q.put(task)
+        await q.put(None)
+        player = asyncio.create_task(self._play(q, t_start))
+        try:
+            await player
+        except asyncio.CancelledError:
+            player.cancel()
+            for task in synth:
+                task.cancel()
+            self.voice_source.clear_queue()
+            raise
+
     # ---- one conversational turn ----------------------------------------------------
     async def submit(self, frames: list[rtc.AudioFrame]) -> None:
         self.pending.extend(frames)
@@ -359,7 +388,7 @@ class Conversation:
     async def _turn_inner(self, frames: list[rtc.AudioFrame]) -> None:
         t_start = time.time()
         audio = frames_to_16k_mono(frames)
-        if len(audio) / 16000 < MIN_UTTERANCE_S:
+        if len(audio) / 16000 < (0.25 if self.quiz.in_progress() else MIN_UTTERANCE_S):  # "B" is short
             return
         await self.set_state("transcribing")
         text = await asyncio.to_thread(self._transcribe, audio)
@@ -370,6 +399,12 @@ class Conversation:
         log.info("USER (%.1fs to transcribe): %s", t1 - t_start, text)
         await self.caption("user", text)
         await self.set_state("thinking")
+
+        quiz_lines = self.quiz.respond(text)
+        if quiz_lines is not None:
+            log.info("QUIZ: %s", " ".join(quiz_lines))
+            await self._speak_fixed(quiz_lines, t_start)
+            return
 
         self.history.append({"role": "user", "content": text})
         q: asyncio.Queue = asyncio.Queue()
