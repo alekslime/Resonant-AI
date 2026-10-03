@@ -44,10 +44,11 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 7a. Voice and speed in Settings (cycle on tap, saved in prefs). Phone sends them on connect as attributes `voice`/`speed` plus a `voice` data packet; the agent validates and applies them, `KOKORO_VOICE`/`KOKORO_SPEED` stay as defaults. Takes effect next time Live opens. Not compiled or run yet
 - [x] 7b. Hold-to-talk: Settings > Live mic. Hold the center (500 ms) to open the mic, release to send; a tap interrupts or says how. The phone sends `ptt` start/end (attribute + data packet, numbered) because a muted mic gives the agent no silence to detect. Mode is sent on connect as `mode`. Not compiled or run yet
 - [x] 7c. Show which PC is connected: the agent publishes `host` (its computer name); the phone says it in the Live intro, adds it to the status line and to the three-finger hold. An older agent without it just skips the name (1 s wait). Not compiled or run yet
+- [x] 8. Own token server: `agent/token_server.py` (run it next to the agent; same `.env` plus `TOKEN_KEY`). Set `live.tokenUrl` and `live.tokenKey` in `local.properties` and rebuild; empty = dev sandbox as before. Fresh room per connection, key checked, 1 h tokens. The server was run and called locally; the app side is not compiled or run yet
 
 ## Known issues
 - First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Done in code, untested: the agent uses `agent/models/kokoro-v1.0.int8.onnx` when it exists (download it next to the fp32 file), and the first spoken piece may end at a comma after 5 words. Compare the `first audio` log line before and after.
-- The token server is LiveKit's dev sandbox, fine for testing only.
+- The token server is LiveKit's dev sandbox unless `live.tokenUrl` is set (see #8), fine for testing only.
 
 ## Resuming
 Everything above is untested until the user confirms a device run. Before starting a new item,
