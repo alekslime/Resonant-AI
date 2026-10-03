@@ -39,7 +39,7 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 1. Agent publishes its state -> dots, status line, vibration-only thinking/speaking/your-turn cues
 - [x] 2. Detect a missing PC agent (12 s timeout -> announce, Offline dots; also if it drops later)
 - [x] 3. Live exchanges into the normal Chat history (captions on screen, saved). Not done: swipe-to-review in Live (the app speech queue stays empty there)
-- [ ] 3b. Swipe-to-review past exchanges in Live (needs the mic muted while the app reads aloud)
+- [x] 3b. Swipe-to-review past exchanges in Live: first swipe mutes the mic and reads the latest reply, up/down moves, tap center unmutes. Ignored while she is thinking or speaking. Not compiled or run yet
 - [x] 5. Speaker routing: user reports the voice already plays from the loudspeaker, so no code change. If that ever breaks: set a preferred device list (speakerphone before earpiece) on LiveKit's AudioSwitchHandler
 - [ ] 7a. Voice and speed in Settings. Today they are env vars on the PC (`KOKORO_VOICE`, `KOKORO_SPEED` in `agent/.env`). Phone must send the choice to the agent (participant attribute and data packet, like `interrupt`)
 - [ ] 7b. Hold-to-talk mode as an alternative to the always-open mic
