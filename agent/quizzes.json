@@ -1,0 +1,246 @@
+[
+  {
+    "title": "Photosynthesis basics",
+    "category": "Biology",
+    "questions": [
+      {
+        "prompt": "Which three things does photosynthesis need?",
+        "options": [
+          "Sunlight, water, and carbon dioxide",
+          "Soil, wind, and heat",
+          "Only sunlight",
+          "Oxygen, salt, and shade"
+        ],
+        "correct": 0,
+        "explanation": "A plant combines sunlight, water, and carbon dioxide to make its own sugar."
+      },
+      {
+        "prompt": "Where in the plant cell does photosynthesis take place?",
+        "options": [
+          "The nucleus",
+          "The mitochondria",
+          "The chloroplast",
+          "The cell wall"
+        ],
+        "correct": 2,
+        "explanation": "Chloroplasts contain chlorophyll, the pigment that captures light energy."
+      },
+      {
+        "prompt": "What gas do plants release during photosynthesis?",
+        "options": [
+          "Carbon dioxide",
+          "Nitrogen",
+          "Hydrogen",
+          "Oxygen"
+        ],
+        "correct": 3,
+        "explanation": "Oxygen is the byproduct of splitting water molecules during the light reactions."
+      },
+      {
+        "prompt": "What is the green pigment in plants called?",
+        "options": [
+          "Melanin",
+          "Chlorophyll",
+          "Carotene",
+          "Hemoglobin"
+        ],
+        "correct": 1,
+        "explanation": "Chlorophyll absorbs red and blue light, reflecting green — which is why leaves look green."
+      },
+      {
+        "prompt": "What is the sugar produced by photosynthesis called?",
+        "options": [
+          "Fructose",
+          "Starch",
+          "Glucose",
+          "Sucrose"
+        ],
+        "correct": 2,
+        "explanation": "Plants produce glucose, which they use for energy or convert into starch for storage."
+      }
+    ]
+  },
+  {
+    "title": "Cells and their parts",
+    "category": "Biology",
+    "questions": [
+      {
+        "prompt": "What controls what enters and leaves the cell?",
+        "options": [
+          "The nucleus",
+          "The cell membrane",
+          "The cytoplasm",
+          "The ribosome"
+        ],
+        "correct": 1,
+        "explanation": "The cell membrane is selectively permeable, letting some substances through while blocking others."
+      },
+      {
+        "prompt": "Which organelle is known as the powerhouse of the cell?",
+        "options": [
+          "The nucleus",
+          "The vacuole",
+          "The ribosome",
+          "The mitochondria"
+        ],
+        "correct": 3,
+        "explanation": "Mitochondria produce ATP through cellular respiration, supplying energy the cell needs."
+      },
+      {
+        "prompt": "What does the nucleus contain?",
+        "options": [
+          "Chlorophyll",
+          "The cell's DNA",
+          "Digestive enzymes",
+          "Water and salts"
+        ],
+        "correct": 1,
+        "explanation": "The nucleus stores the cell's genetic instructions in the form of DNA."
+      },
+      {
+        "prompt": "Which structure is found in plant cells but NOT animal cells?",
+        "options": [
+          "The nucleus",
+          "The mitochondria",
+          "The cell wall",
+          "The ribosome"
+        ],
+        "correct": 2,
+        "explanation": "Plant cells have a rigid cell wall made of cellulose that gives them structure. Animal cells do not."
+      },
+      {
+        "prompt": "What do ribosomes do?",
+        "options": [
+          "Store water",
+          "Produce energy",
+          "Build proteins",
+          "Break down waste"
+        ],
+        "correct": 2,
+        "explanation": "Ribosomes read the cell's genetic instructions and assemble proteins from amino acids."
+      },
+      {
+        "prompt": "What fills most of the space inside a cell?",
+        "options": [
+          "Blood",
+          "Air",
+          "Cytoplasm",
+          "Chlorophyll"
+        ],
+        "correct": 2,
+        "explanation": "Cytoplasm is the jelly-like fluid that fills the cell and suspends the organelles."
+      }
+    ]
+  },
+  {
+    "title": "Energy in ecosystems",
+    "category": "Biology",
+    "questions": [
+      {
+        "prompt": "What do we call organisms that make their own food?",
+        "options": [
+          "Consumers",
+          "Decomposers",
+          "Producers",
+          "Predators"
+        ],
+        "correct": 2,
+        "explanation": "Producers, like plants and algae, make their own food through photosynthesis."
+      },
+      {
+        "prompt": "How much energy is typically passed from one trophic level to the next?",
+        "options": [
+          "100 percent",
+          "50 percent",
+          "10 percent",
+          "1 percent"
+        ],
+        "correct": 2,
+        "explanation": "The 10 percent rule: about 90 percent of energy is lost as heat at each level."
+      },
+      {
+        "prompt": "What role do decomposers play in an ecosystem?",
+        "options": [
+          "They hunt prey",
+          "They produce oxygen",
+          "They break down dead matter and return nutrients to the soil",
+          "They store energy for other animals"
+        ],
+        "correct": 2,
+        "explanation": "Decomposers like fungi and bacteria recycle nutrients by breaking down dead organisms."
+      },
+      {
+        "prompt": "What is a food chain?",
+        "options": [
+          "A list of what animals eat at a zoo",
+          "A sequence showing how energy moves from one organism to another",
+          "A diagram of all species in a habitat",
+          "A map of where animals hunt"
+        ],
+        "correct": 1,
+        "explanation": "A food chain traces the path of energy from producers through successive consumers."
+      },
+      {
+        "prompt": "Which organism sits at the base of most food chains?",
+        "options": [
+          "A herbivore",
+          "A top predator",
+          "A plant or other producer",
+          "A decomposer"
+        ],
+        "correct": 2,
+        "explanation": "Plants and other producers capture energy from the sun, making them the foundation of the food chain."
+      }
+    ]
+  },
+  {
+    "title": "Plant adaptations",
+    "category": "Biology",
+    "questions": [
+      {
+        "prompt": "Why do cacti have thick, waxy stems?",
+        "options": [
+          "To attract insects",
+          "To store water and reduce water loss",
+          "To absorb more sunlight",
+          "To grow taller than other plants"
+        ],
+        "correct": 1,
+        "explanation": "The thick stem stores water and the waxy coating slows evaporation — critical in dry deserts."
+      },
+      {
+        "prompt": "What do spines on a cactus do?",
+        "options": [
+          "Absorb water from rain",
+          "Produce food",
+          "Deter animals from eating the plant",
+          "Release oxygen faster"
+        ],
+        "correct": 2,
+        "explanation": "Spines are modified leaves that protect the plant from being eaten by thirsty animals."
+      },
+      {
+        "prompt": "How do water lilies stay afloat?",
+        "options": [
+          "Their leaves are filled with air pockets",
+          "They have no roots",
+          "Their stems are made of wood",
+          "They absorb salt from the water"
+        ],
+        "correct": 0,
+        "explanation": "Air pockets in the leaves reduce density and keep the leaf buoyant on the water surface."
+      },
+      {
+        "prompt": "Why do some plants in cold climates have dark-colored leaves?",
+        "options": [
+          "To blend in with the soil",
+          "To absorb more heat from sunlight",
+          "To store more water",
+          "To repel insects"
+        ],
+        "correct": 1,
+        "explanation": "Darker pigments absorb more solar radiation, helping the plant stay warm in cold environments."
+      }
+    ]
+  }
+]

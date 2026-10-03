@@ -264,6 +264,11 @@ class LiveKitManager(
                 _state.value = LiveKitState.Disconnected
                 throw e
             } catch (e: Exception) {
+                android.util.Log.e(
+                    "ResonantLiveKit",
+                    "LiveKit connection failed: ${e::class.java.name}: ${e.message}",
+                    e
+                )
                 stopPolling()
                 room.disconnect() // don't leave a half-open room behind
                 _state.value = LiveKitState.Error(
