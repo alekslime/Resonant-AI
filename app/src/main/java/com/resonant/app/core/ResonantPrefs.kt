@@ -43,13 +43,42 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getString(KEY_USER_NAME, null)
         set(value) = putOrRemove(KEY_USER_NAME, value?.trim())
 
+    /** Kokoro voice id the PC agent should speak with in Live mode. */
+    var liveVoice: String
+        get() = prefs.getString(KEY_LIVE_VOICE, null)?.takeIf { v -> LIVE_VOICES.any { it.id == v } } ?: LIVE_VOICES.first().id
+        set(value) = prefs.edit().putString(KEY_LIVE_VOICE, value).apply()
+
+    /** Kokoro speaking speed for Live mode, one of [LIVE_SPEEDS]. */
+    var liveSpeed: Float
+        get() = prefs.getFloat(KEY_LIVE_SPEED, 1.0f).takeIf { it in LIVE_SPEEDS } ?: 1.0f
+        set(value) = prefs.edit().putFloat(KEY_LIVE_SPEED, value).apply()
+
     private fun putOrRemove(key: String, value: String?) {
         val editor = prefs.edit()
         if (value.isNullOrBlank()) editor.remove(key) else editor.putString(key, value)
         editor.apply()
     }
 
-    private companion object {
+    data class LiveVoice(val id: String, val label: String)
+
+    companion object {
+        val LIVE_VOICES = listOf(
+            LiveVoice("af_heart", "Heart"),
+            LiveVoice("af_bella", "Bella"),
+            LiveVoice("af_nicole", "Nicole"),
+            LiveVoice("af_sarah", "Sarah"),
+            LiveVoice("af_sky", "Sky"),
+            LiveVoice("am_adam", "Adam"),
+            LiveVoice("am_michael", "Michael"),
+            LiveVoice("bf_emma", "Emma, British"),
+            LiveVoice("bf_isabella", "Isabella, British"),
+            LiveVoice("bm_george", "George, British"),
+            LiveVoice("bm_lewis", "Lewis, British")
+        )
+        val LIVE_SPEEDS = listOf(0.8f, 0.9f, 1.0f, 1.1f, 1.25f, 1.5f)
+
+        private const val KEY_LIVE_VOICE = "live_voice"
+        private const val KEY_LIVE_SPEED = "live_speed"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
         const val KEY_SOUND_CUES = "sound_cues"
