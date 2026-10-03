@@ -134,6 +134,7 @@ fun ChatScreen(
     val liveKitManager = remember { (context.applicationContext as ResonantApp).liveKitManager }
     val liveKitState by liveKitManager.state.collectAsState()
     val liveMicOn by liveKitManager.micEnabled.collectAsState()
+    val agentState by liveKitManager.agentState.collectAsState()
     var liveIntroDone by remember { mutableStateOf(false) }
     var liveMicGranted by remember {
         mutableStateOf(
@@ -455,6 +456,12 @@ fun ChatScreen(
             audio.announce("Not connected yet.")
             return
         }
+        // While she is thinking or talking, a tap means "stop". Cue only, no speech: the mic is open.
+        if (agentState == "thinking" || agentState == "speaking") {
+            liveKitManager.interruptAgent()
+            haptics.play(HapticPattern.CONFIRM)
+            return
+        }
         if (liveMicOn) {
             scope.launch { liveKitManager.setMicrophoneEnabled(false) }
             haptics.play(HapticPattern.BACK)
@@ -573,8 +580,11 @@ fun ChatScreen(
         // Live: until the PC agent reports its own state (roadmap #1), follow what the phone knows.
         liveKitState is LiveKitState.Error -> DotsState.Offline
         liveKitState != LiveKitState.Connected -> DotsState.Thinking
-        liveMicOn -> DotsState.Listening
-        else -> DotsState.Idle
+        !liveMicOn -> DotsState.Idle
+        agentState == "transcribing" -> DotsState.Transcribing
+        agentState == "thinking" -> DotsState.Thinking
+        agentState == "speaking" -> DotsState.Speaking
+        else -> DotsState.Listening
     } else when {
         listening && transcribing -> DotsState.Transcribing
         listening -> DotsState.Listening
@@ -601,8 +611,10 @@ fun ChatScreen(
                 LiveKitState.Connecting -> "Live · Connecting…"
                 LiveKitState.Connected -> when {
                     !liveIntroDone -> "Live · Connected"
-                    liveMicOn -> "Live · Listening"
-                    else -> "Live · Muted"
+                    !liveMicOn -> "Live · Muted"
+                    agentState == "thinking" -> "Live · Thinking"
+                    agentState == "speaking" -> "Live · Speaking, tap to stop"
+                    else -> "Live · Listening"
                 }
                 is LiveKitState.Error -> "Live · Connection error"
             }

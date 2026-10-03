@@ -34,9 +34,9 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] LiveKit connection layer, connect/disconnect owned by Chat
 - [x] PC agent: VAD -> STT -> Ollama -> Kokoro voice
 - [x] Live mic handling: mute toggle, no on-device Whisper in Live
-- [ ] 6. Feel and sound pass: mic-open cue, dots follow live state, error cue
-- [ ] 4. Tap to interrupt: while she speaks a tap stops her, otherwise a tap mutes. Voice barge-in later
-- [ ] 1. Agent publishes its state (participant attributes) -> dots, thinking/speaking haptics
+- [x] 6. Feel and sound pass: mic-open cue, dots follow live state, error cue (thinking/speaking pulses come with #1)
+- [x] 4. Tap to interrupt: while she thinks or speaks a tap stops her, otherwise a tap mutes (agent publishes state; voice barge-in later)
+- [ ] 1. Agent state -> dots DONE in #4; still to do: thinking/speaking haptic pulses
 - [ ] 2. Detect a missing PC agent (about 8 s timeout -> announce, Offline dots)
 - [ ] 3. Live exchanges into the normal Chat history (captions)
 - [ ] 5. Speaker routing check: loudspeaker default, toggle, headset first

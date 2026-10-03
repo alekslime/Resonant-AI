@@ -6,6 +6,13 @@ import io.livekit.android.room.Room
 import io.livekit.android.token.TokenRequestOptions
 import io.livekit.android.token.TokenSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +36,59 @@ class LiveKitManager(
     /** True while the microphone is published to the room (i.e. not muted). */
     val micEnabled: StateFlow<Boolean> = _micEnabled.asStateFlow()
 
+    private val _agentState = MutableStateFlow("")
+    /**
+     * What the PC agent says it is doing: "listening", "transcribing", "thinking" or
+     * "speaking". Empty when unknown (not connected, or no agent in the room).
+     */
+    val agentState: StateFlow<String> = _agentState.asStateFlow()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var pollJob: Job? = null
+    private var interruptCount = 0
+
     private val room: Room = LiveKit.create(appContext)
+
+    // The agent publishes its state as a participant attribute. Polling the attribute is a few
+    // map reads every 100 ms, and avoids depending on the SDK's event API.
+    private fun startPolling() {
+        pollJob?.cancel()
+        pollJob = scope.launch {
+            while (isActive) {
+                _agentState.value = try {
+                    room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["state"] } ?: ""
+                } catch (e: Exception) {
+                    ""
+                }
+                delay(100)
+            }
+        }
+    }
+
+    private fun stopPolling() {
+        pollJob?.cancel()
+        pollJob = null
+        _agentState.value = ""
+    }
+
+    /** Tell the PC agent to stop thinking / talking now. No-op unless connected. */
+    fun interruptAgent() {
+        if (_state.value !is LiveKitState.Connected) return
+        interruptCount += 1
+        val n = interruptCount
+        // Two routes, because token permissions differ: attributes need "update own metadata",
+        // data packets need "publish data". The agent handles whichever arrives (it is idempotent).
+        scope.launch {
+            try {
+                room.localParticipant.updateAttributes(mapOf("interrupt" to n.toString()))
+            } catch (e: Exception) {
+            }
+            try {
+                room.localParticipant.publishData("interrupt".toByteArray(), topic = "interrupt")
+            } catch (e: Exception) {
+            }
+        }
+    }
 
     private val tokenSource =
         TokenSource.fromDevelopmentTokenServer(TOKEN_SERVER_ID)
@@ -65,11 +124,14 @@ class LiveKitManager(
                 }
 
                 _state.value = LiveKitState.Connected
+                startPolling()
             } catch (e: CancellationException) {
+                stopPolling()
                 room.disconnect()
                 _state.value = LiveKitState.Disconnected
                 throw e
             } catch (e: Exception) {
+                stopPolling()
                 room.disconnect() // don't leave a half-open room behind
                 _state.value = LiveKitState.Error(
                     e.message ?: "Unknown LiveKit connection error"
@@ -93,6 +155,7 @@ class LiveKitManager(
 
     suspend fun disconnect() {
         mutex.withLock {
+            stopPolling()
             room.disconnect()
             _micEnabled.value = false
             _state.value = LiveKitState.Disconnected
