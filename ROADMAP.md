@@ -50,6 +50,44 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Done in code, untested: the agent uses `agent/models/kokoro-v1.0.int8.onnx` when it exists (download it next to the fp32 file), and the first spoken piece may end at a comma after 5 words. Compare the `first audio` log line before and after.
 - The token server is LiveKit's dev sandbox unless `live.tokenUrl` is set (see #8), fine for testing only.
 
-## Resuming
+## Resuming (older note, still true)
 Everything above is untested until the user confirms a device run. Before starting a new item,
 ask which items compiled and worked on the phone, and fix those first.
+
+## Handoff (written 2026-10-03, end of a long session)
+
+State: every checklist item above is coded. NONE of it has been compiled or run on the phone or PC
+since 3b was added; the Android side was never built by the previous agent (no toolchain in its
+sandbox). The user will test later. First job for the next agent: ask what compiled and what worked,
+and fix compile errors before anything new.
+
+Coded this session, in order, all untested on a device:
+- 3b swipe-to-review in Live (`ChatScreen.kt`: `liveReviewing`, `liveReview()`)
+- 7a Live voice and speed in Settings (`ResonantPrefs`, `SettingsScreen`, `LiveKitManager.sendVoiceSettings`, agent `apply_settings`)
+- 7b hold-to-talk (new `ResonantGesture.LongPressEnd` in `gestures/`, `Settings > Live mic`, `LiveKitManager.pushToTalk`, agent `ptt_signal`/`_ptt_finish`)
+- 7c PC name (agent attribute `host`, `LiveKitManager.agentHost`, intro/status line/three-finger hold)
+- first-audio speedups: int8 Kokoro model preferred if present, first spoken piece may end at a comma (`split_chunk` in `agent.py`)
+- 8 own token server (`agent/token_server.py`, `live.tokenUrl`/`live.tokenKey` in `local.properties`)
+
+Most likely to break (check these first):
+- Kotlin compile errors in `ChatScreen.kt` (edited many times by string replacement; the exhaustive `when` in `GestureSurface.kt` now needs `LongPressEnd`, already added) and in `SettingsScreen.kt` (`labelFor` now takes 6 arguments).
+- Voice ids in `ResonantPrefs.LIVE_VOICES` may not all exist in the user's `voices-v1.0.bin`; the agent logs `unknown voice` and keeps the old one. Remove the bad ones.
+- Hold-to-talk needs the NEW `agent.py`. An old agent never ends a held turn. TalkBack cannot do a hold, so hold mode is unusable with TalkBack on (always-open mode is fine).
+- The token server: the user still has to put `TOKEN_KEY` in `agent/.env`, run `python token_server.py`, and set `live.tokenUrl` (their PC's LAN address, port 8787) and `live.tokenKey` in `local.properties`, then rebuild. Until `live.tokenUrl` is set the app uses the dev sandbox, so nothing is forced. Do not write their keys, secrets or IP into any committed file.
+- The user pasted their LiveKit API secret into chat once; they were told to rotate it.
+
+Not done / ideas (none are on the user's list yet, ask before starting):
+- No on-phone screen for the token address (rebuild needed), unlike the Ollama address in Debug > Server setup.
+- Plain http token URL works in debug builds only; a release build needs https.
+- Gestures that speak (three-finger hold, speed gestures, left-edge pause) still talk while the live mic is open.
+- Hold-to-talk waits the shared 500 ms long-press time; a shorter centre-only threshold would mean touching `GestureManager.kt`.
+- If first audio is still slow after the int8 model: try a smaller `WHISPER_MODEL`.
+
+How the user wants work delivered (they said so; follow it):
+- Hand over COMPLETE changed files, each with its repo path to paste over, not diffs or find/replace blocks, and not a zip.
+- Give as many separate commits as there are files or steps, each with the `git add` / `git commit -m` / `git push` lines. Prefixes `feat:` `fix:` `docs:`. Commit order must keep dependencies first.
+- Keep answers short and direct. The user pushes back on long or repeated replies.
+- Code stays comment-light with plain English names, no reformatting of existing files.
+- Windows 11, PowerShell, repo at `Resonant-AI` on GitHub. Browsers drop the leading dot of downloaded files (`.env.example` arrived as `env.example`): remind them to rename dotfiles.
+- Say plainly what was not tested. Never claim a device run happened.
+
