@@ -46,7 +46,7 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] 7c. Show which PC is connected: the agent publishes `host` (its computer name); the phone says it in the Live intro, adds it to the status line and to the three-finger hold. An older agent without it just skips the name (1 s wait). Not compiled or run yet
 
 ## Known issues
-- First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Try the int8 model or a shorter first chunk.
+- First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Done in code, untested: the agent uses `agent/models/kokoro-v1.0.int8.onnx` when it exists (download it next to the fp32 file), and the first spoken piece may end at a comma after 5 words. Compare the `first audio` log line before and after.
 - The token server is LiveKit's dev sandbox, fine for testing only.
 
 ## Resuming
