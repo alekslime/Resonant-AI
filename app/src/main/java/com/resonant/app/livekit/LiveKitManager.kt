@@ -25,13 +25,18 @@ class LiveKitManager(
     private val _state = MutableStateFlow<LiveKitState>(LiveKitState.Disconnected)
     val state: StateFlow<LiveKitState> = _state.asStateFlow()
 
+    private val _micEnabled = MutableStateFlow(false)
+    /** True while the microphone is published to the room (i.e. not muted). */
+    val micEnabled: StateFlow<Boolean> = _micEnabled.asStateFlow()
+
     private val room: Room = LiveKit.create(appContext)
 
     private val tokenSource =
         TokenSource.fromDevelopmentTokenServer(TOKEN_SERVER_ID)
 
     suspend fun connect(
-        participantName: String = "resonant-android"
+        participantName: String = "resonant-android",
+        enableMicrophone: Boolean = true
     ) {
         mutex.withLock {
             if (_state.value is LiveKitState.Connecting ||
@@ -54,7 +59,10 @@ class LiveKitManager(
                     credentials.participantToken
                 )
 
-                room.localParticipant.setMicrophoneEnabled(true)
+                if (enableMicrophone) {
+                    room.localParticipant.setMicrophoneEnabled(true)
+                    _micEnabled.value = true
+                }
 
                 _state.value = LiveKitState.Connected
             } catch (e: CancellationException) {
@@ -70,9 +78,23 @@ class LiveKitManager(
         }
     }
 
+    /** Mute / unmute the microphone without leaving the room. No-op unless connected. */
+    suspend fun setMicrophoneEnabled(enabled: Boolean) {
+        mutex.withLock {
+            if (_state.value !is LiveKitState.Connected) return
+            try {
+                room.localParticipant.setMicrophoneEnabled(enabled)
+                _micEnabled.value = enabled
+            } catch (e: Exception) {
+                // Leave the flag as it was; the UI keeps showing the real state.
+            }
+        }
+    }
+
     suspend fun disconnect() {
         mutex.withLock {
             room.disconnect()
+            _micEnabled.value = false
             _state.value = LiveKitState.Disconnected
         }
     }

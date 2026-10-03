@@ -18,7 +18,7 @@ import android.content.Context
  * own WhisperModelManager instance and scope, so the person decides when to
  * pull ~148MB rather than it happening silently.
  */
-class VoiceInputController(context: Context) {
+class VoiceInputController(context: Context, preload: Boolean = true) {
 
     private val appContext = context.applicationContext
 
@@ -33,7 +33,9 @@ class VoiceInputController(context: Context) {
         // downloaded yet. See WhisperSpeechInputManager.preload() for why this
         // matters: without it, the first real transcription silently eats
         // however long loading a ~150MB model takes.
-        whisper.preload()
+        // Live mode passes preload = false: the PC agent does the listening, and loading
+        // the on-device model would only burn memory and CPU.
+        if (preload) whisper.preload()
     }
 
     /** True while a finished recording is being turned into text (either recognizer). */

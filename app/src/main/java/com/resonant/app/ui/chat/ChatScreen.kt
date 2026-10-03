@@ -133,6 +133,8 @@ fun ChatScreen(
     // --- Live mode (LiveKit) -------------------------------------------------
     val liveKitManager = remember { (context.applicationContext as ResonantApp).liveKitManager }
     val liveKitState by liveKitManager.state.collectAsState()
+    val liveMicOn by liveKitManager.micEnabled.collectAsState()
+    var liveIntroDone by remember { mutableStateOf(false) }
     var liveMicGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
@@ -150,7 +152,7 @@ fun ChatScreen(
     // by the time onDispose fires, and a suspend disconnect() would be cancelled with it.
     DisposableEffect(liveMode, liveMicGranted) {
         if (!liveMode || !liveMicGranted) return@DisposableEffect onDispose {}
-        val job = scope.launch { liveKitManager.connect("resonant-android") }
+        val job = scope.launch { liveKitManager.connect("resonant-android", enableMicrophone = false) }
         onDispose {
             job.cancel()
             CoroutineScope(Dispatchers.Default + NonCancellable).launch {
@@ -160,7 +162,7 @@ fun ChatScreen(
     }
     // -------------------------------------------------------------------------
 
-    val speech = remember { VoiceInputController(context) }
+    val speech = remember { VoiceInputController(context, preload = !liveMode) }
     var alive by remember { mutableStateOf(true) }
     var requestJob by remember { mutableStateOf<Job?>(null) }
     // Bumped every time a request is cancelled or replaced. A cancelled request's
@@ -174,6 +176,25 @@ fun ChatScreen(
             speech.release() // frees the native Whisper model — nothing does this automatically
             requestJob?.cancel()
             audio.endStream()
+        }
+    }
+
+    // Live mode: the microphone stays closed until the spoken intro has finished, otherwise the
+    // PC agent would hear the app's own voice and answer it (same rule as "Listening." below).
+    LaunchedEffect(liveMode, liveKitState) {
+        if (!liveMode || liveIntroDone) return@LaunchedEffect
+        when (liveKitState) {
+            LiveKitState.Connected -> {
+                liveIntroDone = true
+                audio.announce("Live. Connected. Just start talking. Tap the center to mute.") {
+                    scope.launch { if (alive) liveKitManager.setMicrophoneEnabled(true) }
+                }
+            }
+            is LiveKitState.Error -> {
+                liveIntroDone = true
+                audio.announce("Couldn't connect to Resonant Live. Go back and try again.")
+            }
+            else -> {}
         }
     }
 
@@ -423,7 +444,26 @@ fun ChatScreen(
         askModel(question)
     }
 
+    fun toggleLiveMic() {
+        if (liveKitState != LiveKitState.Connected) {
+            audio.announce("Not connected yet.")
+            return
+        }
+        if (liveMicOn) {
+            scope.launch { liveKitManager.setMicrophoneEnabled(false) }
+            haptics.play(HapticPattern.BACK)
+            audio.announce("Microphone off. Tap the center to talk again.")
+        } else {
+            haptics.play(HapticPattern.LISTENING)
+            // Open the mic only after this has been spoken, so it isn't picked up.
+            audio.announce("Microphone on.") {
+                scope.launch { if (alive) liveKitManager.setMicrophoneEnabled(true) }
+            }
+        }
+    }
+
     fun onAskTapped() {
+        if (liveMode) { toggleLiveMic(); return }
         // A tap while waiting for the model cancels the wait — otherwise the only
         // way out of a slow or hung request would be sitting through the timeout.
         if (thinking) {
@@ -468,9 +508,9 @@ fun ChatScreen(
             "Ask Resonant. You have $n previous ${if (n == 1) "exchange" else "exchanges"} from " +
                 "before. Swipe up or down to review them, or tap center to ask something new."
         }
-        audio.announce(greetingText) { greetingDone.complete(Unit) }
+        if (liveMode) greetingDone.complete(Unit) else audio.announce(greetingText) { greetingDone.complete(Unit) }
 
-        if (loadedFlat.isNotEmpty()) {
+        if (loadedFlat.isNotEmpty() && !liveMode) {
             // Queued behind the greeting rather than cutting it off — same idiom askModel's
             // onSentence uses for "You said … Thinking." followed by the actual reply.
             audio.setQueue(
@@ -484,7 +524,7 @@ fun ChatScreen(
         // Find out now, not after someone has asked a question and waited, whether the server is
         // usable. If it is, load the model in the background so the first answer isn't the slow
         // one; if not, say so once and answer from the lessons instead.
-        launch {
+        if (!liveMode) launch {
             val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL)
             if (serverIsUsable(check)) {
                 serverUp = true
@@ -547,7 +587,11 @@ fun ChatScreen(
             else -> when (liveKitState) {
                 LiveKitState.Disconnected -> "Live · Disconnected"
                 LiveKitState.Connecting -> "Live · Connecting…"
-                LiveKitState.Connected -> "Live · Connected"
+                LiveKitState.Connected -> when {
+                    !liveIntroDone -> "Live · Connected"
+                    liveMicOn -> "Live · Listening"
+                    else -> "Live · Muted"
+                }
                 is LiveKitState.Error -> "Live · Connection error"
             }
         }
