@@ -34,9 +34,13 @@ class HapticManager(context: Context) {
      */
     var onPlay: ((HapticPattern) -> Unit)? = null
 
-    fun play(pattern: HapticPattern) {
+    /**
+     * [withSound] = false vibrates only. Live mode uses it while the microphone is open, so the
+     * PC agent never hears the app's own cues.
+     */
+    fun play(pattern: HapticPattern, withSound: Boolean = true) {
         _lastPattern.value = pattern
-        onPlay?.invoke(pattern)
+        if (withSound) onPlay?.invoke(pattern)
         val timings = HapticPatterns.timings[pattern] ?: return
         if (!vibrator.hasVibrator()) return
         val effect = VibrationEffect.createWaveform(timings, -1)

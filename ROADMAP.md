@@ -36,8 +36,8 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - [x] Live mic handling: mute toggle, no on-device Whisper in Live
 - [x] 6. Feel and sound pass: mic-open cue, dots follow live state, error cue (thinking/speaking pulses come with #1)
 - [x] 4. Tap to interrupt: while she thinks or speaks a tap stops her, otherwise a tap mutes (agent publishes state; voice barge-in later)
-- [ ] 1. Agent state -> dots DONE in #4; still to do: thinking/speaking haptic pulses
-- [ ] 2. Detect a missing PC agent (about 8 s timeout -> announce, Offline dots)
+- [x] 1. Agent publishes its state -> dots, status line, vibration-only thinking/speaking/your-turn cues
+- [x] 2. Detect a missing PC agent (12 s timeout -> announce, Offline dots; also if it drops later)
 - [ ] 3. Live exchanges into the normal Chat history (captions)
 - [ ] 5. Speaker routing check: loudspeaker default, toggle, headset first
 - [ ] 7. Settings: voice and speed, hold-to-talk mode, show which PC is connected

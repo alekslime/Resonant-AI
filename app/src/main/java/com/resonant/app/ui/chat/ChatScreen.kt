@@ -96,6 +96,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -104,6 +105,9 @@ private data class FlatChatUnit(val unit: SemanticUnit, val exchangeIndex: Int, 
 
 /** Gap between the soft "still working" pulses while waiting for the model's first sentence. */
 private const val THINKING_TICK_MS = 2_000L
+
+/** Live mode: how long to wait for the PC agent to join the room before saying it is missing. */
+private const val AGENT_JOIN_TIMEOUT_MS = 12_000L
 
 /** Every this-many ms of waiting, say so out loud as well — a pulse alone doesn't say "cancel is possible". */
 private const val THINKING_SPOKEN_EVERY_MS = 10_000L
@@ -135,6 +139,8 @@ fun ChatScreen(
     val liveKitState by liveKitManager.state.collectAsState()
     val liveMicOn by liveKitManager.micEnabled.collectAsState()
     val agentState by liveKitManager.agentState.collectAsState()
+    val agentPresent by liveKitManager.agentPresent.collectAsState()
+    var agentMissing by remember { mutableStateOf(false) }
     var liveIntroDone by remember { mutableStateOf(false) }
     var liveMicGranted by remember {
         mutableStateOf(
@@ -186,8 +192,21 @@ fun ChatScreen(
         if (!liveMode || liveIntroDone) return@LaunchedEffect
         when (liveKitState) {
             LiveKitState.Connected -> {
+                // "Connected" only means LiveKit answered. Wait for the PC agent to actually join.
+                val late = withTimeoutOrNull(AGENT_JOIN_TIMEOUT_MS) {
+                    liveKitManager.agentPresent.first { it }
+                } == null
+                if (late) {
+                    agentMissing = true
+                    haptics.play(HapticPattern.ERROR)
+                    audio.announce("Your PC isn't responding. Check that the Resonant agent is running on your computer.")
+                    liveKitManager.agentPresent.first { it } // keep waiting; cancelled when we leave
+                    agentMissing = false
+                }
                 liveIntroDone = true
-                audio.announce("Live. Connected. Just start talking. Tap the center to mute.") {
+                val intro = if (late) "Your PC is connected. Just start talking. Tap the center to mute."
+                else "Live. Connected. Just start talking. Tap the center to mute."
+                audio.announce(intro) {
                     scope.launch {
                         if (!alive) return@launch
                         haptics.play(HapticPattern.LISTENING) // cue first, mic after: the beep isn't heard
@@ -202,6 +221,42 @@ fun ChatScreen(
                 audio.announce("Couldn't connect to Resonant Live. Go back and try again.")
             }
             else -> {}
+        }
+    }
+
+    // The PC went away (or came back) after we were up and running.
+    LaunchedEffect(liveMode, liveIntroDone, agentPresent) {
+        if (!liveMode || !liveIntroDone || liveKitState != LiveKitState.Connected) return@LaunchedEffect
+        if (!agentPresent) {
+            delay(3_000) // ride out a blip
+            agentMissing = true
+            haptics.play(HapticPattern.ERROR)
+            audio.announce("Lost connection to your PC.")
+        } else if (agentMissing) {
+            agentMissing = false
+            // Vibration only: the mic is open and the agent is listening again.
+            haptics.play(HapticPattern.CONFIRM, withSound = false)
+        }
+    }
+
+    // Eyes-free feedback that follows what the PC agent is doing. Vibration only (withSound = false):
+    // the mic is open, and the agent must never hear the app's own cues.
+    var prevAgentState by remember { mutableStateOf("") }
+    LaunchedEffect(liveMode, agentState) {
+        if (!liveMode) return@LaunchedEffect
+        val prev = prevAgentState
+        prevAgentState = agentState
+        when {
+            agentState == "speaking" -> haptics.play(HapticPattern.SELECT, withSound = false)
+            agentState == "listening" && prev == "speaking" ->
+                haptics.play(HapticPattern.LISTENING, withSound = false) // your turn
+            agentState == "thinking" -> {
+                haptics.play(HapticPattern.THINKING, withSound = false)
+                while (true) {
+                    delay(THINKING_TICK_MS)
+                    haptics.play(HapticPattern.THINKING, withSound = false)
+                }
+            }
         }
     }
 
@@ -456,6 +511,10 @@ fun ChatScreen(
             audio.announce("Not connected yet.")
             return
         }
+        if (agentMissing) {
+            audio.announce("Your PC isn't connected.")
+            return
+        }
         // While she is thinking or talking, a tap means "stop". Cue only, no speech: the mic is open.
         if (agentState == "thinking" || agentState == "speaking") {
             liveKitManager.interruptAgent()
@@ -578,7 +637,7 @@ fun ChatScreen(
     val transcribing = whisperTranscribing || fallbackTranscribing
     val realDotsState = if (liveMode) when {
         // Live: until the PC agent reports its own state (roadmap #1), follow what the phone knows.
-        liveKitState is LiveKitState.Error -> DotsState.Offline
+        liveKitState is LiveKitState.Error || agentMissing -> DotsState.Offline
         liveKitState != LiveKitState.Connected -> DotsState.Thinking
         !liveMicOn -> DotsState.Idle
         agentState == "transcribing" -> DotsState.Transcribing
@@ -610,7 +669,8 @@ fun ChatScreen(
                 LiveKitState.Disconnected -> "Live · Disconnected"
                 LiveKitState.Connecting -> "Live · Connecting…"
                 LiveKitState.Connected -> when {
-                    !liveIntroDone -> "Live · Connected"
+                    agentMissing -> "Live · PC not responding"
+                    !liveIntroDone -> "Live · Connecting to your PC…"
                     !liveMicOn -> "Live · Muted"
                     agentState == "thinking" -> "Live · Thinking"
                     agentState == "speaking" -> "Live · Speaking, tap to stop"

@@ -43,6 +43,10 @@ class LiveKitManager(
      */
     val agentState: StateFlow<String> = _agentState.asStateFlow()
 
+    private val _agentPresent = MutableStateFlow(false)
+    /** True while anyone else (the PC agent) is in the room. */
+    val agentPresent: StateFlow<Boolean> = _agentPresent.asStateFlow()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pollJob: Job? = null
     private var interruptCount = 0
@@ -55,10 +59,12 @@ class LiveKitManager(
         pollJob?.cancel()
         pollJob = scope.launch {
             while (isActive) {
-                _agentState.value = try {
-                    room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["state"] } ?: ""
+                try {
+                    _agentPresent.value = room.remoteParticipants.isNotEmpty()
+                    _agentState.value =
+                        room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["state"] } ?: ""
                 } catch (e: Exception) {
-                    ""
+                    _agentState.value = ""
                 }
                 delay(100)
             }
@@ -69,6 +75,7 @@ class LiveKitManager(
         pollJob?.cancel()
         pollJob = null
         _agentState.value = ""
+        _agentPresent.value = false
     }
 
     /** Tell the PC agent to stop thinking / talking now. No-op unless connected. */
