@@ -124,6 +124,9 @@ private const val NOTICE_WAIT_MS = 20_000L
 /** Hold-to-talk: how long the mic stays open after the finger lifts, so the last word isn't cut. */
 private const val HOLD_TAIL_MS = 300L
 
+/** How long the Live intro waits for the agent to publish its computer name. */
+private const val HOST_WAIT_MS = 1_000L
+
 @Composable
 fun ChatScreen(
     onBack: () -> Unit,
@@ -143,6 +146,7 @@ fun ChatScreen(
     val liveMicOn by liveKitManager.micEnabled.collectAsState()
     val agentState by liveKitManager.agentState.collectAsState()
     val agentPresent by liveKitManager.agentPresent.collectAsState()
+    val agentHost by liveKitManager.agentHost.collectAsState()
     var agentMissing by remember { mutableStateOf(false) }
     var liveIntroDone by remember { mutableStateOf(false) }
     var liveReviewing by remember { mutableStateOf(false) }
@@ -211,11 +215,16 @@ fun ChatScreen(
                     agentMissing = false
                 }
                 liveIntroDone = true
+                // The agent publishes its computer name a moment after it joins; an older agent never does.
+                withTimeoutOrNull(HOST_WAIT_MS) { liveKitManager.agentHost.first { it.isNotEmpty() } }
+                val host = liveKitManager.agentHost.value.replace('-', ' ').replace('_', ' ').trim()
+                val pc = if (host.isEmpty()) "Your PC" else "Your PC, $host,"
+                val to = if (host.isEmpty()) "" else " to $host"
                 val intro = when {
-                    holdToTalk && late -> "Your PC is connected. Hold the center and talk."
-                    holdToTalk -> "Live. Connected. Hold the center and talk."
-                    late -> "Your PC is connected. Just start talking. Tap the center to mute."
-                    else -> "Live. Connected. Just start talking. Tap the center to mute."
+                    holdToTalk && late -> "$pc is connected. Hold the center and talk."
+                    holdToTalk -> "Live. Connected$to. Hold the center and talk."
+                    late -> "$pc is connected. Just start talking. Tap the center to mute."
+                    else -> "Live. Connected$to. Just start talking. Tap the center to mute."
                 }
                 audio.announce(intro) {
                     if (holdToTalk) return@announce
@@ -817,7 +826,7 @@ fun ChatScreen(
     val hero = exchanges.isEmpty()
     // Live status. ResonantScaffold ignores `subtitle` whenever a custom header is
     // supplied (i.e. once there is chat history), so the status is also drawn in chatHeader.
-    val liveStatus: String? = if (liveMode) {
+    val liveStatusBase: String? = if (liveMode) {
         when {
             !liveMicGranted -> "Live · Microphone needed"
             else -> when (liveKitState) {
@@ -840,6 +849,10 @@ fun ChatScreen(
             }
         }
     } else null
+    val liveStatus: String? =
+        if (liveStatusBase != null && agentHost.isNotEmpty() && liveKitState == LiveKitState.Connected && !agentMissing)
+            "$liveStatusBase · $agentHost"
+        else liveStatusBase
     val chatHeader: @Composable () -> Unit = {
         LessonsTopBar(
             onBack = onBack,
@@ -916,7 +929,8 @@ fun ChatScreen(
                 is ResonantGesture.LongPressEnd -> if (liveMode && holdToTalk) endHoldTalk()
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    if (exchanges.isEmpty()) "AI Chat. Tap the center of the screen to ask a question."
+                    if (liveMode && agentHost.isNotEmpty()) "Live, connected to ${agentHost.replace('-', ' ').replace('_', ' ')}."
+                    else if (exchanges.isEmpty()) "AI Chat. Tap the center of the screen to ask a question."
                     else "AI Chat, exchange ${lastExchangeIndex + 1} of ${exchanges.size}. Tap center to ask another question."
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
