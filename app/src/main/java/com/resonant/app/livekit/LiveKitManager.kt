@@ -1,6 +1,7 @@
 package com.resonant.app.livekit
 
 import android.content.Context
+import com.resonant.app.core.ResonantPrefs
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
 import io.livekit.android.token.TokenRequestOptions
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
+import org.json.JSONObject
 
 /** One line of live captions from the PC agent. role: "user", "assistant" (one sentence) or "done". */
 data class LiveCaption(val role: String, val text: String)
@@ -133,6 +135,28 @@ class LiveKitManager(
         }
     }
 
+    /**
+     * Send the Live voice and speed chosen in Settings to the PC agent. Two routes, like
+     * [interruptAgent]: attributes stay on the participant (so an agent that joins later still
+     * reads them), the data packet reaches an agent that is already in the room.
+     */
+    private fun sendVoiceSettings() {
+        val prefs = ResonantPrefs(appContext)
+        val voice = prefs.liveVoice
+        val speed = prefs.liveSpeed
+        scope.launch {
+            try {
+                room.localParticipant.updateAttributes(mapOf("voice" to voice, "speed" to speed.toString()))
+            } catch (e: Exception) {
+            }
+            try {
+                val json = JSONObject().put("voice", voice).put("speed", speed.toDouble()).toString()
+                room.localParticipant.publishData(json.toByteArray(), topic = "voice")
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     private val tokenSource =
         TokenSource.fromDevelopmentTokenServer(TOKEN_SERVER_ID)
 
@@ -168,6 +192,7 @@ class LiveKitManager(
 
                 _state.value = LiveKitState.Connected
                 startPolling()
+                sendVoiceSettings()
             } catch (e: CancellationException) {
                 stopPolling()
                 room.disconnect()
