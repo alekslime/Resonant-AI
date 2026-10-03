@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.resonant.app.BuildConfig
 import com.resonant.app.ResonantApp
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.network.OllamaConfig
@@ -57,6 +58,8 @@ fun ServerSetupScreen(onDone: () -> Unit) {
 
     var address by remember { mutableStateOf(OllamaConfig.BASE_URL) }
     var model by remember { mutableStateOf(OllamaConfig.MODEL) }
+    var tokenUrl by remember { mutableStateOf(prefs.liveTokenUrl ?: "") }
+    var tokenKey by remember { mutableStateOf(prefs.liveTokenKey ?: "") }
     var status by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
 
@@ -88,6 +91,23 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                 onValueChange = { model = it; status = null },
                 label = "Model",
                 placeholder = "llama3.2",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+            )
+
+            Spacer(Modifier.height(16.dp))
+            ResonantTextField(
+                value = tokenUrl,
+                onValueChange = { tokenUrl = it; status = null },
+                label = "Live token address",
+                placeholder = "192.168.1.50:8787 (empty = build default)",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+            )
+            Spacer(Modifier.height(16.dp))
+            ResonantTextField(
+                value = tokenKey,
+                onValueChange = { tokenKey = it; status = null },
+                label = "Live token key",
+                placeholder = "empty = build default",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
             )
 
@@ -125,9 +145,14 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                 text = "Save",
                 onClick = {
                     val candidate = normalizeBaseUrl(address)
+                    val tokenCandidate = normalizeTokenUrl(tokenUrl)
                     if (candidate == null || model.isBlank()) {
                         status = "Enter an address and a model name first."
+                    } else if (tokenCandidate == null) {
+                        status = "That doesn't look like a token address. Try 192.168.1.50:8787."
                     } else {
+                        prefs.liveTokenUrl = tokenCandidate
+                        prefs.liveTokenKey = tokenKey
                         prefs.ollamaBaseUrl = candidate
                         prefs.ollamaModel = model.trim()
                         OllamaConfig.applyOverrides(candidate, model)
@@ -144,10 +169,25 @@ fun ServerSetupScreen(onDone: () -> Unit) {
                     prefs.ollamaBaseUrl = null
                     prefs.ollamaModel = null
                     OllamaConfig.applyOverrides(null, null)
+                    prefs.liveTokenUrl = null
+                    prefs.liveTokenKey = null
+                    tokenUrl = ""
+                    tokenKey = ""
                     address = OllamaConfig.BASE_URL
                     model = OllamaConfig.MODEL
                     status = "Back to the build defaults."
                 }
+            )
+
+            Text(
+                if (tokenUrl.isBlank() && BuildConfig.LIVE_TOKEN_URL.isBlank()) {
+                    "Live is using LiveKit's dev sandbox (testing only)."
+                } else {
+                    "Live changes apply the next time Live opens."
+                },
+                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+                color = BrandInk,
+                modifier = Modifier.padding(top = 24.dp)
             )
 
             Text(
@@ -159,4 +199,17 @@ fun ServerSetupScreen(onDone: () -> Unit) {
             )
         }
     }
+}
+
+/** Empty stays empty (use the build default). A bare host:port gets http:// and /token added. */
+private fun normalizeTokenUrl(input: String): String? {
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return ""
+    val withScheme = if ("://" in trimmed) trimmed else "http://$trimmed"
+    val rest = withScheme.substringAfter("://")
+    val hasPath = rest.contains('/')
+    if (hasPath) return if (normalizeBaseUrl(withScheme) == null) null else withScheme.trimEnd('/')
+    val withPort = if (':' in rest) withScheme else "$withScheme:8787"
+    val base = normalizeBaseUrl(withPort) ?: return null
+    return "$base/token"
 }
