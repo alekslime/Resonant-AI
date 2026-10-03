@@ -11,6 +11,7 @@ Run:  python agent.py dev
 Env (all optional, in .env):
   WHISPER_MODEL=base.en       OLLAMA_MODEL=llama3.2     OLLAMA_URL=http://localhost:11434/v1
   KOKORO_MODEL=models/kokoro-v1.0.onnx   KOKORO_VOICES=models/voices-v1.0.bin
+    (if models/kokoro-v1.0.int8.onnx exists it is used instead: about 3x faster on CPU)
   KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0   (defaults; the phone's Settings override them)
 Mic mode (always open / hold to talk) is chosen on the phone too.
 """
@@ -41,7 +42,9 @@ HERE = Path(__file__).parent
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base.en")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/v1")
-KOKORO_MODEL = Path(os.getenv("KOKORO_MODEL", HERE / "models" / "kokoro-v1.0.onnx"))
+_KOKORO_FP32 = HERE / "models" / "kokoro-v1.0.onnx"
+_KOKORO_INT8 = HERE / "models" / "kokoro-v1.0.int8.onnx"
+KOKORO_MODEL = Path(os.getenv("KOKORO_MODEL") or (_KOKORO_INT8 if _KOKORO_INT8.exists() else _KOKORO_FP32))
 KOKORO_VOICES = Path(os.getenv("KOKORO_VOICES", HERE / "models" / "voices-v1.0.bin"))
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 KOKORO_SPEED = float(os.getenv("KOKORO_SPEED", "1.0"))
@@ -50,6 +53,8 @@ MIN_SPEED, MAX_SPEED = 0.5, 2.0
 MIN_UTTERANCE_S = 0.5
 JUNK = {"you", "so", "uh", "um", "ahem", "hmm", "oh", "thank you", "thanks for watching", "bye"}
 SENTENCE_END = re.compile(r"[.!?]+[\"')\]]*\s")
+CLAUSE_END = re.compile(r"[,;:]\s")
+FIRST_CHUNK_MIN_WORDS = 5  # the first spoken piece may stop at a comma, so audio starts sooner
 ECHO_TAIL_S = 0.8  # ignore the mic briefly after we stop talking (room echo)
 TTS_RATE = 24000
 
@@ -79,6 +84,22 @@ def prewarm(proc: agents.JobProcess) -> None:
         log.info("kokoro loaded in %.1fs (voice %s)", time.time() - t0, KOKORO_VOICE)
     else:
         log.warning("Kokoro files not found (%s, %s) - running TEXT ONLY", KOKORO_MODEL, KOKORO_VOICES)
+
+
+def split_chunk(buf: str, first: bool) -> tuple[str, str] | None:
+    """Cut the next piece to speak off the front of buf, or None if there is no complete one yet.
+    The first piece of a reply may end at a comma once it has a few words: the sooner the first
+    synthesis starts, the sooner you hear her."""
+    sentence = SENTENCE_END.search(buf)
+    if first:
+        for clause in CLAUSE_END.finditer(buf):
+            if sentence and clause.end() >= sentence.end():
+                break
+            if len(buf[: clause.end()].split()) >= FIRST_CHUNK_MIN_WORDS:
+                return buf[: clause.end()].strip(), buf[clause.end():]
+    if sentence:
+        return buf[: sentence.end()].strip(), buf[sentence.end():]
+    return None
 
 
 def frames_to_16k_mono(frames: list[rtc.AudioFrame]) -> np.ndarray:
@@ -340,8 +361,8 @@ class Conversation:
                 delta = chunk.choices[0].delta.content or ""
                 reply += delta
                 buf += delta
-                while player and (m := SENTENCE_END.search(buf)):
-                    sentence, buf = buf[: m.end()].strip(), buf[m.end():]
+                while player and (piece := split_chunk(buf, not synth)):
+                    sentence, buf = piece
                     if sentence:
                         task = asyncio.create_task(self._synth(sentence))
                         synth.append(task)
