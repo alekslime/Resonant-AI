@@ -187,11 +187,17 @@ fun ChatScreen(
             LiveKitState.Connected -> {
                 liveIntroDone = true
                 audio.announce("Live. Connected. Just start talking. Tap the center to mute.") {
-                    scope.launch { if (alive) liveKitManager.setMicrophoneEnabled(true) }
+                    scope.launch {
+                        if (!alive) return@launch
+                        haptics.play(HapticPattern.LISTENING) // cue first, mic after: the beep isn't heard
+                        delay(250)
+                        if (alive) liveKitManager.setMicrophoneEnabled(true)
+                    }
                 }
             }
             is LiveKitState.Error -> {
                 liveIntroDone = true
+                haptics.play(HapticPattern.ERROR)
                 audio.announce("Couldn't connect to Resonant Live. Go back and try again.")
             }
             else -> {}
@@ -563,7 +569,13 @@ fun ChatScreen(
     val whisperTranscribing by speech.whisperTranscribing.collectAsState()
     val fallbackTranscribing by speech.fallbackTranscribing.collectAsState()
     val transcribing = whisperTranscribing || fallbackTranscribing
-    val realDotsState = when {
+    val realDotsState = if (liveMode) when {
+        // Live: until the PC agent reports its own state (roadmap #1), follow what the phone knows.
+        liveKitState is LiveKitState.Error -> DotsState.Offline
+        liveKitState != LiveKitState.Connected -> DotsState.Thinking
+        liveMicOn -> DotsState.Listening
+        else -> DotsState.Idle
+    } else when {
         listening && transcribing -> DotsState.Transcribing
         listening -> DotsState.Listening
         thinking -> DotsState.Thinking
