@@ -12,6 +12,7 @@ Env (all optional, in .env):
   WHISPER_MODEL=base.en       OLLAMA_MODEL=llama3.2     OLLAMA_URL=http://localhost:11434/v1
   KOKORO_MODEL=models/kokoro-v1.0.onnx   KOKORO_VOICES=models/voices-v1.0.bin
   KOKORO_VOICE=af_heart       KOKORO_SPEED=1.0   (defaults; the phone's Settings override them)
+Mic mode (always open / hold to talk) is chosen on the phone too.
 """
 import asyncio
 import json
@@ -106,6 +107,12 @@ class Conversation:
         self.synth_lock = asyncio.Lock()  # one TTS inference at a time (CPU)
         self.voice = KOKORO_VOICE  # the phone can change these from Settings
         self.speed = KOKORO_SPEED
+        self.hold_mode = False  # hold-to-talk: the phone says when a turn starts and ends
+        self.ptt_recording = False
+        self.ptt_tail_until = 0.0
+        self.ptt_finishing = False
+        self.ptt_frames: list[rtc.AudioFrame] = []
+        self.ptt_seq = 0
         self._state = ""
         self._captions: list[dict] = []  # last few, published to the phone as one attribute
         self._cap_n = 0
@@ -135,8 +142,51 @@ class Conversation:
         except Exception as e:
             log.debug("could not publish caption: %s", e)
 
-    def apply_settings(self, voice: str | None = None, speed: str | float | None = None) -> None:
-        """The phone chose a voice and/or speed in Settings. Bad values are ignored, not fatal."""
+    def collecting(self) -> bool:
+        return self.ptt_recording or time.time() < self.ptt_tail_until
+
+    def ptt_signal(self, value: str) -> None:
+        """Hold-to-talk marker from the phone: "start:N" or "end:N". N only goes up; stale or
+        repeated markers (the phone sends each on two routes) are ignored."""
+        kind, _, num = (value or "").partition(":")
+        try:
+            n = int(num)
+        except ValueError:
+            return
+        if n <= self.ptt_seq or kind not in ("start", "end"):
+            return
+        self.ptt_seq = n
+        if kind == "start":
+            if not self.ptt_finishing:
+                self.ptt_frames = []
+            self.ptt_recording = True
+        elif self.ptt_recording:
+            self.ptt_recording = False
+            self.ptt_tail_until = time.time() + 0.25  # frames still in flight
+            self.ptt_finishing = True
+            asyncio.create_task(self._ptt_finish())
+
+    async def _ptt_finish(self) -> None:
+        await asyncio.sleep(0.3)
+        frames, self.ptt_frames = self.ptt_frames, []
+        self.ptt_finishing = False
+        if not frames:
+            return
+        if self.agent_is_talking():
+            log.info("(ignored: held turn overlapped the agent's own voice)")
+            return
+        await self.submit(frames)
+
+    def apply_settings(
+        self,
+        voice: str | None = None,
+        speed: str | float | None = None,
+        mode: str | None = None,
+    ) -> None:
+        """The phone chose a voice, speed or mic mode in Settings. Bad values are ignored, not fatal."""
+        if mode in ("hold", "open") and (mode == "hold") != self.hold_mode:
+            self.hold_mode = mode == "hold"
+            log.info("mic mode: %s", "hold to talk" if self.hold_mode else "always open")
         if voice and voice != self.voice:
             known = self.kokoro.get_voices() if self.kokoro else []
             if voice in known:
@@ -338,7 +388,11 @@ async def listen(track: rtc.Track, vad_model: vad.VAD, convo: Conversation) -> N
 
     async def push_frames() -> None:
         async for ev in audio_stream:
-            vad_stream.push_frame(ev.frame)
+            if convo.hold_mode:
+                if convo.collecting():
+                    convo.ptt_frames.append(ev.frame)
+            else:
+                vad_stream.push_frame(ev.frame)
         vad_stream.end_input()
 
     pusher = asyncio.create_task(push_frames())
@@ -348,7 +402,7 @@ async def listen(track: rtc.Track, vad_model: vad.VAD, convo: Conversation) -> N
                 log.info(">>> speech started")
             elif ev.type == vad.VADEventType.END_OF_SPEECH:
                 log.info("<<< speech ended (%.2fs)", ev.speech_duration)
-                if not ev.frames:
+                if convo.hold_mode or not ev.frames:
                     continue
                 if convo.agent_is_talking():
                     log.info("(ignored: it was the agent's own voice / echo)")
@@ -387,7 +441,7 @@ async def entrypoint(ctx: JobContext) -> None:
         if participant.identity == ctx.room.local_participant.identity:
             return
         attrs = participant.attributes
-        convo.apply_settings(attrs.get("voice"), attrs.get("speed"))
+        convo.apply_settings(attrs.get("voice"), attrs.get("speed"), attrs.get("mode"))
 
     for existing in ctx.room.remote_participants.values():
         apply_phone_settings(existing)  # the phone may have joined before we did
@@ -398,8 +452,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @ctx.room.on("participant_attributes_changed")
     def on_attributes_changed(changed: dict, participant: rtc.Participant):
-        if "voice" in changed or "speed" in changed:
+        if "voice" in changed or "speed" in changed or "mode" in changed:
             apply_phone_settings(participant)
+        if "ptt" in changed and participant.identity != ctx.room.local_participant.identity:
+            convo.ptt_signal(changed["ptt"])
         # The phone bumps "interrupt" when the user taps while she is thinking or speaking.
         if "interrupt" in changed and participant.identity != ctx.room.local_participant.identity:
             convo.interrupt()
@@ -411,9 +467,11 @@ async def entrypoint(ctx: JobContext) -> None:
         elif packet.topic == "voice":
             try:
                 data = json.loads(packet.data.decode("utf-8"))
-                convo.apply_settings(data.get("voice"), data.get("speed"))
+                convo.apply_settings(data.get("voice"), data.get("speed"), data.get("mode"))
             except (ValueError, AttributeError) as e:
                 log.warning("bad voice packet: %s", e)
+        elif packet.topic == "ptt":
+            convo.ptt_signal(packet.data.decode("utf-8", errors="ignore"))
 
     @ctx.room.on("participant_disconnected")
     def on_participant_disconnected(participant: rtc.RemoteParticipant):
