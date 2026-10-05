@@ -10,7 +10,33 @@
 
 </div>
 
+<div align="center">
+<table>
+<tr>
+<td align="center"><img src="docs/dots/idle.gif" width="150" alt="Idle: the dots"><br><sub>Idle</sub></td>
+<td align="center"><img src="docs/dots/listening.gif" width="150" alt="Listening: the dots gather"><br><sub>Listening</sub></td>
+<td align="center"><img src="docs/dots/thinking.gif" width="150" alt="Thinking: the dots orbit"><br><sub>Thinking</sub></td>
+<td align="center"><img src="docs/dots/speaking.gif" width="150" alt="Speaking: the dots move with the voice"><br><sub>Speaking</sub></td>
+</tr>
+</table>
+</div>
+
 ---
+
+## Why Resonant
+
+Most apps assume you can see the screen: find the button, tap the button. For someone who can't, that is the whole problem.
+
+Resonant takes the screen out of the equation. There is nothing to find. Gestures are read by zone, not by position, they mean the same thing on every screen, and every action answers back in speech, a vibration pattern, and a tone.
+
+- **Learn by listening.** Lessons are read aloud one unit at a time. Pause, repeat, slow down, speed up.
+- **Ask instead of searching.** Talk to an AI by voice and hear the answer while it is still being written.
+- **Quizzes without looking.** Every answer option has its own counted buzz and tone.
+- **No perfect connection needed.** Speech recognition can run offline on the phone, and Chat falls back to reading the lesson when the AI server is down.
+
+---
+
+## What it is
 
 A native Android (Kotlin + Jetpack Compose) prototype demonstrating a non-spatial interaction model: navigate lessons, listen to content, answer quizzes, and chat with an AI without ever needing to visually locate a button.
 
@@ -134,6 +160,10 @@ Every color pairing the app actually uses is contrast-checked against WCAG 2.1 i
 ---
 
 ## The gesture grammar
+
+<div align="center">
+  <img src="docs/gestures.png" alt="Gesture cheat sheet" width="100%">
+</div>
 
 The same on every screen:
 
