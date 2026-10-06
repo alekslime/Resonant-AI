@@ -183,6 +183,7 @@ fun ChatScreen(
     val speech = remember { VoiceInputController(context, preload = !liveMode) }
     var alive by remember { mutableStateOf(true) }
     var requestJob by remember { mutableStateOf<Job?>(null) }
+    var pendingTextJob by remember { mutableStateOf<Job?>(null) }
     // Bumped every time a request is cancelled or replaced. A cancelled request's
     // `finally` still runs later; comparing ids stops it from resetting the state of
     // the request (or the listening session) that superseded it.
@@ -560,13 +561,7 @@ fun ChatScreen(
     }
 
     // Typed question from the pill. Same barge-in as voice: it interrupts anything in flight.
-    fun askTyped(question: String) {
-        // Live and the PC agent is there: it answers in its own voice. Otherwise the phone answers.
-        if (liveMode && liveIntroDone && !agentMissing && agentPresent && liveKitManager.sendText(question)) {
-            audio.stop()
-            haptics.play(HapticPattern.CONFIRM, withSound = false)
-            return
-        }
+    fun askTypedOnPhone(question: String) {
         speech.stopListening()
         listening = false
         cancelRequest()
@@ -574,6 +569,25 @@ fun ChatScreen(
         haptics.play(HapticPattern.CONFIRM)
         audio.announce("Thinking.")
         askModel(question)
+    }
+
+    fun askTyped(question: String) {
+        // Live: the PC agent answers in its own voice. If it has not joined yet, wait for it;
+        // only if it never comes does the phone answer.
+        if (liveMode && !agentMissing && liveKitState !is LiveKitState.Error) {
+            pendingTextJob?.cancel()
+            audio.stop()
+            haptics.play(HapticPattern.CONFIRM, withSound = false)
+            pendingTextJob = scope.launch {
+                val ready = withTimeoutOrNull(AGENT_JOIN_TIMEOUT_MS) {
+                    liveKitManager.agentState.first { it.isNotEmpty() }
+                } != null
+                if (ready && liveKitManager.sendText(question)) return@launch
+                askTypedOnPhone(question)
+            }
+            return
+        }
+        askTypedOnPhone(question)
     }
 
     fun toggleLiveMic() {
