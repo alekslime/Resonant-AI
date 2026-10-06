@@ -46,6 +46,8 @@ A native Android (Kotlin + Jetpack Compose) prototype demonstrating a non-spatia
 
 No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Settings are fully local and hardcoded. Chat is the one exception: it sends what you say to an Ollama server on your own network and speaks the reply back as it is generated (see "[Chat / voice AI setup](#chat--voice-ai-setup)").
 
+**In progress:** uploading your own material and learning from it through conversation, which is the point of the app. Today's build teaches from the one built-in lesson.
+
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
 </div>
