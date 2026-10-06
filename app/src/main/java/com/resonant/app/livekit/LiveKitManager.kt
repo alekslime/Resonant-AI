@@ -195,6 +195,26 @@ class LiveKitManager(
         }
     }
 
+    private var textCount = 0L
+
+    /** Send typed text to the PC agent so it answers in its own voice. False if not connected. */
+    fun sendText(text: String): Boolean {
+        if (_state.value !is LiveKitState.Connected) return false
+        textCount = maxOf(textCount + 1, System.currentTimeMillis())
+        val value = "$textCount|$text"
+        scope.launch {
+            try {
+                room.localParticipant.updateAttributes(mapOf("text" to value))
+            } catch (e: Exception) {
+            }
+            try {
+                room.localParticipant.publishData(value.toByteArray(), topic = "text")
+            } catch (e: Exception) {
+            }
+        }
+        return true
+    }
+
     private val tokenSource =
         TokenSource.fromDevelopmentTokenServer(TOKEN_SERVER_ID)
 
