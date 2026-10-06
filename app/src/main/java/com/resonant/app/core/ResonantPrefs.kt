@@ -58,6 +58,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_LIVE_HOLD, false)
         set(value) = prefs.edit().putBoolean(KEY_LIVE_HOLD, value).apply()
 
+    /** Chat screen mode: false = text chat on the phone, true = Live voice through the PC agent. */
+    var chatLive: Boolean
+        get() = prefs.getBoolean(KEY_CHAT_LIVE, false)
+        set(value) = prefs.edit().putBoolean(KEY_CHAT_LIVE, value).apply()
+
     /** Live token server address typed on the phone. Null means "use the build-time one". */
     var liveTokenUrl: String?
         get() = prefs.getString(KEY_LIVE_TOKEN_URL, null)
@@ -93,6 +98,7 @@ class ResonantPrefs(context: Context) {
 
         private const val KEY_LIVE_VOICE = "live_voice"
         private const val KEY_LIVE_SPEED = "live_speed"
+        private const val KEY_CHAT_LIVE = "chat_live"
         private const val KEY_LIVE_HOLD = "live_hold_to_talk"
         private const val KEY_LIVE_TOKEN_URL = "live_token_url"
         private const val KEY_LIVE_TOKEN_KEY = "live_token_key"
