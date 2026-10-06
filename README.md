@@ -125,6 +125,11 @@ If the server dies mid-demo the same thing happens on the next question, and a s
 
 ## The interaction model, in code
 
+<details>
+<summary><b>Show the full breakdown: files, speech queue, haptics, sound cues</b></summary>
+
+<br>
+
 | Concept | Where it lives |
 |---|---|
 | Gesture zones (`LEFT_EDGE` / `CENTER` / `RIGHT_EDGE`) + the pointer-input loop | `gestures/GestureManager.kt` |
@@ -151,11 +156,18 @@ Holds are decided by a real timeout, not by waiting for the next pointer event (
 
 **Sound cues.** Every haptic pattern also has a short tone (`SoundCues.specs`), played by `SoundCueManager` because `HapticManager.play` calls it — so no screen knows sound exists, and a screen that buzzes also sounds. Several patterns buzz almost alike (a 50 ms pulse is both "next" and "confirm"); their tones do not: direction is pitch contour (rising = forward / faster / correct, falling = back / slower / wrong), quiz options are 1–4 beeps, and the repeating Chat "thinking" tick is much quieter than the rest. Tones are generated in code (no audio files), kept above 300 Hz because phone speakers can't reproduce lower notes, and follow the media volume like speech does. They are silent while the app is off-screen. Toggle them in Settings → Sound cues (on by default, remembered). A unit test checks that no two patterns share a cue, so the set can't drift back to duplicates.
 
+</details>
+
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
 </div>
 
 ## Visual design
+
+<details>
+<summary><b>Show the full breakdown: gradient, contrast, type scale, spacing</b></summary>
+
+<br>
 
 The visual layer is a secondary concern to speech/haptics for the actual target user, but it matters for low-vision users, sighted family members helping set up the app, and anyone using system dark mode — so it gets the same rigor as everything else.
 
@@ -172,6 +184,8 @@ Every color pairing the app actually uses is contrast-checked against WCAG 2.1 i
 **Type scale is tuned for low vision, not just visual weight** (`ui/theme/Type.kt`): body text starts at 26sp/22sp rather than 18sp/16sp, line heights are ~1.3–1.55× font size (generous leading, since tight leading is hard to track for anyone with field loss), and there is no small "caption" role — the smallest text on screen is still 20sp. All sizes are in `sp`, so the system font-scale setting still stacks on top of this baseline.
 
 **Spacing is symmetric.** `ui/theme/Dimens.kt` defines one horizontal margin (`ScreenHorizontalPadding`, 40.dp) used on both edges of every screen — the previous per-screen values (32.dp/24.dp, or 52.dp/24.dp on Home) were left over from a background image with visual weight on one side; the flat gradient has none, so there's no reason for margins to be lopsided anymore. The left/right gesture zones (`EdgeZoneWidth`, also in `Dimens.kt`) were bumped from 48.dp to 64.dp at the same time, and the visual margin now matches the actual touch target.
+
+</details>
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
