@@ -584,6 +584,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     for existing in ctx.room.remote_participants.values():
         apply_phone_settings(existing)  # the phone may have joined before we did
+        convo.text_signal(existing.attributes.get("text", ""))  # and may already have typed
 
     @ctx.room.on("participant_connected")
     def on_participant_connected(participant: rtc.RemoteParticipant):
