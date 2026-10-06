@@ -58,6 +58,7 @@ import kotlinx.coroutines.launch
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val YOUR_NAME = "Your name"
 private const val SOUND_CUES = "Sound cues"
+private const val CHAT_MODE = "Chat mode"
 private const val LIVE_VOICE = "Live voice"
 private const val LIVE_SPEED = "Live speed"
 private const val LIVE_MIC = "Live mic"
@@ -65,7 +66,7 @@ private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, CHAT_MODE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
@@ -78,8 +79,10 @@ private fun labelFor(
     voiceModelState: WhisperModelManager.State,
     liveVoiceId: String,
     liveSpeed: Float,
-    liveHold: Boolean
+    liveHold: Boolean,
+    chatLive: Boolean
 ) = when (item) {
+    CHAT_MODE -> "$CHAT_MODE: ${if (chatLive) "live voice" else "text"}"
     LIVE_VOICE -> "$LIVE_VOICE: ${liveVoiceLabel(liveVoiceId)}"
     LIVE_SPEED -> "$LIVE_SPEED: ${liveSpeedLabel(liveSpeed)}"
     LIVE_MIC -> "$LIVE_MIC: ${if (liveHold) "hold to talk" else "always open"}"
@@ -125,6 +128,7 @@ fun SettingsScreen(
     var liveVoiceId by remember { mutableStateOf(prefs.liveVoice) }
     var liveSpeed by remember { mutableStateOf(prefs.liveSpeed) }
     var liveHold by remember { mutableStateOf(prefs.liveHoldToTalk) }
+    var chatLive by remember { mutableStateOf(prefs.chatLive) }
     var index by remember { mutableIntStateOf(0) }
     var awaitingClearConfirm by remember { mutableStateOf(false) }
     val speedIndex by audio.speedIndex.collectAsState()
@@ -148,7 +152,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         debug.setScreen("Settings")
         audio.setQueue(
-            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold)) },
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, chatLive)) },
             startIndex = 0,
             autoAdvance = false
         )
@@ -164,7 +168,7 @@ fun SettingsScreen(
     // the person actually is in this list.
     LaunchedEffect(voiceModelCategory) {
         audio.setQueue(
-            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold)) },
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, chatLive)) },
             startIndex = index,
             autoAdvance = false
         )
@@ -182,12 +186,22 @@ fun SettingsScreen(
                 soundCuesOn = now
                 // Re-queueing at the same position speaks the new state ("Sound cues: off").
                 audio.setQueue(
-                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, now, voiceModelState, liveVoiceId, liveSpeed, liveHold)) },
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, now, voiceModelState, liveVoiceId, liveSpeed, liveHold, chatLive)) },
                     startIndex = settingsItems.indexOf(SOUND_CUES),
                     autoAdvance = false
                 )
                 // Turning them on: sound one, so the change is heard and not only announced.
                 if (now) haptics.play(HapticPattern.CONFIRM)
+            }
+            CHAT_MODE -> {
+                val next = !chatLive
+                prefs.chatLive = next
+                chatLive = next
+                audio.setQueue(
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, next)) },
+                    startIndex = settingsItems.indexOf(CHAT_MODE),
+                    autoAdvance = false
+                )
             }
             LIVE_VOICE -> {
                 val voices = ResonantPrefs.LIVE_VOICES
@@ -195,7 +209,7 @@ fun SettingsScreen(
                 prefs.liveVoice = next
                 liveVoiceId = next
                 audio.setQueue(
-                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, next, liveSpeed, liveHold)) },
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, next, liveSpeed, liveHold, chatLive)) },
                     startIndex = settingsItems.indexOf(LIVE_VOICE),
                     autoAdvance = false
                 )
@@ -206,7 +220,7 @@ fun SettingsScreen(
                 prefs.liveSpeed = next
                 liveSpeed = next
                 audio.setQueue(
-                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, next, liveHold)) },
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, next, liveHold, chatLive)) },
                     startIndex = settingsItems.indexOf(LIVE_SPEED),
                     autoAdvance = false
                 )
@@ -216,7 +230,7 @@ fun SettingsScreen(
                 prefs.liveHoldToTalk = next
                 liveHold = next
                 audio.setQueue(
-                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, next)) },
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, next, chatLive)) },
                     startIndex = settingsItems.indexOf(LIVE_MIC),
                     autoAdvance = false
                 )
@@ -280,7 +294,7 @@ fun SettingsScreen(
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
-                    "Settings. Speaking at ${audio.speedLabel(speed)}. Hold the right edge and drag up to speed up, down to slow down. Currently focused: ${labelFor(settingsItems[index], soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold)}."
+                    "Settings. Speaking at ${audio.speedLabel(speed)}. Hold the right edge and drag up to speed up, down to slow down. Currently focused: ${labelFor(settingsItems[index], soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, chatLive)}."
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
@@ -301,7 +315,7 @@ fun SettingsScreen(
                 )
                 settingsItems.forEachIndexed { i, item ->
                     val focused = i == index
-                    val label = labelFor(item, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold)
+                    val label = labelFor(item, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, chatLive)
                     Box(
                         Modifier
                             .fillMaxWidth()
