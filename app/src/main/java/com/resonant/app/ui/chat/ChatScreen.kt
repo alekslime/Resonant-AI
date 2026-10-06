@@ -561,6 +561,12 @@ fun ChatScreen(
 
     // Typed question from the pill. Same barge-in as voice: it interrupts anything in flight.
     fun askTyped(question: String) {
+        // Live and the PC agent is there: it answers in its own voice. Otherwise the phone answers.
+        if (liveMode && liveIntroDone && !agentMissing && agentPresent && liveKitManager.sendText(question)) {
+            audio.stop()
+            haptics.play(HapticPattern.CONFIRM, withSound = false)
+            return
+        }
         speech.stopListening()
         listening = false
         cancelRequest()
