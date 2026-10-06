@@ -155,6 +155,8 @@ class Conversation:
         self.ptt_finishing = False
         self.ptt_frames: list[rtc.AudioFrame] = []
         self.ptt_seq = 0
+        self.pending_texts: list[str] = []  # typed messages from the phone
+        self.text_seq = 0
         self.quiz = Quiz.load(HERE / "quizzes.json")
         if not self.quiz.sets:
             log.info("no quizzes.json found - run python export_quizzes.py to enable 'quiz me'")
@@ -361,13 +363,41 @@ class Conversation:
     # ---- one conversational turn ----------------------------------------------------
     async def submit(self, frames: list[rtc.AudioFrame]) -> None:
         self.pending.extend(frames)
+        await self._run()
+
+    async def submit_text(self, text: str) -> None:
+        self.pending_texts.append(text)
+        if self.busy:
+            self.interrupt()  # typing barges in, like tapping
+        await self._run()
+
+    def text_signal(self, value: str) -> None:
+        """Typed message from the phone: "N|text". N only goes up; the phone sends it on two
+        routes, so a repeat is ignored."""
+        num, _, text = (value or "").partition("|")
+        try:
+            n = int(num)
+        except ValueError:
+            return
+        text = text.strip()
+        if n <= self.text_seq or not text:
+            return
+        self.text_seq = n
+        log.info("TYPED: %s", text)
+        asyncio.create_task(self.submit_text(text))
+
+    async def _run(self) -> None:
         if self.busy:
             return
         self.busy = True
         try:
-            while self.pending:
-                batch, self.pending = self.pending, []
-                self.current = asyncio.create_task(self._turn(batch))
+            while self.pending or self.pending_texts:
+                if self.pending_texts:
+                    work = self._turn_text(self.pending_texts.pop(0))
+                else:
+                    batch, self.pending = self.pending, []
+                    work = self._turn(batch)
+                self.current = asyncio.create_task(work)
                 try:
                     await self.current
                 except asyncio.CancelledError:
@@ -385,6 +415,14 @@ class Conversation:
             await self.caption("done")
             await self.set_state("listening")
 
+    async def _turn_text(self, text: str) -> None:
+        try:
+            now = time.time()
+            await self._answer(text, now, now)
+        finally:
+            await self.caption("done")
+            await self.set_state("listening")
+
     async def _turn_inner(self, frames: list[rtc.AudioFrame]) -> None:
         t_start = time.time()
         audio = frames_to_16k_mono(frames)
@@ -397,6 +435,9 @@ class Conversation:
             log.info("(ignored: %r)", text)
             return
         log.info("USER (%.1fs to transcribe): %s", t1 - t_start, text)
+        await self._answer(text, t_start, t1)
+
+    async def _answer(self, text: str, t_start: float, t1: float) -> None:
         await self.caption("user", text)
         await self.set_state("thinking")
 
@@ -557,6 +598,8 @@ async def entrypoint(ctx: JobContext) -> None:
         # The phone bumps "interrupt" when the user taps while she is thinking or speaking.
         if "interrupt" in changed and participant.identity != ctx.room.local_participant.identity:
             convo.interrupt()
+        if "text" in changed and participant.identity != ctx.room.local_participant.identity:
+            convo.text_signal(changed["text"])
 
     @ctx.room.on("data_received")
     def on_data_received(packet: rtc.DataPacket):
@@ -568,6 +611,8 @@ async def entrypoint(ctx: JobContext) -> None:
                 convo.apply_settings(data.get("voice"), data.get("speed"), data.get("mode"))
             except (ValueError, AttributeError) as e:
                 log.warning("bad voice packet: %s", e)
+        elif packet.topic == "text":
+            convo.text_signal(packet.data.decode("utf-8", errors="ignore"))
         elif packet.topic == "ptt":
             convo.ptt_signal(packet.data.decode("utf-8", errors="ignore"))
 
