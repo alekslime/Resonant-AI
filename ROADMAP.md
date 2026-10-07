@@ -4,20 +4,26 @@ Read this first, keep it short, tick items off as you finish them.
 
 ## What this is
 Android app (Kotlin/Compose). It is built to work eyes-free: gestures, haptics, spoken
-announcements and sound cues. **Live mode is the existing Chat screen** (`Routes.CHAT`,
-`ChatScreen(liveMode = true)`), not a separate screen.
+announcements and sound cues. **Chat is always Live**: `Routes.CHAT`, `ChatScreen(liveMode = true)`.
+There is one mode, no text/live switch. The user talks or types, and the PC agent's Kokoro voice
+speaks every reply.
 
-Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free tier):
-
-    phone mic -> LiveKit Cloud -> agent/agent.py on the user's PC
+    voice: phone mic -> LiveKit Cloud -> agent/agent.py on the user's PC
+    typed: phone pill -> LiveKit (attribute + data packet "text") -> same agent turn
       Silero VAD -> faster-whisper -> Ollama (llama3.2) -> Kokoro TTS -> back to the phone
 
+If the agent is not there (never joins within 12 s, or Offline), typed text falls back to
+phone -> Ollama directly + the phone's own TTS voice. Typing right after opening Chat waits for the
+agent to join instead of falling back.
+
 ## Where things are
-- `app/.../ui/chat/ChatScreen.kt` - Live UI and lifecycle
-- `app/.../livekit/LiveKitManager.kt`, `LiveKitState.kt` - the only LiveKit code on Android
+- `app/.../ui/chat/ChatScreen.kt` - Live UI and lifecycle (`askTyped`, `askTypedOnPhone`)
+- `app/.../livekit/LiveKitManager.kt`, `LiveKitState.kt` - the only LiveKit code on Android (`sendText`)
 - `app/.../haptics`, `app/.../sound` - every `haptics.play(pattern)` also plays its sound cue
-- `app/.../ui/components/ResonantDots.kt` - `DotsState` animation (Idle, Listening, Transcribing, Thinking, Speaking, Offline)
-- `agent/agent.py` - PC agent. Python venv in `agent/.venv`. Run: `python agent.py dev`
+- `app/.../ui/components/ResonantDots.kt` - `DotsState` animation
+- `agent/agent.py` - PC agent (`submit`, `submit_text`, `text_signal`). Venv in `agent/.venv`
+- `agent/token_server.py` - gives the phone a LiveKit token (port 8787)
+- `dev.ps1` - repo root. Starts Ollama, token server and agent in three windows
 
 ## Rules
 - Small steps. One commit per step, `git push` after every commit. Prefix: `feat:` `fix:` `docs:`.
@@ -25,69 +31,43 @@ Live pipeline, all free and local except the LiveKit relay (LiveKit Cloud free t
 - LiveKit code stays behind `LiveKitManager`. No new screens: Live stays in Chat.
 - Eyes-free first: every state change needs a haptic, sound or spoken cue, not only a visual one.
 - The app's own speech must never play while the live mic is open (the agent would answer it).
-  Open the mic only after announcements finish.
 - Free services only.
-- Test on the phone after each step (`.\gradlew.bat installDebug`, `python agent.py dev`).
-  Say plainly what was not tested.
+- Test on the phone after each step. Say plainly what was not tested.
 
-## Checklist (do in this order)
-- [x] LiveKit connection layer, connect/disconnect owned by Chat
-- [x] PC agent: VAD -> STT -> Ollama -> Kokoro voice
-- [x] Live mic handling: mute toggle, no on-device Whisper in Live
-- [x] 6. Feel and sound pass: mic-open cue, dots follow live state, error cue (thinking/speaking pulses come with #1)
-- [x] 4. Tap to interrupt: while she thinks or speaks a tap stops her, otherwise a tap mutes (agent publishes state; voice barge-in later)
-- [x] 1. Agent publishes its state -> dots, status line, vibration-only thinking/speaking/your-turn cues
-- [x] 2. Detect a missing PC agent (12 s timeout -> announce, Offline dots; also if it drops later)
-- [x] 3. Live exchanges into the normal Chat history (captions on screen, saved). Not done: swipe-to-review in Live (the app speech queue stays empty there)
-- [x] 3b. Swipe-to-review past exchanges in Live: first swipe mutes the mic and reads the latest reply, up/down moves, tap center unmutes. Ignored while she is thinking or speaking. Not compiled or run yet
-- [x] 5. Speaker routing: user reports the voice already plays from the loudspeaker, so no code change. If that ever breaks: set a preferred device list (speakerphone before earpiece) on LiveKit's AudioSwitchHandler
-- [x] 7a. Voice and speed in Settings (cycle on tap, saved in prefs). Phone sends them on connect as attributes `voice`/`speed` plus a `voice` data packet; the agent validates and applies them, `KOKORO_VOICE`/`KOKORO_SPEED` stay as defaults. Takes effect next time Live opens. Not compiled or run yet
-- [x] 7b. Hold-to-talk: Settings > Live mic. Hold the center (500 ms) to open the mic, release to send; a tap interrupts or says how. The phone sends `ptt` start/end (attribute + data packet, numbered) because a muted mic gives the agent no silence to detect. Mode is sent on connect as `mode`. Not compiled or run yet
-- [x] 7c. Show which PC is connected: the agent publishes `host` (its computer name); the phone says it in the Live intro, adds it to the status line and to the three-finger hold. An older agent without it just skips the name (1 s wait). Not compiled or run yet
-- [x] 8. Own token server: `agent/token_server.py` (run it next to the agent; same `.env` plus `TOKEN_KEY`). Set `live.tokenUrl` and `live.tokenKey` in `local.properties` and rebuild; empty = dev sandbox as before. Fresh room per connection, key checked, 1 h tokens. The server was run and called locally; the app side is not compiled or run yet
+## Checklist
+- [x] LiveKit connection layer, PC agent (VAD -> STT -> Ollama -> Kokoro), mic handling
+- [x] Agent state -> dots, status line, cues; missing-agent detection (12 s); exchanges in Chat history
+- [x] Swipe-to-review in Live, tap to interrupt, speaker routing, voice and speed in Settings
+- [x] Hold-to-talk (Settings > Live mic), PC name shown, own token server
+- [x] 9. One mode: typed text goes to the agent and Kokoro speaks it (confirmed on the phone)
+- [x] 10. `dev.ps1` starts the three PC processes
+- [x] 11. Faster Chat open: agent keeps one warmed process (`num_idle_processes=1`) and warms Kokoro in `prewarm`. Not tested yet: compare the time from opening Chat to "Live. Connected"
+- [-] "Spoken replies on/off" setting: cancelled, the user wants speech always
+- [ ] Test by talking (voice, hold-to-talk, interrupt, swipe-review). Never run on a device
+- [ ] Make `LiveKitManager` lazy (only matters for the x86 emulator, see below)
 
-## Known issues
-- First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). Done in code, untested: the agent uses `agent/models/kokoro-v1.0.int8.onnx` when it exists (download it next to the fp32 file), and the first spoken piece may end at a comma after 5 words. Compare the `first audio` log line before and after.
-- The token server is LiveKit's dev sandbox unless `live.tokenUrl` is set (see #8), fine for testing only.
-
-## Resuming (older note, still true)
-Everything above is untested until the user confirms a device run. Before starting a new item,
-ask which items compiled and worked on the phone, and fix those first.
-
-## Handoff (written 2026-10-03, end of a long session)
-
-State: every checklist item above is coded. NONE of it has been compiled or run on the phone or PC
-since 3b was added; the Android side was never built by the previous agent (no toolchain in its
-sandbox). The user will test later. First job for the next agent: ask what compiled and what worked,
-and fix compile errors before anything new.
-
-Coded this session, in order, all untested on a device:
-- 3b swipe-to-review in Live (`ChatScreen.kt`: `liveReviewing`, `liveReview()`)
-- 7a Live voice and speed in Settings (`ResonantPrefs`, `SettingsScreen`, `LiveKitManager.sendVoiceSettings`, agent `apply_settings`)
-- 7b hold-to-talk (new `ResonantGesture.LongPressEnd` in `gestures/`, `Settings > Live mic`, `LiveKitManager.pushToTalk`, agent `ptt_signal`/`_ptt_finish`)
-- 7c PC name (agent attribute `host`, `LiveKitManager.agentHost`, intro/status line/three-finger hold)
-- first-audio speedups: int8 Kokoro model preferred if present, first spoken piece may end at a comma (`split_chunk` in `agent.py`)
-- 8 own token server (`agent/token_server.py`, `live.tokenUrl`/`live.tokenKey` in `local.properties`)
-
-Most likely to break (check these first):
-- Kotlin compile errors in `ChatScreen.kt` (edited many times by string replacement; the exhaustive `when` in `GestureSurface.kt` now needs `LongPressEnd`, already added) and in `SettingsScreen.kt` (`labelFor` now takes 6 arguments).
-- Voice ids in `ResonantPrefs.LIVE_VOICES` may not all exist in the user's `voices-v1.0.bin`; the agent logs `unknown voice` and keeps the old one. Remove the bad ones.
-- Hold-to-talk needs the NEW `agent.py`. An old agent never ends a held turn. TalkBack cannot do a hold, so hold mode is unusable with TalkBack on (always-open mode is fine).
-- The token server: the user still has to put `TOKEN_KEY` in `agent/.env`, run `python token_server.py`, and set `live.tokenUrl` (their PC's LAN address, port 8787) and `live.tokenKey` in `local.properties`, then rebuild. Until `live.tokenUrl` is set the app uses the dev sandbox, so nothing is forced. Do not write their keys, secrets or IP into any committed file.
-- The user pasted their LiveKit API secret into chat once; they were told to rotate it.
-
-Not done / ideas (none are on the user's list yet, ask before starting):
-- No on-phone screen for the token address (rebuild needed), unlike the Ollama address in Debug > Server setup.
-- Plain http token URL works in debug builds only; a release build needs https.
+## Known issues and gotchas
+- **PC clock must be right.** A wrong clock makes LiveKit reject the token ("Connection error", Logcat `Could not fetch region settings: 401`). Test: get a token from `http://localhost:8787/token` and call `https://<project>.livekit.cloud/settings/regions` with it; 200 is good. Fix: Windows time settings, set time and time zone automatically, Sync now.
+- The phone needs the token address `<PC Wi-Fi IPv4>:8787` and the same `TOKEN_KEY` as `agent/.env` (Settings > Debug Mode > swipe right > Server setup). Port 8787 needs a Windows firewall rule (Administrator PowerShell). The PC's address can change after a reboot.
+- Empty token fields = LiveKit's dev sandbox (testing only). Plain http token URLs work in debug builds only; a release build needs https.
+- First audio comes 3-7 s after you stop talking (Kokoro fp32 on CPU). The user chose fp32 for the most natural voice. Do NOT add `kokoro-v1.0.int8.onnx` (the agent uses it automatically if it exists).
+- `abiFilters` is arm64/armeabi-v7a only and `ResonantApp` creates `LiveKitManager` at startup, so an x86_64 emulator likely crashes on launch. The phone is fine.
+- Hold-to-talk needs the current `agent.py`. TalkBack cannot do a hold, so use always-open mic with TalkBack.
 - Gestures that speak (three-finger hold, speed gestures, left-edge pause) still talk while the live mic is open.
-- Hold-to-talk waits the shared 500 ms long-press time; a shorter centre-only threshold would mean touching `GestureManager.kt`.
-- If first audio is still slow after the int8 model: try a smaller `WHISPER_MODEL`.
+- Voice ids in `ResonantPrefs.LIVE_VOICES` may not all exist in `voices-v1.0.bin`; the agent logs `unknown voice` and keeps the old one.
 
-How the user wants work delivered (they said so; follow it):
-- Hand over COMPLETE changed files, each with its repo path to paste over, not diffs or find/replace blocks, and not a zip.
-- Give as many separate commits as there are files or steps, each with the `git add` / `git commit -m` / `git push` lines. Prefixes `feat:` `fix:` `docs:`. Commit order must keep dependencies first.
-- Keep answers short and direct. The user pushes back on long or repeated replies.
-- Code stays comment-light with plain English names, no reformatting of existing files.
-- Windows 11, PowerShell, repo at `Resonant-AI` on GitHub. Browsers drop the leading dot of downloaded files (`.env.example` arrived as `env.example`): remind them to rename dotfiles.
+## Setup facts (the user's PC, 2026-10-07)
+- Windows 11, PowerShell, Python 3.13. Two repo copies: `C:\Users\aleks\Resonant-AI` (agent, `.venv`, `.env`) and `C:\Users\aleks\AndroidStudioProjects\Resonant-AI` (what Android Studio builds). Ask which is the main one.
+- `app/src/main/cpp/whisper.cpp` (tag v1.7.6) is cloned locally and not in git; a fresh clone needs the command in `app/src/main/cpp/CMakeLists.txt`.
+- `local.properties` has `ollama.baseUrl` and `ollama.model`. The server addresses are saved on the phone (Settings > Debug Mode > swipe right > Server setup).
+- Ollama must listen on the network: `$env:OLLAMA_HOST="0.0.0.0"` (or `setx OLLAMA_HOST "0.0.0.0"` once). Phone and PC on the same Wi-Fi.
+- Run: `.\dev.ps1` from the repo root, then Android Studio: Sync, Run on the phone. If Windows blocks the script: `Unblock-File .\dev.ps1`.
+
+## How the user wants work delivered (follow it)
+- Short, direct answers. They push back on long or repeated replies and on over-design. Plainest implementation unless asked otherwise.
+- Hand over COMPLETE changed files with their repo path to paste over, not diffs, not a zip.
+- One commit per file or step, with the `git add` / `git commit -m` / `git push` lines. Prefixes `feat:` `fix:` `docs:`. Dependencies first.
+- Code comment-light, plain English names, no reformatting of existing files.
+- Browsers drop the leading dot of downloaded files (`.env.example` arrives as `env.example`): remind them to rename it.
 - Say plainly what was not tested. Never claim a device run happened.
-
+- Do not bring up key rotation again; the user knows.
