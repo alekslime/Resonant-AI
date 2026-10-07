@@ -259,6 +259,21 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             ChatScreen(
                 onBack = goBack,
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onVoiceCommand = { cmd ->
+                    when (cmd.action) {
+                        "back" -> navController.popBackStack()
+                        "open" -> when (cmd.target) {
+                            "home" -> navController.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = false } }
+                            "lessons" -> navController.navigate(Routes.LESSONS)
+                            "quizzes" -> navController.navigate(Routes.QUIZ_BROWSER)
+                            "settings" -> navController.navigate(Routes.SETTINGS)
+                            "lesson" -> navController.navigate(Routes.lessonMode(cmd.id))
+                            "quiz" -> navController.navigate("quiz/${cmd.id}")
+                            else -> Unit
+                        }
+                        else -> Unit
+                    }
+                },
                 liveMode = true
             )
         }
