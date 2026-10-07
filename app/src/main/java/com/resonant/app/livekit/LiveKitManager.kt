@@ -2,6 +2,8 @@ package com.resonant.app.livekit
 
 import android.content.Context
 import com.resonant.app.BuildConfig
+import com.resonant.app.content.LessonData
+import com.resonant.app.content.QuizData
 import com.resonant.app.core.ResonantPrefs
 import io.livekit.android.LiveKit
 import io.livekit.android.room.Room
@@ -33,6 +35,9 @@ import java.net.URLEncoder
 
 /** One line of live captions from the PC agent. role: "user", "assistant" (one sentence) or "done". */
 data class LiveCaption(val role: String, val text: String)
+
+/** A spoken command from the PC agent. action: "open" or "back". target: home, lessons, quizzes, settings, lesson, quiz. */
+data class LiveCommand(val action: String, val target: String, val id: String)
 
 class LiveKitManager(
     context: Context
@@ -66,6 +71,9 @@ class LiveKitManager(
     /** Captions from the PC agent, in order, each delivered once. */
     val captions: SharedFlow<LiveCaption> = _captions.asSharedFlow()
     private var lastCaptionN = 0L
+    private val _commands = MutableSharedFlow<LiveCommand>(extraBufferCapacity = 8)
+    val commands: SharedFlow<LiveCommand> = _commands.asSharedFlow()
+    private var lastCommandN = 0L
     private var lastCaptionRaw: String? = null
 
     private val _agentPresent = MutableStateFlow(false)
@@ -92,6 +100,7 @@ class LiveKitManager(
                     _agentHost.value =
                         room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["host"] } ?: ""
                     readCaptions(room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["captions"] })
+                    readCommand(room.remoteParticipants.values.firstNotNullOfOrNull { it.attributes["cmd"] })
                 } catch (e: Exception) {
                     _agentState.value = ""
                 }
@@ -120,6 +129,30 @@ class LiveKitManager(
         }
     }
 
+    // The agent publishes each command as one numbered attribute; emit it once.
+    private fun readCommand(raw: String?) {
+        if (raw == null) return
+        try {
+            val item = JSONObject(raw)
+            val n = item.optLong("n", 0L)
+            if (n > lastCommandN) {
+                lastCommandN = n
+                _commands.tryEmit(LiveCommand(item.optString("do"), item.optString("to"), item.optString("id")))
+            }
+        } catch (e: Exception) {
+            // Malformed command: skip it.
+        }
+    }
+
+    // The names of the lessons and quizzes, so the agent can open one when asked by name.
+    private fun catalogJson(): String {
+        val lessons = JSONArray()
+        LessonData.allLessons.forEach { lessons.put(JSONArray().put(it.id).put(it.title)) }
+        val quizzes = JSONArray()
+        QuizData.allQuizSets.forEach { quizzes.put(JSONArray().put(it.id).put(it.title)) }
+        return JSONObject().put("lessons", lessons).put("quizzes", quizzes).toString()
+    }
+
     private fun stopPolling() {
         pollJob?.cancel()
         pollJob = null
@@ -128,6 +161,7 @@ class LiveKitManager(
         _agentHost.value = ""
         lastCaptionN = 0L
         lastCaptionRaw = null
+        lastCommandN = 0L
     }
 
     /** Tell the PC agent to stop thinking / talking now. No-op unless connected. */
@@ -162,7 +196,7 @@ class LiveKitManager(
         scope.launch {
             try {
                 room.localParticipant.updateAttributes(
-                    mapOf("voice" to voice, "speed" to speed.toString(), "mode" to mode)
+                    mapOf("voice" to voice, "speed" to speed.toString(), "mode" to mode, "catalog" to catalogJson())
                 )
             } catch (e: Exception) {
             }
