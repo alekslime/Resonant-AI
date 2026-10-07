@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.collectAsState
 import com.resonant.app.ResonantApp
+import com.resonant.app.livekit.LiveCommand
 import com.resonant.app.livekit.LiveKitState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -131,6 +132,7 @@ private const val HOST_WAIT_MS = 1_000L
 fun ChatScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit = {},
+    onVoiceCommand: (LiveCommand) -> Unit = {},
     liveMode: Boolean = false
 ) {
     val context = LocalContext.current
@@ -302,6 +304,12 @@ fun ChatScreen(
         list.flatMapIndexed { ei, exchange ->
             exchange.assistantChunks.map { FlatChatUnit(it, ei, exchange.userText) }
         }
+
+    // Spoken commands from the agent ("open the lessons") move the app.
+    LaunchedEffect(liveMode) {
+        if (!liveMode) return@LaunchedEffect
+        liveKitManager.commands.collect { onVoiceCommand(it) }
+    }
 
     // Live mode: captions from the PC agent become normal Chat exchanges, so they show on screen
     // as she speaks and are saved to the same history the old Chat used. No speech is queued here:
