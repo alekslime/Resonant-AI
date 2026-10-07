@@ -223,6 +223,36 @@ class Conversation:
         except Exception as e:
             log.debug("could not publish caption: %s", e)
 
+    async def route_command(self, text: str) -> dict | None:
+        """Ask the language model whether this message wants another screen, however it is phrased."""
+        if not self.commands.might_be_command(text):
+            return None
+        t0 = time.time()
+        try:
+            resp = await asyncio.wait_for(
+                self.llm.chat.completions.create(
+                    model=OLLAMA_MODEL,
+                    messages=self.commands.router_messages(text),
+                    max_tokens=60,
+                    temperature=0,
+                    response_format={"type": "json_object"},
+                ),
+                timeout=8,
+            )
+            data = json.loads(resp.choices[0].message.content or "{}")
+        except Exception as e:
+            log.debug("command router failed: %s", e)
+            return None
+        log.info("ROUTER (%.1fs): %s", time.time() - t0, data)
+        return self.commands.from_intent(data)
+
+    async def do_command(self, command: dict, t_start: float) -> None:
+        log.info("COMMAND: %s", command)
+        if "say" in command:
+            await self._speak_fixed([command["say"]], t_start)
+        else:
+            await self.send_command(command)
+
     async def send_command(self, cmd: dict) -> None:
         """Tell the phone to move: published as one numbered attribute, like the captions."""
         self._cmd_n = max(self._cmd_n + 1, int(time.time() * 1000))
@@ -485,11 +515,7 @@ class Conversation:
 
         command = None if self.quiz.in_progress() else self.commands.parse(text)
         if command is not None:
-            log.info("COMMAND: %s", command)
-            if "say" in command:
-                await self._speak_fixed([command["say"]], t_start)
-            else:
-                await self.send_command(command)
+            await self.do_command(command, t_start)
             return
 
         quiz_lines = self.quiz.respond(text)
@@ -497,6 +523,12 @@ class Conversation:
             log.info("QUIZ: %s", " ".join(quiz_lines))
             await self._speak_fixed(quiz_lines, t_start)
             return
+
+        if not self.quiz.in_progress():
+            command = await self.route_command(text)
+            if command is not None:
+                await self.do_command(command, t_start)
+                return
 
         self.history.append({"role": "user", "content": tutor_ask(text)})
         q: asyncio.Queue = asyncio.Queue()
