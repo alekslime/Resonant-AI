@@ -70,4 +70,4 @@ agent to join instead of falling back.
 - Code comment-light, plain English names, no reformatting of existing files.
 - Browsers drop the leading dot of downloaded files (`.env.example` arrives as `env.example`): remind them to rename it.
 - Say plainly what was not tested. Never claim a device run happened.
-- Do not bring up key rotation again; the user knows.
+- Do not bring up key rotation again; the user knows.=
