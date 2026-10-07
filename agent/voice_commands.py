@@ -134,12 +134,13 @@ class Commands:
             return self._named("quiz", self.quizzes, rest)
         return None
 
-    def _named(self, kind: str, items: list[tuple[str, str]], rest: list[str]) -> dict:
+    def _named(self, kind: str, items: list[tuple[str, str]], rest: list[str]) -> dict | None:
+        """A clear match only. Anything else returns None, so the language model decides."""
         wanted = {stem(w) for w in rest if w not in ("lesson", "lessons", "quiz", "quizzes")}
         if not wanted:
             return {"do": "open", "to": "lessons" if kind == "lesson" else "quizzes"}
         if not items:
-            return {"say": f"I don't have your {kind}s yet. Try again in a moment."}
+            return None
         scored = []
         for item_id, title in items:
             tokens = {stem(w) for w in words_of(title) if w not in TITLE_STOP}
@@ -147,13 +148,7 @@ class Commands:
         scored.sort(reverse=True)
         best = scored[0]
         if best[0] < MATCH_MIN:
-            return {"say": f"I couldn't find a {kind} called {' '.join(rest_name(rest))}."}
-        tied = [s for s in scored if s[0] == best[0]]
-        if len(tied) > 1:
-            names = ", or ".join(t for _, _, t in tied[:3])
-            return {"say": f"Which {kind} do you mean: {names}?"}
+            return None
+        if len([s for s in scored if s[0] == best[0]]) > 1:
+            return None
         return {"do": "open", "to": kind, "id": best[1]}
-
-
-def rest_name(rest: list[str]) -> list[str]:
-    return [w for w in rest if w not in ("lesson", "lessons", "quiz", "quizzes")]
