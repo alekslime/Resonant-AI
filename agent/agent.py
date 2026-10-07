@@ -34,6 +34,7 @@ from livekit import agents, rtc
 from livekit.agents import JobContext, WorkerOptions, cli, vad
 from livekit.plugins import silero
 from openai import AsyncOpenAI
+from voice_commands import Commands
 from voice_quiz import Quiz
 
 load_dotenv()
@@ -194,6 +195,8 @@ class Conversation:
         self._state = ""
         self._captions: list[dict] = []  # last few, published to the phone as one attribute
         self._cap_n = 0
+        self._cmd_n = 0
+        self.commands = Commands()
 
     def agent_is_talking(self) -> bool:
         return self.speaking or time.time() < self.quiet_until
@@ -219,6 +222,14 @@ class Conversation:
             await self.local.set_attributes({"captions": json.dumps(self._captions)})
         except Exception as e:
             log.debug("could not publish caption: %s", e)
+
+    async def send_command(self, cmd: dict) -> None:
+        """Tell the phone to move: published as one numbered attribute, like the captions."""
+        self._cmd_n = max(self._cmd_n + 1, int(time.time() * 1000))
+        try:
+            await self.local.set_attributes({"cmd": json.dumps({**cmd, "n": self._cmd_n})})
+        except Exception as e:
+            log.debug("could not publish command: %s", e)
 
     def collecting(self) -> bool:
         return self.ptt_recording or time.time() < self.ptt_tail_until
@@ -472,6 +483,15 @@ class Conversation:
         await self.caption("user", text)
         await self.set_state("thinking")
 
+        command = None if self.quiz.in_progress() else self.commands.parse(text)
+        if command is not None:
+            log.info("COMMAND: %s", command)
+            if "say" in command:
+                await self._speak_fixed([command["say"]], t_start)
+            else:
+                await self.send_command(command)
+            return
+
         quiz_lines = self.quiz.respond(text)
         if quiz_lines is not None:
             log.info("QUIZ: %s", " ".join(quiz_lines))
@@ -612,6 +632,7 @@ async def entrypoint(ctx: JobContext) -> None:
             return
         attrs = participant.attributes
         convo.apply_settings(attrs.get("voice"), attrs.get("speed"), attrs.get("mode"))
+        convo.commands.set_catalog(attrs.get("catalog"))
 
     for existing in ctx.room.remote_participants.values():
         apply_phone_settings(existing)  # the phone may have joined before we did
@@ -623,7 +644,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @ctx.room.on("participant_attributes_changed")
     def on_attributes_changed(changed: dict, participant: rtc.Participant):
-        if "voice" in changed or "speed" in changed or "mode" in changed:
+        if "voice" in changed or "speed" in changed or "mode" in changed or "catalog" in changed:
             apply_phone_settings(participant)
         if "ptt" in changed and participant.identity != ctx.room.local_participant.identity:
             convo.ptt_signal(changed["ptt"])
