@@ -92,6 +92,10 @@ def prewarm(proc: agents.JobProcess) -> None:
         t0 = time.time()
         proc.userdata["kokoro"] = Kokoro(str(KOKORO_MODEL), str(KOKORO_VOICES))
         log.info("kokoro loaded in %.1fs (voice %s)", time.time() - t0, KOKORO_VOICE)
+        try:  # first synthesis is slow; do it here, once, before any phone joins
+            proc.userdata["kokoro"].create("Hello.", voice=KOKORO_VOICE, speed=1.0, lang="en-us")
+        except Exception as e:
+            log.warning("kokoro warm-up failed: %s", e)
     else:
         log.warning("Kokoro files not found (%s, %s) - running TEXT ONLY", KOKORO_MODEL, KOKORO_VOICES)
 
@@ -628,5 +632,6 @@ if __name__ == "__main__":
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
             initialize_process_timeout=120,
+            num_idle_processes=1,  # keep one process with the models loaded, ready for the next phone
         )
     )
