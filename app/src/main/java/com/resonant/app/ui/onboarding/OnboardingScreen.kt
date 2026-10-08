@@ -59,15 +59,15 @@ private data class GestureLesson(
 
 private val lessons = listOf(
     GestureLesson(
-        label = "Swipe down",
-        spoken = "First, moving through a list. Swipe down anywhere in the middle of the screen to go to the next item.",
-        hint = "Swipe down in the middle of the screen.",
+        label = "Two-finger swipe down",
+        spoken = "First, moving through a menu or list. Swipe down with two fingers, anywhere in the middle of the screen, to go to the next item. One finger scrolls; two fingers move between items.",
+        hint = "Swipe down with two fingers in the middle of the screen.",
         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.UP }
     ),
     GestureLesson(
-        label = "Swipe up",
-        spoken = "Now the other way. Swipe up in the middle to go back to the previous item.",
-        hint = "Swipe up in the middle of the screen.",
+        label = "Two-finger swipe up",
+        spoken = "Now the other way. Swipe up with two fingers in the middle to go back to the previous item.",
+        hint = "Swipe up with two fingers in the middle of the screen.",
         matches = { it is ResonantGesture.Swipe && it.zone == InteractionZone.CENTER && it.direction == SwipeDirection.DOWN }
     ),
     GestureLesson(
@@ -189,7 +189,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         title = "Learn the gestures",
         subtitle = if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
-            GestureSurface(onGesture = { gesture ->
+            GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
                 if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) {
                     return@GestureSurface

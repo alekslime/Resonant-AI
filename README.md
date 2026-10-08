@@ -199,11 +199,13 @@ Every color pairing the app actually uses is contrast-checked against WCAG 2.1 i
   <img src="docs/gestures.png" alt="Gesture cheat sheet" width="100%">
 </div>
 
-The same on every screen:
+Almost the same on every screen (the two swipe rows below differ by screen, as noted):
 
 | Where | Gesture | Does |
 |---|---|---|
-| Center | Swipe down / up | Next / previous (menu item, lesson unit, quiz option, chat sentence) |
+| Center | Swipe down / up (one finger) | Next / previous: quiz option, chat sentence, lesson-mode choice |
+| Center | Swipe down / up (two fingers) | Next / previous on menus and scrolling lists: Home, Lessons, a lesson's units, Quiz list, Settings. One finger scrolls those lists instead |
+| Center | Tap an item | Home: opens that item directly. Tapping empty space still opens the focused one |
 | Center | Swipe right | Continue / submit (Lesson: next section; Quiz: submit) |
 | Center | Swipe left | Back (Lesson: previous section) |
 | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
