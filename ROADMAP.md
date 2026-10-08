@@ -49,6 +49,7 @@ agent to join instead of falling back.
 - [x] 11. Faster Chat open: agent keeps one warmed process (`num_idle_processes=1`) and warms Kokoro in `prewarm`. Not tested yet: compare the time from opening Chat to "Live. Connected"
 - [x] Practice area (sandbox) after the tutorial lessons: every gesture is answered out loud with what it means, nothing is acted on. Swipe right twice to finish, left-edge hold leaves. `GestureExplainer.kt` + test. Not compiled or run on a device yet
 - [x] Spoken hints when the user is stuck: 25 s of silence, or 3 gestures in a row that played no haptic cue. `GestureSurface(hints, hint)`, `HintEngine.kt` + test, `HapticManager.playCount`. Off in Chat (live mic must not hear the app) and the tutorial. Not compiled or run on a device yet
+- [x] Spatial cues: with headphones, cues pan a little left/right (`CuePan.kt`, `HeadphoneDetector.kt`, `AudioTrack.setStereoVolume`), speech stays centred, no panning on the speaker or with Mono audio on. No setting yet. Not tested on a device
 - [-] "Spoken replies on/off" setting: cancelled, the user wants speech always
 - [ ] Test by talking (voice, hold-to-talk, interrupt, swipe-review). Never run on a device
 - [ ] Make `LiveKitManager` lazy (only matters for the x86 emulator, see below)
