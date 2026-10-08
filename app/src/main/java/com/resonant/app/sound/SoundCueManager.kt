@@ -22,9 +22,14 @@ import com.resonant.app.haptics.HapticPattern
  *    down together.
  *  - Silent while the app is not on screen ([inForeground]). Chat's "thinking" tick
  *    loops every couple of seconds and would otherwise keep ticking over another app.
+ *  - With headphones on, each cue sits a little left or right of the middle (see [CuePan]) so it
+ *    is not heard as part of the voice, which is never moved. On the speaker nothing moves.
  *  - Nothing here may ever crash the app: a failed cue is just a missing beep.
  */
-class SoundCueManager(private val prefs: ResonantPrefs) {
+class SoundCueManager(
+    private val prefs: ResonantPrefs,
+    private val headphones: HeadphoneDetector? = null
+) {
 
     /** User setting, saved. Defaults to on. */
     var enabled: Boolean = prefs.soundCuesEnabled
@@ -57,6 +62,7 @@ class SoundCueManager(private val prefs: ResonantPrefs) {
         .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
         .build()
 
+    @Suppress("DEPRECATION")
     fun play(pattern: HapticPattern) {
         if (!enabled || !inForeground) return
         val cue = rendered[pattern] ?: return
@@ -70,6 +76,10 @@ class SoundCueManager(private val prefs: ResonantPrefs) {
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build()
             track.write(cue.samples, 0, cue.samples.size)
+            if (headphones?.panAllowed == true) {
+                val (left, right) = CuePan.gains(CuePan.panFor(pattern))
+                track.setStereoVolume(left, right)
+            }
             track.play()
             // Released shortly after it has finished. The slack covers start-up latency.
             handler.postDelayed({ releaseQuietly(track) }, (cue.durationMs + RELEASE_SLACK_MS).toLong())

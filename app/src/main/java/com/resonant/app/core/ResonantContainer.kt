@@ -5,6 +5,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
 import com.resonant.app.network.OllamaConfig
+import com.resonant.app.sound.HeadphoneDetector
 import com.resonant.app.sound.SoundCueManager
 
 /**
@@ -23,7 +24,7 @@ class ResonantContainer(context: Context) {
         audio.restoreSpeedIndex(prefs.speedIndex)
         audio.onSpeedIndexChanged = { index -> prefs.speedIndex = index }
     }
-    val soundCues = SoundCueManager(prefs)
+    val soundCues = SoundCueManager(prefs, HeadphoneDetector(context))
 
     // Every haptic pattern also sounds its cue. See HapticManager.onPlay.
     val hapticManager = HapticManager(context).also { it.onPlay = soundCues::play }
