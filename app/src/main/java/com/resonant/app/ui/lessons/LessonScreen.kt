@@ -110,7 +110,10 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
             .fillMaxSize()
             .background(BrandOrange)
     ) {
-        GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
+        GestureSurface(
+            twoFingerSwipe = true,
+            hint = "Tap the left edge to pause, double-tap it to repeat, swipe right for the next section, or hold three fingers to hear where you are.",
+            onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {

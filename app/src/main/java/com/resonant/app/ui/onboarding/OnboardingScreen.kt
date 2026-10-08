@@ -226,7 +226,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         title = "Learn the gestures",
         subtitle = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
-            GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
+            GestureSurface(twoFingerSwipe = true, hints = false, onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
                 if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) {
                     return@GestureSurface

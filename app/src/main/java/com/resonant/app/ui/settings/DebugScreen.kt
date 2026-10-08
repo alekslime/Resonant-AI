@@ -76,7 +76,7 @@ fun DebugScreen(onOpenServerSetup: () -> Unit, onBack: () -> Unit) {
         onBack = onBack,
         backAnnouncement = "Back to Settings."
     ) {
-        GestureSurface(onGesture = { gesture ->
+        GestureSurface(hints = false, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
                     haptics.play(HapticPattern.BACK)

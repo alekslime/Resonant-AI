@@ -932,7 +932,7 @@ fun ChatScreen(
             }
         }
     ) {
-        GestureSurface(onGesture = { gesture ->
+        GestureSurface(hints = false, onGesture = { gesture ->
             // Live with the mic open: anything the app says would be heard and answered by the
             // agent, so gestures that talk give a vibration instead.
             val quietLive = liveMode && liveMicOn && !liveReviewing

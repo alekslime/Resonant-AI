@@ -164,7 +164,9 @@ fun QuizScreen(
             .fillMaxSize()
             .background(screenBackground)
     ) {
-        GestureSurface(onGesture = { gesture ->
+        GestureSurface(
+            hint = "Swipe down to hear the next answer, tap the middle to choose it, swipe right to submit, or hold three fingers to hear where you are.",
+            onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
