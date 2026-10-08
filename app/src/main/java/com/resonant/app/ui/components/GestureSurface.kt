@@ -2,22 +2,31 @@ package com.resonant.app.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import android.os.SystemClock
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
+import com.resonant.app.gestures.HintEngine
+import com.resonant.app.gestures.HintText
 import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.gestures.resonantGestureDetector
 import com.resonant.app.haptics.HapticPattern
+import kotlinx.coroutines.delay
 
 /**
  * Every screen that participates in the Resonant interaction model wraps its
@@ -30,6 +39,13 @@ import com.resonant.app.haptics.HapticPattern
  * the touch stream), but the Actions menu can — and because every screen speaks
  * the identical [ResonantGesture] vocabulary, mapping the menu entries onto
  * synthetic gestures here gives every screen a screen-reader path for free.
+ *
+ * It also speaks short hints when the user seems stuck (see [HintEngine]): a long quiet
+ * pause, or several gestures in a row that did nothing. A gesture "did nothing" when its
+ * handler played no haptic cue (every real action does), or only an error or edge bump.
+ * [hint] is the sentence to speak; the default fits a menu. [hints] = false turns it off
+ * for screens that speak for themselves (Chat has a live microphone, the tutorial has its
+ * own prompts).
  */
 @Composable
 fun GestureSurface(
@@ -37,10 +53,15 @@ fun GestureSurface(
     onGesture: (ResonantGesture) -> Unit,
     twoFingerSwipe: Boolean = false,
     ignoreChildTaps: Boolean = false,
+    hints: Boolean = true,
+    hint: String? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
     val haptics = LocalHapticManager.current
+    val audio = LocalAudioManager.current
+    val engine = remember { HintEngine(SystemClock.uptimeMillis()) }
+    val hintText by rememberUpdatedState(hint ?: HintText.general(twoFingerSwipe))
 
     // The detector's pointerInput block is started once and keeps running across
     // recompositions, so a plain `onGesture` captured inside it would go stale —
@@ -56,7 +77,31 @@ fun GestureSurface(
             // it there is no cue until the first speed step, so a user cannot tell
             // "still waiting for the hold" from "holding, ready to drag".
             if (gesture == ResonantGesture.HoldStart) haptics.play(HapticPattern.HOLD_ENGAGED)
+            val before = haptics.playCount
             latestOnGesture(gesture)
+            val judged = gesture is ResonantGesture.Swipe || gesture is ResonantGesture.Tap ||
+                gesture is ResonantGesture.LongPress
+            val last = haptics.lastPattern.value
+            val didNothing = haptics.playCount == before ||
+                last == HapticPattern.ERROR || last == HapticPattern.EDGE
+            val now = SystemClock.uptimeMillis()
+            if (judged && didNothing) engine.noteMiss(now) else engine.noteGesture(now)
+        }
+    }
+
+    if (hints) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(engine, lifecycle) {
+            // Only while the app is on screen, so a hint is never spoken from the background.
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                engine.resetClock(SystemClock.uptimeMillis())
+                while (true) {
+                    delay(1_000)
+                    val busy = audio.isSpeaking.value || audio.isAnnouncing.value || audio.isPaused.value
+                    val reason = engine.check(SystemClock.uptimeMillis(), silent = !busy) ?: continue
+                    audio.announce(HintText.say(reason, hintText))
+                }
+            }
         }
     }
 
