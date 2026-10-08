@@ -33,9 +33,11 @@ import androidx.compose.ui.unit.sp
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
+import com.resonant.app.gestures.GestureExplanation
 import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
+import com.resonant.app.gestures.explain
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
@@ -111,7 +113,12 @@ private val lessons = listOf(
 private const val INTRO =
     "Welcome to Resonant. Resonant is used entirely by touch and sound — there is nothing you need to see. " +
         "I will teach you eight gestures, one at a time. Try each one and I will confirm it. " +
-        "To skip this tutorial, press and hold the left edge of the screen."
+        "Then you can practise freely. To skip the lessons, press and hold the left edge of the screen."
+
+private const val SANDBOX_INTRO =
+    "That's all eight. Now you can practise. Nothing you do here changes anything. " +
+        "Try any gesture and I will tell you what it means. " +
+        "When you are ready, swipe right twice to start. To leave right away, press and hold the left edge."
 
 @Composable
 fun OnboardingScreen(onFinished: () -> Unit) {
@@ -127,6 +134,12 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     // Set the moment we decide to leave, so a late speech callback can't restart the
     // tutorial and a second exit path can't navigate twice.
     var leaving by remember { mutableStateOf(false) }
+    // Practice area after the lessons: every gesture is answered out loud, nothing is acted on.
+    var sandbox by remember { mutableStateOf(false) }
+    var sandboxLast by remember { mutableStateOf<GestureExplanation?>(null) }
+    // True right after one swipe right, so the second one finishes. One swipe is only practice.
+    var exitArmed by remember { mutableStateOf(false) }
+    var quietTick by remember { mutableIntStateOf(0) }
     val onFinishedNow by rememberUpdatedState(onFinished)
 
     fun finish() {
@@ -145,7 +158,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         suspendCancellableCoroutine<Unit> { cont ->
             audio.announce(INTRO) { if (cont.isActive) cont.resume(Unit) }
         }
-        if (leaving) return@LaunchedEffect
+        if (leaving || sandbox) return@LaunchedEffect
         step = 0
         promptSettled = false
         audio.announce(lessons[0].spoken) { if (step == 0) promptSettled = true }
@@ -159,17 +172,41 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         audio.announce(lessons[step].hint)
     }
 
+    fun startSandbox(intro: String) {
+        sandbox = true
+        completing = true
+        step = lessons.size
+        haptics.play(HapticPattern.CORRECT)
+        audio.announce(intro) { quietTick += 1 }
+    }
+
+    // Still practising? Remind once per silence how to carry on.
+    LaunchedEffect(sandbox, quietTick) {
+        // quietTick only moves once something has finished being said, so the wait starts from silence.
+        if (!sandbox || leaving || quietTick == 0) return@LaunchedEffect
+        delay(20_000)
+        audio.announce("Still practising? Try any gesture, or swipe right twice to start.")
+    }
+
+    fun practise(gesture: ResonantGesture) {
+        val swipedRight = gesture is ResonantGesture.Swipe &&
+            gesture.zone == InteractionZone.CENTER && gesture.direction == SwipeDirection.RIGHT
+        if (swipedRight && exitArmed) {
+            haptics.play(HapticPattern.CORRECT)
+            audio.announce("Good. Taking you to the home screen.") { finish() }
+            return
+        }
+        val answer = explain(gesture) ?: return
+        answer.haptic?.let { haptics.play(it) }
+        sandboxLast = answer
+        exitArmed = swipedRight
+        audio.announce(if (swipedRight) answer.spoken + " Swipe right again to start." else answer.spoken) { quietTick += 1 }
+    }
+
     fun advance() {
         val next = step + 1
         if (next >= lessons.size) {
-            haptics.play(HapticPattern.CORRECT)
-            step = lessons.size
-            completing = true
-            // Home's first queue flushes whatever is speaking, so leave only once the
-            // closing line has been heard.
-            audio.announce(
-                "That's all of them. You can hear this tutorial again any time from Settings. Taking you to the home screen."
-            ) { finish() }
+            startSandbox(SANDBOX_INTRO)
         } else {
             haptics.play(HapticPattern.CONFIRM)
             promptSettled = false
@@ -187,7 +224,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     // implementations of the same visual element that could silently drift.
     ResonantScaffold(
         title = "Learn the gestures",
-        subtitle = if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
+        subtitle = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
             GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
@@ -198,8 +235,18 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 // trapped in a tutorial by a gesture they cannot perform.
                 if (gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.LEFT_EDGE) {
                     haptics.play(HapticPattern.BACK)
-                    audio.announce("Skipping the tutorial. Going to the home screen.")
-                    finish()
+                    if (sandbox) {
+                        audio.announce("Leaving practice. Going to the home screen.")
+                        finish()
+                    } else {
+                        // The practice area is part of the first launch, so skipping the
+                        // lessons lands there instead of on Home.
+                        startSandbox("Skipping the lessons. " + SANDBOX_INTRO)
+                    }
+                    return@GestureSurface
+                }
+                if (sandbox) {
+                    practise(gesture)
                     return@GestureSurface
                 }
                 val lesson = lessons.getOrNull(step) ?: return@GestureSurface
@@ -229,7 +276,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                                 .padding(horizontal = 18.dp, vertical = 10.dp)
                         ) {
                             Text(
-                                text = "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
+                                text = if (sandbox) "Practice" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp,
@@ -253,18 +300,21 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     ) {
                         Column {
                             Text(
-                                text = current?.label ?: "Welcome",
+                                text = current?.label ?: if (sandbox) (sandboxLast?.title ?: "Practice") else "Welcome",
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.Black
                                 ),
                                 color = BrandInk,
                                 modifier = Modifier.semantics {
-                                    contentDescription = current?.spoken ?: INTRO
+                                    contentDescription = current?.spoken
+                                        ?: if (sandbox) (sandboxLast?.spoken ?: SANDBOX_INTRO) else INTRO
                                 }
                             )
                             Spacer(Modifier.height(20.dp))
                             Text(
-                                text = current?.hint ?: "Turn your volume up.",
+                                text = current?.hint ?: if (sandbox) {
+                                    sandboxLast?.let { "Means: ${it.meaning}" } ?: "Try any gesture. I will tell you what it means."
+                                } else "Turn your volume up.",
                                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
                                 color = BrandInk
                             )
@@ -282,7 +332,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Hold left edge to skip tutorial",
+                            text = if (sandbox) "Swipe right twice to start" else "Hold left edge to skip lessons",
                             fontFamily = MetropolisBlack,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
