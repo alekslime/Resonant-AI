@@ -219,7 +219,7 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Anywhere | Three-finger tap | Repeat the current unit |
 | Anywhere | Three-finger hold | "Where am I?" — screen, position, playback state |
 
-In the tutorial, a hold on the left edge skips it.
+In the tutorial, a hold on the left edge skips the lessons. After the eight lessons (or after skipping them) comes the practice area: try any gesture and Resonant says what you just did and what it means ("You just swiped down with two fingers, which means next"), with the real haptic and tone, and nothing is acted on. Swipe right twice to start, or hold the left edge to leave at once. Every first launch goes through it, and Settings → Replay Tutorial opens it again. The wording lives in `gestures/GestureExplainer.kt`.
 
 Try the full walkthrough without looking: open the app, start the lesson, pause, resume, repeat a unit, change speed, move between sections, jump into the quiz, explore every option by sound and touch alone (each option has its own counted buzz), select one, submit it, hear whether you were right, and get back to another section.
 
