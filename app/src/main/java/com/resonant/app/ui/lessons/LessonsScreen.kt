@@ -108,7 +108,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
             .fillMaxSize()
             .background(BrandOrange)
     ) {
-        GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
+        GestureSurface(twoFingerSwipe = true, ignoreChildTaps = true, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {

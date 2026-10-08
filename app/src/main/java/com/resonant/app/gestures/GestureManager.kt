@@ -135,6 +135,12 @@ fun Modifier.resonantGestureDetector(
 
             val primary = changes.firstOrNull { it.id == firstDown.id }
             if (primary != null && !primary.pressed && primary.isConsumed) releaseConsumed = true
+            // Reading before the content (contentScrolls) means the lift-off is seen before any item
+            // could take it. Look again once every pass is done, so a tap an item handled is noticed.
+            if (ignoreChildTaps && twoFingerSwipe && maxPointerCount < 2 && changes.all { !it.pressed }) {
+                val settled = awaitPointerEvent(PointerEventPass.Final)
+                if (settled.changes.any { it.id == firstDown.id && it.isConsumed }) releaseConsumed = true
+            }
             if (primary != null && primary.pressed) {
                 totalDrag += primary.positionChange()
                 // Two-finger mode: one finger is left alone so the list under it can scroll.

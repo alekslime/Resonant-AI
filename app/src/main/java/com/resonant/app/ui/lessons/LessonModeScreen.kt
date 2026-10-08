@@ -78,7 +78,7 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
     SystemBarsColor(BrandOrange)
 
     Box(Modifier.fillMaxSize().background(BrandOrange)) {
-        GestureSurface(onGesture = { gesture ->
+        GestureSurface(ignoreChildTaps = true, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {

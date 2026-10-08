@@ -42,6 +42,8 @@ install `android-udev`. Wi-Fi alternative: Wireless debugging, then `adb pair` /
 - **Ollama must listen on the LAN.** `dev.sh` starts it correctly. If the systemd service is
   already running it will say so and print the override needed.
 - **Clock**: LiveKit rejects tokens when the clock is off. `dev.sh` warns if NTP is not synced.
+- **Signing key**: each machine signs debug builds with its own `~/.android/debug.keystore`, so installing over a build from another machine fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Copy the keystore from the other machine (Windows: `C:\Users\<you>\.android\debug.keystore`) to keep the app's data, or `adb uninstall com.resonant.app` (wipes it).
+- **Gestures**: on Home, Lessons, Quiz list and Settings one finger scrolls and two fingers move between items; tapping an item opens it.
 - **Phone address**: your PC's LAN IP can change. Fix it on the phone (Settings > Debug Mode >
   swipe right > Server setup) instead of rebuilding.
 - **Emulator**: `abiFilters` is arm only, so use a real phone (see ROADMAP).

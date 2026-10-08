@@ -59,6 +59,8 @@ No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Set
 3. Copy `local.properties.example` to `local.properties` (Android Studio may already have created that file for `sdk.dir` — just add the two Ollama lines to it) and set them for your network. See the next section.
 4. Sync, then run the `app` configuration on a device or emulator on API 26+.
 
+On Linux (Arch / Omarchy) there is a one-time setup script and a `dev.sh`; see [docs/linux.md](docs/linux.md).
+
 The app requests `VIBRATE` and `INTERNET` at install time (no runtime prompt), plus `RECORD_AUDIO`, asked for at runtime the first time you tap center on the Chat screen.
 
 Unit tests are plain JVM tests — no device needed:

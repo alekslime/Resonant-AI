@@ -23,7 +23,8 @@ agent to join instead of falling back.
 - `app/.../ui/components/ResonantDots.kt` - `DotsState` animation
 - `agent/agent.py` - PC agent (`submit`, `submit_text`, `text_signal`). Venv in `agent/.venv`
 - `agent/token_server.py` - gives the phone a LiveKit token (port 8787)
-- `dev.ps1` - repo root. Starts Ollama, token server and agent in three windows
+- `dev.ps1` - repo root. Starts Ollama, token server and agent in three windows. `dev.sh` is the Linux version (one terminal); `scripts/setup-linux.sh` is the one-time Linux setup, see `docs/linux.md`
+- `app/.../gestures/GestureManager.kt` - the touch detector. `GestureSurface` options: `twoFingerSwipe` (a vertical swipe needs two fingers, one finger scrolls), `contentScrolls` (read touches before a scrolling list; defaults to `twoFingerSwipe`), `ignoreChildTaps` (a tap an item handled is not also a centre tap)
 
 ## Rules
 - Small steps. One commit per step, `git push` after every commit. Prefix: `feat:` `fix:` `docs:`.
@@ -41,12 +42,18 @@ agent to join instead of falling back.
 - [x] Hold-to-talk (Settings > Live mic), PC name shown, own token server
 - [x] 9. One mode: typed text goes to the agent and Kokoro speaks it (confirmed on the phone)
 - [x] 10. `dev.ps1` starts the three PC processes
+- [x] Linux (Arch/Omarchy): `dev.sh`, `scripts/setup-linux.sh`, `docs/linux.md`. Built, tested and installed on the phone from Linux
+- [x] Scrolling: one finger scrolls; a two-finger vertical swipe moves focus on Home, Lessons, Lesson, Quiz list and Settings. Quiz questions, Lesson mode and Chat still use one finger. Tutorial and README updated
+- [x] Tapping an item opens that item (not the focused one) on Home, Lessons, Quiz list, Settings and Lesson mode
+- [x] `OfflineAnswersTest` fixed (it now answers from the binary search lesson only)
 - [x] 11. Faster Chat open: agent keeps one warmed process (`num_idle_processes=1`) and warms Kokoro in `prewarm`. Not tested yet: compare the time from opening Chat to "Live. Connected"
 - [-] "Spoken replies on/off" setting: cancelled, the user wants speech always
 - [ ] Test by talking (voice, hold-to-talk, interrupt, swipe-review). Never run on a device
 - [ ] Make `LiveKitManager` lazy (only matters for the x86 emulator, see below)
 
 ## Known issues and gotchas
+- **Debug signing key differs per machine.** Installing over a build made on another machine fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Fix: copy `debug.keystore` between machines (Windows `C:\Users\<you>\.android\`, Linux `~/.android/`), or `adb uninstall com.resonant.app` (wipes the app's saved data).
+- **Gesture layer rule.** A screen with items you can tap AND a vertical swipe needs `ignoreChildTaps = true`, otherwise the row's own click and the centre tap both fire and the focused item wins. A screen whose list scrolls needs `twoFingerSwipe = true` or one finger can never scroll.
 - **PC clock must be right.** A wrong clock makes LiveKit reject the token ("Connection error", Logcat `Could not fetch region settings: 401`). Test: get a token from `http://localhost:8787/token` and call `https://<project>.livekit.cloud/settings/regions` with it; 200 is good. Fix: Windows time settings, set time and time zone automatically, Sync now.
 - The phone needs the token address `<PC Wi-Fi IPv4>:8787` and the same `TOKEN_KEY` as `agent/.env` (Settings > Debug Mode > swipe right > Server setup). Port 8787 needs a Windows firewall rule (Administrator PowerShell). The PC's address can change after a reboot.
 - Empty token fields = LiveKit's dev sandbox (testing only). Plain http token URLs work in debug builds only; a release build needs https.
@@ -61,7 +68,8 @@ agent to join instead of falling back.
 - `app/src/main/cpp/whisper.cpp` (tag v1.7.6) is cloned locally and not in git; a fresh clone needs the command in `app/src/main/cpp/CMakeLists.txt`.
 - `local.properties` has `ollama.baseUrl` and `ollama.model`. The server addresses are saved on the phone (Settings > Debug Mode > swipe right > Server setup).
 - Ollama must listen on the network: `$env:OLLAMA_HOST="0.0.0.0"` (or `setx OLLAMA_HOST "0.0.0.0"` once). Phone and PC on the same Wi-Fi.
-- Run: `.\dev.ps1` from the repo root, then Android Studio: Sync, Run on the phone. If Windows blocks the script: `Unblock-File .\dev.ps1`.
+- Linux (Arch/Omarchy, `~/Resonant-AI`): `./scripts/setup-linux.sh` once, then `./dev.sh`. JDK 17 is pinned in `~/.gradle/gradle.properties`, Python 3.13 comes from uv, `dev.sh` starts Ollama on `0.0.0.0`, the setup script opens ports 8787 and 11434 in `ufw`. Details in `docs/linux.md`.
+- Run (Windows): `.\dev.ps1` from the repo root, then Android Studio: Sync, Run on the phone. If Windows blocks the script: `Unblock-File .\dev.ps1`.
 
 ## How the user wants work delivered (follow it)
 - Short, direct answers. They push back on long or repeated replies and on over-design. Plainest implementation unless asked otherwise.

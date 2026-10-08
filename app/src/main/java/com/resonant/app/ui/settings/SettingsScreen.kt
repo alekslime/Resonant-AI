@@ -254,7 +254,7 @@ fun SettingsScreen(
         onBack = onBack,
         backAnnouncement = "Back to Home."
     ) {
-        GestureSurface(twoFingerSwipe = true, onGesture = { gesture ->
+        GestureSurface(twoFingerSwipe = true, ignoreChildTaps = true, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
