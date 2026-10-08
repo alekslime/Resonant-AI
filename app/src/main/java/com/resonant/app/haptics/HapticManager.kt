@@ -35,10 +35,18 @@ class HapticManager(context: Context) {
     var onPlay: ((HapticPattern) -> Unit)? = null
 
     /**
+     * How many patterns have been played so far. A handler that did something plays a cue, so
+     * the gesture layer compares this before and after to tell a gesture that did nothing.
+     */
+    var playCount: Int = 0
+        private set
+
+    /**
      * [withSound] = false vibrates only. Live mode uses it while the microphone is open, so the
      * PC agent never hears the app's own cues.
      */
     fun play(pattern: HapticPattern, withSound: Boolean = true) {
+        playCount += 1
         _lastPattern.value = pattern
         if (withSound) onPlay?.invoke(pattern)
         val timings = HapticPatterns.timings[pattern] ?: return
