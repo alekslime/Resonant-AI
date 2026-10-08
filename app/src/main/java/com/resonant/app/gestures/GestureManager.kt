@@ -58,8 +58,9 @@ private val HOLD_SPEED_STEP = 56.dp
 
 fun Modifier.resonantGestureDetector(
     twoFingerSwipe: Boolean = false,
+    ignoreChildTaps: Boolean = false,
     onGesture: (ResonantGesture) -> Unit
-): Modifier = this.pointerInput(twoFingerSwipe) {
+): Modifier = this.pointerInput(twoFingerSwipe, ignoreChildTaps) {
 
     // Two-finger mode reads touches before the content under them, so a second finger can
     // take the gesture away from a list that has started to scroll under the first one.
@@ -79,6 +80,7 @@ fun Modifier.resonantGestureDetector(
         val zone = GestureClassifier.zoneFor(firstDown.position.x, size.width, leftEdgePx, rightEdgePx)
 
         var maxPointerCount = 1
+        var releaseConsumed = false   // a child (e.g. a clickable item) took the lift-off
         var pressedNow = 1
         var totalDrag = Offset.Zero
         var thresholdHandled = false
@@ -132,6 +134,7 @@ fun Modifier.resonantGestureDetector(
             if (pressedNow > maxPointerCount) maxPointerCount = pressedNow
 
             val primary = changes.firstOrNull { it.id == firstDown.id }
+            if (primary != null && !primary.pressed && primary.isConsumed) releaseConsumed = true
             if (primary != null && primary.pressed) {
                 totalDrag += primary.positionChange()
                 // Two-finger mode: one finger is left alone so the list under it can scroll.
@@ -213,6 +216,10 @@ fun Modifier.resonantGestureDetector(
             }
 
             durationMs <= TAP_MAX_DURATION_MS -> {
+                // The item under the finger already handled this tap itself, so the
+                // screen-wide "centre tap" must not also act on whatever has focus.
+                if (ignoreChildTaps && releaseConsumed) return@awaitEachGesture
+
                 // Right edge tap is intentionally dead — no accidental triggers
                 if (zone == InteractionZone.RIGHT_EDGE) return@awaitEachGesture
 

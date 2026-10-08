@@ -36,6 +36,7 @@ fun GestureSurface(
     modifier: Modifier = Modifier,
     onGesture: (ResonantGesture) -> Unit,
     twoFingerSwipe: Boolean = false,
+    ignoreChildTaps: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
@@ -64,7 +65,7 @@ fun GestureSurface(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .resonantGestureDetector(twoFingerSwipe) { gesture -> dispatch(gesture) }
+            .resonantGestureDetector(twoFingerSwipe, ignoreChildTaps) { gesture -> dispatch(gesture) }
             .semantics(mergeDescendants = true) { customActions = actions },
         content = content
     )

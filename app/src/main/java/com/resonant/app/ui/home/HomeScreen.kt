@@ -128,7 +128,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             .fillMaxSize()
             .background(BrandOrange)
     ) {
-        GestureSurface(onGesture = { gesture ->
+        GestureSurface(ignoreChildTaps = true, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
