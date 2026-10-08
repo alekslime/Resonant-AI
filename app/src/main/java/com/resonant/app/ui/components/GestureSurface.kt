@@ -35,6 +35,7 @@ import com.resonant.app.haptics.HapticPattern
 fun GestureSurface(
     modifier: Modifier = Modifier,
     onGesture: (ResonantGesture) -> Unit,
+    twoFingerSwipe: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
@@ -63,7 +64,7 @@ fun GestureSurface(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .resonantGestureDetector { gesture -> dispatch(gesture) }
+            .resonantGestureDetector(twoFingerSwipe) { gesture -> dispatch(gesture) }
             .semantics(mergeDescendants = true) { customActions = actions },
         content = content
     )

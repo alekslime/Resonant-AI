@@ -57,8 +57,13 @@ private val RIGHT_EDGE_WIDTH = EdgeZoneWidth
 private val HOLD_SPEED_STEP = 56.dp
 
 fun Modifier.resonantGestureDetector(
+    twoFingerSwipe: Boolean = false,
     onGesture: (ResonantGesture) -> Unit
-): Modifier = this.pointerInput(Unit) {
+): Modifier = this.pointerInput(twoFingerSwipe) {
+
+    // Two-finger mode reads touches before the content under them, so a second finger can
+    // take the gesture away from a list that has started to scroll under the first one.
+    val pass = if (twoFingerSwipe) PointerEventPass.Initial else PointerEventPass.Main
 
     val leftEdgePx = LEFT_EDGE_WIDTH.toPx()
     val rightEdgePx = RIGHT_EDGE_WIDTH.toPx()
@@ -110,10 +115,10 @@ fun Modifier.resonantGestureDetector(
 
         while (true) {
             val event = if (thresholdHandled) {
-                awaitPointerEvent()
+                awaitPointerEvent(pass)
             } else {
                 val wait = downTimeMs + LONG_PRESS_MS - SystemClock.uptimeMillis()
-                if (wait <= 0L) null else withTimeoutOrNull(wait) { awaitPointerEvent() }
+                if (wait <= 0L) null else withTimeoutOrNull(wait) { awaitPointerEvent(pass) }
             }
 
             if (event == null) {
@@ -129,8 +134,10 @@ fun Modifier.resonantGestureDetector(
             val primary = changes.firstOrNull { it.id == firstDown.id }
             if (primary != null && primary.pressed) {
                 totalDrag += primary.positionChange()
-                primary.consume()
+                // Two-finger mode: one finger is left alone so the list under it can scroll.
+                if (!twoFingerSwipe || holdModeActive) primary.consume()
             }
+            if (twoFingerSwipe && maxPointerCount >= 2) changes.forEach { it.consume() }
 
             // Speed drag. Re-read from position - previousPosition rather than
             // positionChange(), which was already consumed above.
@@ -198,7 +205,9 @@ fun Modifier.resonantGestureDetector(
                     invertVertical = INVERT_VERTICAL_SWIPES,
                     invertHorizontal = INVERT_HORIZONTAL_SWIPES
                 )
-                if (GestureClassifier.isSwipe(totalDrag.x, totalDrag.y)) {
+                if (GestureClassifier.isSwipe(totalDrag.x, totalDrag.y) &&
+                    GestureClassifier.swipeAllowed(twoFingerSwipe, maxPointerCount, direction)
+                ) {
                     onGesture(ResonantGesture.Swipe(zone, direction))
                 }
             }

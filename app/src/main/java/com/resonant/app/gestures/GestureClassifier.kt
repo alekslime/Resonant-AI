@@ -30,6 +30,14 @@ object GestureClassifier {
         abs(dx) > SWIPE_MIN_DISTANCE_PX || abs(dy) > SWIPE_MIN_DISTANCE_PX
 
     /**
+     * In two-finger mode a vertical swipe needs two fingers; one finger is left to scroll.
+     * Horizontal swipes keep working with one finger because a vertical list ignores them.
+     */
+    fun swipeAllowed(twoFingerSwipe: Boolean, pointerCount: Int, direction: SwipeDirection): Boolean =
+        !twoFingerSwipe || pointerCount >= 2 ||
+            direction == SwipeDirection.LEFT || direction == SwipeDirection.RIGHT
+
+    /**
      * Dominant-axis swipe direction. [invertVertical] / [invertHorizontal] flip the
      * reported direction (list-navigation feel), they do not change which axis wins.
      */

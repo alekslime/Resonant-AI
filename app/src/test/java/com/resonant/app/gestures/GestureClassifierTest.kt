@@ -30,6 +30,16 @@ class GestureClassifierTest {
     }
 
     @Test
+    fun two_finger_mode_needs_two_fingers_for_vertical_swipes_only() {
+        assertFalse(GestureClassifier.swipeAllowed(true, 1, SwipeDirection.UP))
+        assertFalse(GestureClassifier.swipeAllowed(true, 1, SwipeDirection.DOWN))
+        assertTrue(GestureClassifier.swipeAllowed(true, 2, SwipeDirection.UP))
+        assertTrue(GestureClassifier.swipeAllowed(true, 1, SwipeDirection.LEFT))
+        assertTrue(GestureClassifier.swipeAllowed(true, 1, SwipeDirection.RIGHT))
+        assertTrue(GestureClassifier.swipeAllowed(false, 1, SwipeDirection.UP))
+    }
+
+    @Test
     fun a_wobble_is_not_a_swipe() {
         assertFalse(GestureClassifier.isSwipe(40f, 40f))
         assertFalse(GestureClassifier.isSwipe(64f, 0f))
