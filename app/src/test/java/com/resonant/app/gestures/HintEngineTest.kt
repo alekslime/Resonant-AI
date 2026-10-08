@@ -8,12 +8,21 @@ class HintEngineTest {
 
     private fun engine() = HintEngine(startMs = 0)
 
+    // Checks once a second, like the screen does. Returns the time and reason of the first hint.
+    private fun HintEngine.run(fromMs: Long, toMs: Long, silent: Boolean = true): Pair<Long, HintReason>? {
+        var t = fromMs
+        while (t <= toMs) {
+            check(t, silent)?.let { return t to it }
+            t += 1_000
+        }
+        return null
+    }
+
     @Test
     fun pause_hint_comes_after_the_pause_and_not_before() {
         val e = engine()
-        assertNull(e.check(1_000, silent = true))
-        assertNull(e.check(24_000, silent = true))
-        assertEquals(HintReason.PAUSE, e.check(25_000, silent = true))
+        assertNull(e.run(0, 24_000))
+        assertEquals(25_000L to HintReason.PAUSE, e.run(25_000, 60_000))
     }
 
     @Test
@@ -29,9 +38,9 @@ class HintEngineTest {
     @Test
     fun a_gesture_restarts_the_pause() {
         val e = engine()
+        assertNull(e.run(0, 19_000))
         e.noteGesture(20_000)
-        assertNull(e.check(40_000, silent = true))
-        assertEquals(HintReason.PAUSE, e.check(45_000, silent = true))
+        assertEquals(45_000L to HintReason.PAUSE, e.run(20_000, 100_000))
     }
 
     @Test
@@ -71,13 +80,13 @@ class HintEngineTest {
     @Test
     fun cooldown_and_cap() {
         val e = engine()
-        assertEquals(HintReason.PAUSE, e.check(25_000, silent = true))
-        // Cooldown is 45 s from the hint, and the pause timer also restarted.
-        assertNull(e.check(60_000, silent = true))
-        assertEquals(HintReason.PAUSE, e.check(70_000, silent = true))
-        assertEquals(HintReason.PAUSE, e.check(140_000, silent = true))
+        assertEquals(25_000L to HintReason.PAUSE, e.run(0, 100_000))
+        // The pause is over again by 51 s, but the cooldown lasts 45 s from the hint.
+        assertNull(e.run(26_000, 69_000))
+        assertEquals(70_000L to HintReason.PAUSE, e.run(70_000, 200_000))
+        assertEquals(115_000L to HintReason.PAUSE, e.run(71_000, 300_000))
         // Three given: that is the cap for this screen visit.
-        assertNull(e.check(300_000, silent = true))
+        assertNull(e.run(116_000, 600_000))
     }
 
     @Test
