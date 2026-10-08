@@ -74,7 +74,7 @@ class GestureExplainerTest {
     }
 
     @Test
-    fn_dead_right_edge_tap_says_so_and_stays_silent_on_haptics() {
+    fun dead_right_edge_tap_says_so_and_stays_silent_on_haptics() {
         val e = explain(ResonantGesture.Tap(InteractionZone.RIGHT_EDGE))!!
         assertNull(e.haptic)
         assertTrue(e.spoken.contains("does nothing"))
