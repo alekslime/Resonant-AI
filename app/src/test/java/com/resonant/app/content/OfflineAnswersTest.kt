@@ -11,7 +11,7 @@ class OfflineAnswersTest {
 
     /** The section a question was answered from, by the title that is spoken second. */
     private fun sectionFor(question: String): String? {
-        val answer = OfflineAnswers.answer(question)
+        val answer = OfflineAnswers.answer(question, listOf(lesson))
         return if (answer.matched) answer.sentences[1] else null
     }
 
@@ -97,7 +97,7 @@ class OfflineAnswersTest {
 
     @Test
     fun a_match_says_where_it_comes_from_then_the_title_then_the_section() {
-        val answer = OfflineAnswers.answer("Give me an example")
+        val answer = OfflineAnswers.answer("Give me an example", listOf(lesson))
         val section = lesson.sections.first { it.title == "Example" }
         assertTrue(answer.matched)
         assertEquals("I can't reach the AI server, so this is from the lesson.", answer.sentences[0])
