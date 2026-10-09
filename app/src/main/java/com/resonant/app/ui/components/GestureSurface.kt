@@ -55,6 +55,7 @@ fun GestureSurface(
     ignoreChildTaps: Boolean = false,
     hints: Boolean = true,
     hint: String? = null,
+    onPinch: ((Float) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
@@ -68,6 +69,14 @@ fun GestureSurface(
     // it would keep closing over the first composition's locals. Reading through
     // rememberUpdatedState always reaches the latest handler.
     val latestOnGesture by rememberUpdatedState(onGesture)
+
+    val latestOnPinch by rememberUpdatedState(onPinch)
+    val pinchHandler: ((Float) -> Unit)? = remember(engine, onPinch != null) {
+        if (onPinch == null) null else { factor: Float ->
+            engine.noteGesture(SystemClock.uptimeMillis())
+            latestOnPinch?.invoke(factor)
+        }
+    }
 
     val dispatch: (ResonantGesture) -> Unit = remember(debugState, haptics) {
         { gesture ->
@@ -105,12 +114,12 @@ fun GestureSurface(
         }
     }
 
-    val actions = remember(dispatch) { talkBackActions(dispatch) }
+    val actions = remember(dispatch, pinchHandler) { talkBackActions(dispatch, pinchHandler) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .resonantGestureDetector(twoFingerSwipe, ignoreChildTaps) { gesture -> dispatch(gesture) }
+            .resonantGestureDetector(twoFingerSwipe, ignoreChildTaps, pinchHandler) { gesture -> dispatch(gesture) }
             .semantics(mergeDescendants = true) { customActions = actions },
         content = content
     )
@@ -122,7 +131,10 @@ fun GestureSurface(
  * Directions are the semantic ones screens already switch on (UP = next item,
  * DOWN = previous), not physical finger directions.
  */
-private fun talkBackActions(dispatch: (ResonantGesture) -> Unit): List<CustomAccessibilityAction> {
+private fun talkBackActions(
+    dispatch: (ResonantGesture) -> Unit,
+    pinch: ((Float) -> Unit)?
+): List<CustomAccessibilityAction> {
     fun action(label: String, gesture: ResonantGesture) =
         CustomAccessibilityAction(label) { dispatch(gesture); true }
 
@@ -138,6 +150,9 @@ private fun talkBackActions(dispatch: (ResonantGesture) -> Unit): List<CustomAcc
         action("Where am I", ResonantGesture.ThreeFingerHold),
         action("Faster speech", ResonantGesture.HoldSpeedUp),
         action("Slower speech", ResonantGesture.HoldSpeedDown)
+    ) + if (pinch == null) emptyList() else listOf(
+        CustomAccessibilityAction("Larger text") { pinch(1.25f); true },
+        CustomAccessibilityAction("Smaller text") { pinch(0.8f); true }
     )
 }
 
