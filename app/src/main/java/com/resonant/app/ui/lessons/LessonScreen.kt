@@ -27,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.resonant.app.ResonantApp
 import com.resonant.app.content.Lesson
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -44,6 +46,7 @@ import com.resonant.app.ui.components.SystemBarsColor
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
+import com.resonant.app.ui.theme.TextScale
 
 private data class FlatUnit(val unit: SemanticUnit, val sectionIndex: Int, val sectionTitle: String)
 
@@ -61,6 +64,25 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val flat = remember(lesson) { flatten(lesson) }
+
+    val prefs = (LocalContext.current.applicationContext as ResonantApp).container.prefs
+    var textScale by remember { mutableStateOf(TextScale.clamp(prefs.textScale)) }
+    val onPinch: (Float) -> Unit = { factor ->
+        val old = textScale
+        val new = TextScale.apply(old, factor)
+        if (new != old) {
+            textScale = new
+            prefs.textScale = new
+            val atLimit = new == TextScale.MAX || new == TextScale.MIN
+            val before = TextScale.stepOf(old)
+            val after = TextScale.stepOf(new)
+            when {
+                atLimit -> haptics.play(HapticPattern.EDGE)
+                after > before -> haptics.play(HapticPattern.SPEED_UP)
+                after < before -> haptics.play(HapticPattern.SPEED_DOWN)
+            }
+        }
+    }
 
     // Saved across opening Settings from the gear, so coming back resumes at the same sentence.
     var flatIndex by rememberSaveable { mutableStateOf(0) }
@@ -112,7 +134,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     ) {
         GestureSurface(
             twoFingerSwipe = true,
-            hint = "Tap the left edge to pause, double-tap it to repeat, swipe right for the next section, or hold three fingers to hear where you are.",
+            hint = "Tap the left edge to pause, double-tap it to repeat, swipe right for the next section, pinch with two fingers to change the text size, or hold three fingers to hear where you are.",
+            onPinch = onPinch,
             onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
@@ -144,7 +167,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
                     "You are in ${lesson.title}, section ${lastSectionIndex + 1} of ${lesson.sections.size}. " +
-                        "${if (autoAdvance) "Auto" else "Manual"} mode. Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${audio.speedLabel()}."
+                        "${if (autoAdvance) "Auto" else "Manual"} mode. Audio is ${if (audio.isPaused.value) "paused" else "playing"} at ${audio.speedLabel()}. Text size ${TextScale.percent(textScale)} percent."
                 )
                 ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
                 ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
@@ -184,8 +207,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                         text = lead,
                         fontFamily = MetropolisBlack,
                         fontWeight = FontWeight.Black,
-                        fontSize = 32.sp,
-                        lineHeight = 42.sp,
+                        fontSize = (32 * textScale).sp,
+                        lineHeight = (42 * textScale).sp,
                         color = BrandInk,
                         modifier = Modifier.padding(top = 36.dp)
                     )
@@ -195,7 +218,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                     if (sec != null) {
                         if (hasSteps) {
                             sec.units.forEachIndexed { i, unit ->
-                                StepRow(number = i + 1, title = unit.stepTitle ?: unit.text)
+                                StepRow(number = i + 1, title = unit.stepTitle ?: unit.text, scale = textScale)
                                 if (i < sec.units.size - 1) Spacer(Modifier.height(36.dp))
                             }
                         } else {
@@ -204,8 +227,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                                     text = unit.text,
                                     fontFamily = MetropolisBlack,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 24.sp,
-                                    lineHeight = 32.sp,
+                                    fontSize = (24 * textScale).sp,
+                                    lineHeight = (32 * textScale).sp,
                                     color = BrandInk,
                                     modifier = Modifier.padding(bottom = 20.dp)
                                 )
@@ -221,13 +244,13 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
 }
 
 @Composable
-private fun StepRow(number: Int, title: String) {
+private fun StepRow(number: Int, title: String, scale: Float) {
     Row(verticalAlignment = Alignment.Top) {
         // Numbered circle, centered on the first line of the title
         Box(
             modifier = Modifier
-                .padding(top = 6.dp)
-                .size(24.dp)
+                .padding(top = (6 * scale).dp)
+                .size((24 * scale).dp)
                 .clip(CircleShape)
                 .background(BrandInk),
             contentAlignment = Alignment.Center
@@ -236,7 +259,7 @@ private fun StepRow(number: Int, title: String) {
                 text = number.toString(),
                 fontFamily = MetropolisBlack,
                 fontWeight = FontWeight.Black,
-                fontSize = 14.sp,
+                fontSize = (14 * scale).sp,
                 color = Color.White
             )
         }
@@ -245,8 +268,8 @@ private fun StepRow(number: Int, title: String) {
             text = title.uppercase(),
             fontFamily = MetropolisBlack,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 28.sp,
-            lineHeight = 36.sp,
+            fontSize = (28 * scale).sp,
+            lineHeight = (36 * scale).sp,
             color = BrandInk,
             modifier = Modifier.weight(1f)
         )
