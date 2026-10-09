@@ -24,6 +24,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getInt(KEY_SPEED_INDEX, AudioManager.DEFAULT_SPEED_INDEX)
         set(value) = prefs.edit().putInt(KEY_SPEED_INDEX, value).apply()
 
+    /** Package name of the chosen TTS engine. Null means the system default. */
+    var ttsEngine: String?
+        get() = prefs.getString(KEY_TTS_ENGINE, null)
+        set(value) = putOrRemove(KEY_TTS_ENGINE, value)
+
     /** Whether navigation/feedback tones play alongside the haptics. On by default. */
     var soundCuesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND_CUES, true)
@@ -98,6 +103,7 @@ class ResonantPrefs(context: Context) {
         private const val KEY_LIVE_TOKEN_KEY = "live_token_key"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
+        const val KEY_TTS_ENGINE = "tts_engine"
         const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"
         const val KEY_OLLAMA_MODEL = "ollama_model"
