@@ -14,10 +14,10 @@ import java.util.Locale
 import kotlin.math.exp
 import kotlin.math.max
 
-class AudioManager(context: Context) {
+class AudioManager(context: Context, initialEngine: String? = null) {
 
     companion object {
-        val SPEEDS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
+        val SPEEDS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f, 3.5f, 4.0f)
         const val DEFAULT_SPEED_INDEX = 1
         /** Every announcement gets a unique id under this prefix (see [announce]). */
         private const val ANNOUNCE_PREFIX = "resonant_announce_"
@@ -102,6 +102,64 @@ class AudioManager(context: Context) {
     private var autoAdvanceEnabled = false
     private var tts: TextToSpeech? = null
 
+    /** Package name of the chosen engine. Null means the system default. */
+    private var enginePackage: String? = initialEngine?.takeIf { it.isNotBlank() }
+    private var installedEngines: List<EngineOption> = emptyList()
+
+    /** Called with the engine package (null = system default) after every engine change, so it can be saved. */
+    var onEngineChanged: ((String?) -> Unit)? = null
+
+    class EngineOption(val packageName: String?, val label: String)
+
+    /** The system default first, then every installed engine. Empty list of extras until the engine is ready. */
+    fun engineOptions(): List<EngineOption> {
+        return listOf(EngineOption(null, "System default")) + installedEngines
+    }
+
+    fun engineLabel(packageName: String? = enginePackage): String =
+        engineOptions().firstOrNull { it.packageName == packageName }?.label
+            ?: packageName?.substringAfterLast('.')
+            ?: "System default"
+
+    val currentEngine: String? get() = enginePackage
+
+    /** Moves to the next engine in [engineOptions], wrapping around, and says which one it landed on. */
+    fun cycleEngine() {
+        val options = engineOptions()
+        if (options.size < 2) {
+            announce("No other voice engine is installed.")
+            return
+        }
+        val at = options.indexOfFirst { it.packageName == enginePackage }
+        setEngine(options[(at + 1) % options.size].packageName)
+    }
+
+    fun setEngine(packageName: String?) {
+        val chosen = packageName?.takeIf { it.isNotBlank() }
+        if (chosen == enginePackage && tts != null) return
+        enginePackage = chosen
+        onEngineChanged?.invoke(chosen)
+        val wasPaused = _isPaused.value
+        rebuildEngine()
+        announce("Voice engine: ${engineLabel(chosen)}.")
+        if (_currentUnit.value != null && !wasPaused) deferredUnit = true
+    }
+
+    private fun rebuildEngine() {
+        ready = false
+        _isReady.value = false
+        _isSpeaking.value = false
+        awaitingMore = false
+        deferredUnit = false
+        cancelUnitSpeech()
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
+        settleAllAnnouncements()
+        annCache.clear()
+        initEngine()
+    }
+
     // Announcements are tracked individually (unique ids) so the app can (a) wait for
     // one to finish before doing something that must not overlap it — e.g. opening the
     // microphone after "Listening." — and (b) queue a screen's content behind one instead
@@ -133,11 +191,21 @@ class AudioManager(context: Context) {
      */
     private fun initEngine() {
         if (tts != null) return
-        tts = TextToSpeech(appContext) { status ->
+        tts = TextToSpeech(appContext, { status ->
             // Posted rather than run inline: the init callback can fire before the
             // TextToSpeech constructor has returned, which would leave `tts` still
             // null here. Posting guarantees the assignment below has landed.
             mainHandler.post {
+                if (status != TextToSpeech.SUCCESS && enginePackage != null) {
+                    // The chosen engine is gone or broken: go back to the system default.
+                    tts?.shutdown()
+                    tts = null
+                    enginePackage = null
+                    onEngineChanged?.invoke(null)
+                    initEngine()
+                    announce("That voice engine is not available. Using the system default.")
+                    return@post
+                }
                 if (status != TextToSpeech.SUCCESS) {
                     // No usable engine. Release it so the next onStart can try again, and
                     // let anything waiting on speech go: announce() promises callers that
@@ -148,6 +216,7 @@ class AudioManager(context: Context) {
                     return@post
                 }
                 val t = tts ?: return@post
+                installedEngines = t.engines.map { EngineOption(it.name, it.label) }
                 t.language = Locale.US
                 t.setSpeechRate(speed)
                 // Listener registered here — inside the ready callback — so it's
@@ -218,7 +287,7 @@ class AudioManager(context: Context) {
                 _isReady.value = true
                 replayPending(t)
             }
-        }
+        }, enginePackage)
     }
 
     // Queue management
@@ -471,9 +540,13 @@ class AudioManager(context: Context) {
             1.5f -> "one point five"
             1.75f -> "one point seven five"
             2.0f -> "double"
+            2.5f -> "two point five"
+            3.0f -> "triple"
+            3.5f -> "three point five"
+            4.0f -> "quadruple"
             else -> value.toString()
         }
-        return if (value == 1.0f || value == 2.0f) "$spoken speed" else "$spoken times speed"
+        return if (value == 1.0f || value == 2.0f || value == 3.0f || value == 4.0f) "$spoken speed" else "$spoken times speed"
     }
 
     // Announce — interrupts current speech without disturbing queue position
@@ -523,7 +596,7 @@ class AudioManager(context: Context) {
         }
         t.stop() // flush anything still queued
         t.setSpeechRate(speed)
-        val key = "$speed|$text"
+        val key = "${enginePackage}|$speed|$text"
         val cached = annCache[key]
         if (cached != null) {
             playAnnouncement(id, cached)
