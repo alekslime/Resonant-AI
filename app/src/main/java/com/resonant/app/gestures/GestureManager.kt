@@ -59,8 +59,9 @@ private val HOLD_SPEED_STEP = 56.dp
 fun Modifier.resonantGestureDetector(
     twoFingerSwipe: Boolean = false,
     ignoreChildTaps: Boolean = false,
+    onPinch: ((Float) -> Unit)? = null,
     onGesture: (ResonantGesture) -> Unit
-): Modifier = this.pointerInput(twoFingerSwipe, ignoreChildTaps) {
+): Modifier = this.pointerInput(twoFingerSwipe, ignoreChildTaps, onPinch != null) {
 
     // Two-finger mode reads touches before the content under them, so a second finger can
     // take the gesture away from a list that has started to scroll under the first one.
@@ -89,6 +90,9 @@ fun Modifier.resonantGestureDetector(
         var holdDidStep = false
         var longPressFired = false
         var threeFingerHoldFired = false
+        var pinchStartDist = -1f
+        var pinchLastDist = -1f
+        var pinching = false
 
         // Runs exactly once, when the finger(s) have been down for LONG_PRESS_MS —
         // either because a pointer event arrived after the mark or, for a
@@ -148,6 +152,24 @@ fun Modifier.resonantGestureDetector(
             }
             if (twoFingerSwipe && maxPointerCount >= 2) changes.forEach { it.consume() }
 
+            // Pinch: two fingers only. onPinch gets the change in distance since the last call
+            // (more than 1 = fingers apart). Once it starts, the lift-off is not a swipe.
+            if (onPinch != null && pressedNow == 2 && maxPointerCount == 2) {
+                val down = changes.filter { it.pressed }
+                val dist = (down[0].position - down[1].position).getDistance()
+                if (pinchStartDist < 0f) {
+                    pinchStartDist = dist
+                    pinchLastDist = dist
+                } else {
+                    if (!pinching && GestureClassifier.isPinch(pinchStartDist, dist)) pinching = true
+                    if (pinching && pinchLastDist > 0f && dist > 0f) {
+                        changes.forEach { it.consume() }
+                        onPinch(dist / pinchLastDist)
+                        pinchLastDist = dist
+                    }
+                }
+            }
+
             // Speed drag. Re-read from position - previousPosition rather than
             // positionChange(), which was already consumed above.
             if (holdModeActive) {
@@ -191,6 +213,8 @@ fun Modifier.resonantGestureDetector(
                     onGesture(ResonantGesture.LongPress(InteractionZone.RIGHT_EDGE))
                 }
             }
+
+            pinching -> { /* already handled as it happened */ }
 
             longPressFired || threeFingerHoldFired -> {
                 // Already emitted. A centre long press also reports its release, so hold-to-talk
