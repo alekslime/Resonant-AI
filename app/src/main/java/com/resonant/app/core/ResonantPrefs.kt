@@ -29,6 +29,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getString(KEY_TTS_ENGINE, null)
         set(value) = putOrRemove(KEY_TTS_ENGINE, value)
 
+    /** Reading-screen text scale from pinching, 1.0 to 2.5. */
+    var textScale: Float
+        get() = prefs.getFloat(KEY_TEXT_SCALE, 1f).coerceIn(1f, 2.5f)
+        set(value) = prefs.edit().putFloat(KEY_TEXT_SCALE, value).apply()
+
     /** Whether navigation/feedback tones play alongside the haptics. On by default. */
     var soundCuesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND_CUES, true)
@@ -104,6 +109,7 @@ class ResonantPrefs(context: Context) {
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
         const val KEY_TTS_ENGINE = "tts_engine"
+        const val KEY_TEXT_SCALE = "text_scale"
         const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"
         const val KEY_OLLAMA_MODEL = "ollama_model"
