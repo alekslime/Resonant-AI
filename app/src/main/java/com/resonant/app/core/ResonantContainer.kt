@@ -20,7 +20,8 @@ class ResonantContainer(context: Context) {
 
     // Speech speed survives a restart. Restoring happens before the TTS engine
     // finishes starting, so the very first utterance already uses the saved rate.
-    val audioManager = AudioManager(context).also { audio ->
+    val audioManager = AudioManager(context, prefs.ttsEngine).also { audio ->
+        audio.onEngineChanged = { engine -> prefs.ttsEngine = engine }
         audio.restoreSpeedIndex(prefs.speedIndex)
         audio.onSpeedIndexChanged = { index -> prefs.speedIndex = index }
     }
