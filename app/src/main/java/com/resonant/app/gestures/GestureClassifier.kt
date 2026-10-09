@@ -14,6 +14,7 @@ object GestureClassifier {
 
     const val TAP_MAX_DRIFT_PX = 24f
     const val SWIPE_MIN_DISTANCE_PX = 64f
+    const val PINCH_MIN_CHANGE_PX = 48f
 
     fun zoneFor(x: Float, width: Int, leftEdgePx: Float, rightEdgePx: Float): InteractionZone = when {
         x <= leftEdgePx -> InteractionZone.LEFT_EDGE
@@ -28,6 +29,10 @@ object GestureClassifier {
     /** True when a moved touch travelled far enough to count as a swipe rather than a wobble. */
     fun isSwipe(dx: Float, dy: Float): Boolean =
         abs(dx) > SWIPE_MIN_DISTANCE_PX || abs(dy) > SWIPE_MIN_DISTANCE_PX
+
+    /** True once two fingers have moved apart or together far enough to be a pinch, not a two-finger swipe. */
+    fun isPinch(startDistance: Float, distance: Float): Boolean =
+        abs(distance - startDistance) > PINCH_MIN_CHANGE_PX
 
     /**
      * In two-finger mode a vertical swipe needs two fingers; one finger is left to scroll.

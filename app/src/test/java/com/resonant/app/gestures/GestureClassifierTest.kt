@@ -96,4 +96,12 @@ class GestureClassifierTest {
         assertEquals(HoldStep.NONE, GestureClassifier.holdStep(55.9f, 56f))
         assertEquals(HoldStep.DOWN, GestureClassifier.holdStep(56f, 56f))
     }
+
+    @Test
+    fun pinch_needs_the_fingers_to_change_distance_not_just_move() {
+        assertFalse(GestureClassifier.isPinch(300f, 300f))
+        assertFalse(GestureClassifier.isPinch(300f, 347f))
+        assertTrue(GestureClassifier.isPinch(300f, 349f))
+        assertTrue(GestureClassifier.isPinch(300f, 250f))
+    }
 }
