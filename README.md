@@ -216,6 +216,7 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×); remembered between launches |
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
 | Right edge | Tap | Nothing, deliberately (no accidental triggers) |
+| Lesson (reading) | Pinch with two fingers | Text size, 100% to 250%. A tick plays at each quarter step and an edge bump at the limits; the size is saved. Three-finger hold says the current size |
 | Anywhere | Three-finger tap | Repeat the current unit |
 | Anywhere | Three-finger hold | "Where am I?" — screen, position, playback state |
 
@@ -236,7 +237,7 @@ The Debug screen (Settings → Debug Mode) mirrors live state — screen, semant
 Resonant's gestures are raw touches read by its own detector. With TalkBack on, TalkBack owns the touch stream and Resonant's swipes/taps/holds never arrive, so the app detects it at launch (and live, if toggled from Quick Settings) and shows a notice with two ways forward:
 
 1. Turn TalkBack off and use the gestures above.
-2. Keep TalkBack on and use its Actions menu on any Resonant screen. `GestureSurface` exposes the grammar as custom actions — Next, Previous, Select, Continue, Back, Leave screen, Pause or resume, Repeat, Where am I, Faster speech, Slower speech. Each one is dispatched through the same handler as the real gesture, so every screen supports it with no extra code.
+2. Keep TalkBack on and use its Actions menu on any Resonant screen. `GestureSurface` exposes the grammar as custom actions — Next, Previous, Select, Continue, Back, Leave screen, Pause or resume, Repeat, Where am I, Faster speech, Slower speech (and Larger text, Smaller text on the lesson screen). Each one is dispatched through the same handler as the real gesture, so every screen supports it with no extra code.
 
 Known limits of path 2: Resonant's own voice and TalkBack's voice can overlap, and it has not yet been tested against real TalkBack users. Whether a direct-touch / pass-through mechanism could let the raw gestures coexist with TalkBack is still an open investigation.
 
