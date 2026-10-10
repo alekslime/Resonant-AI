@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
  * color per the Figma redesign — kept in one place instead of two copies of
  * the same hex.
  */
-private val SplashMark = get() = BrandInk
+private val SplashMark get() = BrandInk
 
 private const val WORDMARK = "RESONANT"
 

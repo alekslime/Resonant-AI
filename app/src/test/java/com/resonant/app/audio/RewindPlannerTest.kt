@@ -27,7 +27,7 @@ class RewindPlannerTest {
 
     @Test
     fun rewinding_can_cross_several_units() {
-        val at = RewindPlanner.locate(15f, listOf(seg(8f), seg(3f), seg(2f)))!!
+        val at = RewindPlanner.locate(12f, listOf(seg(8f), seg(3f), seg(2f)))!!
         assertEquals(0, at.segment)
         assertEquals(1_000, at.frame)
     }

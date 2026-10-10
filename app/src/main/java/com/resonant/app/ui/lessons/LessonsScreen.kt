@@ -57,9 +57,9 @@ import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
-private val CardBackground = get() = ResonantCard
-private val CardButtonBackground = get() = BrandInk
-private val TopBarBackground = get() = BrandInk
+private val CardBackground get() = ResonantCard
+private val CardButtonBackground get() = BrandInk
+private val TopBarBackground get() = BrandInk
 
 // Figma "Lessons" frame: 20dp margins, 20dp gaps, 28dp card radius.
 private val ScreenMargin = 20.dp
