@@ -104,4 +104,13 @@ class GestureClassifierTest {
         assertTrue(GestureClassifier.isPinch(300f, 349f))
         assertTrue(GestureClassifier.isPinch(300f, 250f))
     }
+
+    @Test
+    fun scrub_steps_count_whole_steps_to_the_left_and_never_go_negative() {
+        assertEquals(0, GestureClassifier.scrubSteps(500f, 450f, 100f))
+        assertEquals(1, GestureClassifier.scrubSteps(500f, 400f, 100f))
+        assertEquals(2, GestureClassifier.scrubSteps(500f, 290f, 100f))
+        assertEquals(0, GestureClassifier.scrubSteps(500f, 700f, 100f))
+        assertEquals(0, GestureClassifier.scrubSteps(500f, 100f, 0f))
+    }
 }

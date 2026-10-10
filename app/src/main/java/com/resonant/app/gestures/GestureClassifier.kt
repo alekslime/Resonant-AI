@@ -16,6 +16,9 @@ object GestureClassifier {
     const val SWIPE_MIN_DISTANCE_PX = 64f
     const val PINCH_MIN_CHANGE_PX = 48f
 
+    /** Four-finger rewind: how far the fingers travel left for each rewind step. */
+    const val SCRUB_STEP_DP = 80f
+
     fun zoneFor(x: Float, width: Int, leftEdgePx: Float, rightEdgePx: Float): InteractionZone = when {
         x <= leftEdgePx -> InteractionZone.LEFT_EDGE
         x >= width - rightEdgePx -> InteractionZone.RIGHT_EDGE
@@ -29,6 +32,10 @@ object GestureClassifier {
     /** True when a moved touch travelled far enough to count as a swipe rather than a wobble. */
     fun isSwipe(dx: Float, dy: Float): Boolean =
         abs(dx) > SWIPE_MIN_DISTANCE_PX || abs(dy) > SWIPE_MIN_DISTANCE_PX
+
+    /** How many whole steps four fingers have travelled to the left of where they landed. Never negative. */
+    fun scrubSteps(startX: Float, currentX: Float, stepPx: Float): Int =
+        if (stepPx <= 0f) 0 else ((startX - currentX) / stepPx).toInt().coerceAtLeast(0)
 
     /** True once two fingers have moved apart or together far enough to be a pinch, not a two-finger swipe. */
     fun isPinch(startDistance: Float, distance: Float): Boolean =

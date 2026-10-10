@@ -16,7 +16,8 @@ import com.resonant.app.ui.theme.EdgeZoneWidth
  * LEFT EDGE  — tap = pause/resume, double-tap = repeat current
  * CENTER     — swipe ↑↓←→ = navigate, tap = select/confirm
  * RIGHT EDGE — hold + drag ↑ = faster / ↓ = slower, hold without dragging = back
- * ANYWHERE   — three-finger tap = repeat last, three-finger hold = orientation
+ * ANYWHERE   — three-finger tap = repeat last, three-finger hold = orientation,
+ *              four fingers dragged left = rewind (5 s per step, applied on release)
  *
  * No double-tap in CENTER. No hold on LEFT EDGE.
  * Right edge tap is a dead zone (no accidental triggers).
@@ -60,8 +61,9 @@ fun Modifier.resonantGestureDetector(
     twoFingerSwipe: Boolean = false,
     ignoreChildTaps: Boolean = false,
     onPinch: ((Float) -> Unit)? = null,
+    onRewind: ((steps: Int, release: Boolean) -> Unit)? = null,
     onGesture: (ResonantGesture) -> Unit
-): Modifier = this.pointerInput(twoFingerSwipe, ignoreChildTaps, onPinch != null) {
+): Modifier = this.pointerInput(twoFingerSwipe, ignoreChildTaps, onPinch != null, onRewind != null) {
 
     // Two-finger mode reads touches before the content under them, so a second finger can
     // take the gesture away from a list that has started to scroll under the first one.
@@ -70,6 +72,7 @@ fun Modifier.resonantGestureDetector(
     val leftEdgePx = LEFT_EDGE_WIDTH.toPx()
     val rightEdgePx = RIGHT_EDGE_WIDTH.toPx()
     val holdStepPx = HOLD_SPEED_STEP.toPx()
+    val scrubStepPx = GestureClassifier.SCRUB_STEP_DP.dp.toPx()
 
     var lastTapUpTimeMs = 0L
     var lastTapZone: InteractionZone? = null
@@ -93,6 +96,9 @@ fun Modifier.resonantGestureDetector(
         var pinchStartDist = -1f
         var pinchLastDist = -1f
         var pinching = false
+        var scrubStartX = Float.NaN
+        var scrubSteps = 0
+        var scrubArmed = false
 
         // Runs exactly once, when the finger(s) have been down for LONG_PRESS_MS —
         // either because a pointer event arrived after the mark or, for a
@@ -151,6 +157,24 @@ fun Modifier.resonantGestureDetector(
                 if (!twoFingerSwipe || holdModeActive) primary.consume()
             }
             if (twoFingerSwipe && maxPointerCount >= 2) changes.forEach { it.consume() }
+
+            // Rewind: four fingers dragged left. onRewind is told the step count each time it
+            // changes (release = false), and once more on lift-off (release = true). A drag
+            // that never moves far is still a plain four-finger tap.
+            if (onRewind != null && pressedNow >= 4) {
+                changes.forEach { it.consume() }
+                val x = changes.filter { it.pressed }.map { it.position.x }.average().toFloat()
+                if (scrubStartX.isNaN()) {
+                    scrubStartX = x
+                } else {
+                    if (kotlin.math.abs(x - scrubStartX) > scrubStepPx / 2) scrubArmed = true
+                    val steps = GestureClassifier.scrubSteps(scrubStartX, x, scrubStepPx)
+                    if (steps != scrubSteps) {
+                        scrubSteps = steps
+                        onRewind(steps, false)
+                    }
+                }
+            }
 
             // Pinch: two fingers only. onPinch gets the change in distance since the last call
             // (more than 1 = fingers apart). Once it starts, the lift-off is not a swipe.
@@ -215,6 +239,10 @@ fun Modifier.resonantGestureDetector(
             }
 
             pinching -> { /* already handled as it happened */ }
+
+            scrubArmed -> {
+                if (scrubSteps > 0) onRewind?.invoke(scrubSteps, true)
+            }
 
             longPressFired || threeFingerHoldFired -> {
                 // Already emitted. A centre long press also reports its release, so hold-to-talk
