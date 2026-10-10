@@ -19,7 +19,7 @@ import kotlin.math.min
  */
 internal class PcmSpeaker(private val main: Handler) {
 
-    private class Session(val wav: WavPcm, val levels: FloatArray, val window: Int) {
+    private class Session(val wav: WavPcm, val levels: FloatArray, val window: Int, val startFrame: Int) {
         @Volatile var cancelled = false
         @Volatile var started = false
         @Volatile var playedFrames = 0
@@ -30,22 +30,27 @@ internal class PcmSpeaker(private val main: Handler) {
 
     /**
      * Reads and deletes [file], then plays it on a background thread.
-     * @return false if the file couldn't be decoded (caller should fall back to plain TTS).
+     * @return the decoded audio, or null if the file couldn't be decoded (caller should fall
+     * back to plain TTS). The caller can keep it to rewind into it later.
      */
-    fun play(file: File, onStarted: () -> Unit, onFinished: () -> Unit): Boolean {
+    fun play(file: File, onStarted: () -> Unit, onFinished: () -> Unit): WavPcm? {
         stop()
         val wav = try { parseWav16(file.readBytes()) } catch (e: Exception) { null }
         file.delete()
-        if (wav == null) return false
+        if (wav == null) return null
         play(wav, onStarted, onFinished)
-        return true
+        return wav
     }
 
     /** Plays already-decoded PCM (e.g. a cached announcement). [wav] is only read, never modified. */
-    fun play(wav: WavPcm, onStarted: () -> Unit, onFinished: () -> Unit) {
+    fun play(wav: WavPcm, onStarted: () -> Unit, onFinished: () -> Unit) = playFrom(wav, 0, onStarted, onFinished)
+
+    /** Like [play], starting [startFrame] frames in. */
+    fun playFrom(wav: WavPcm, startFrame: Int, onStarted: () -> Unit, onFinished: () -> Unit) {
         stop()
         val window = max(1, wav.sampleRate * 30 / 1000) // 30 ms
-        val s = Session(wav, windowLevels(wav, window), window)
+        val start = startFrame.coerceIn(0, max(0, wav.frames - 1))
+        val s = Session(wav, windowLevels(wav, window), window, start)
         session = s
         Thread({ run(s, onStarted, onFinished) }, "resonant-pcm").start()
     }
@@ -54,7 +59,13 @@ internal class PcmSpeaker(private val main: Handler) {
     fun level(): Float? {
         val s = session ?: return null
         if (!s.started) return null
-        return s.levels[(s.playedFrames / s.window).coerceIn(0, s.levels.lastIndex)]
+        return s.levels[((s.startFrame + s.playedFrames) / s.window).coerceIn(0, s.levels.lastIndex)]
+    }
+
+    /** How far into the audio playback is, in frames, or null when nothing is playing. */
+    fun positionFrames(): Int? {
+        val s = session ?: return null
+        return (s.startFrame + s.playedFrames).coerceIn(0, s.wav.frames)
     }
 
     fun stop() {
@@ -98,7 +109,7 @@ internal class PcmSpeaker(private val main: Handler) {
             main.post { if (!s.cancelled) onStarted() }
 
             val chunk = wav.sampleRate * wav.channels / 50 // 20 ms
-            var off = 0
+            var off = s.startFrame * wav.channels
             while (off < wav.samples.size && !s.cancelled) {
                 val n = min(chunk, wav.samples.size - off)
                 val w = track.write(wav.samples, off, n)
@@ -107,7 +118,7 @@ internal class PcmSpeaker(private val main: Handler) {
                 s.playedFrames = track.playbackHeadPosition
             }
             // Let the buffered tail play out.
-            val total = wav.frames
+            val total = wav.frames - s.startFrame
             val deadline = SystemClock.uptimeMillis() + total * 1000L / wav.sampleRate + 1500
             while (!s.cancelled && track.playbackHeadPosition < total && SystemClock.uptimeMillis() < deadline) {
                 s.playedFrames = track.playbackHeadPosition
