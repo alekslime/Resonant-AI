@@ -160,6 +160,10 @@ Holds are decided by a real timeout, not by waiting for the next pointer event (
 
 **Sound cues.** Every haptic pattern also has a short tone (`SoundCues.specs`), played by `SoundCueManager` because `HapticManager.play` calls it — so no screen knows sound exists, and a screen that buzzes also sounds. Several patterns buzz almost alike (a 50 ms pulse is both "next" and "confirm"); their tones do not: direction is pitch contour (rising = forward / faster / correct, falling = back / slower / wrong), quiz options are 1–4 beeps, and the repeating Chat "thinking" tick is much quieter than the rest. Tones are generated in code (no audio files), kept above 300 Hz because phone speakers can't reproduce lower notes, and follow the media volume like speech does. They are silent while the app is off-screen. Toggle them in Settings → Sound cues (on by default, remembered). With headphones connected (wired, USB or Bluetooth, and Android's Mono audio off) every cue also sits a little to one side, so it is not heard as part of the voice: back, slower and wrong on the left, everything else on the right, the far ear at 65% rather than silent so a single earbud still hears them all. Speech is never moved. On the phone speaker nothing is panned. The sides and the 0.35 offset are in `sound/CuePan.kt`; headphone detection is `sound/HeadphoneDetector.kt`. A unit test checks that no two patterns share a cue, so the set can't drift back to duplicates.
 
+**Rewind.** Lesson text is spoken from audio the app has decoded itself (`audio/PcmSpeaker.kt`), so going back is playing that audio again from an earlier point. `AudioManager` keeps what was heard of the last few units (up to 12 units or 90 s, cleared when a new queue starts), and `rewind(seconds)` walks back through it with `audio/RewindPlanner.kt` (pure, unit tested), crossing into the previous unit when needed. Speed changes only affect new speech, so older audio plays at the speed it was spoken. Rewinding while paused resumes playback. The detector reports the four-finger drag; `GestureSurface` turns it into the tick, the rewind and the edge bump, so every screen gets it. The tutorial's practice area turns it off so it only describes gestures.
+
+**Color themes.** Settings → Color theme cycles Default orange, Yellow on black, White on blue, White on black and Black on white, and the choice is remembered. A theme is five colors (`ui/theme/ThemePalette.kt`): background, ink, card, the color on ink, and a dimmer ink for unfocused menu text. `BrandOrange`, `BrandInk`, `ResonantCard`, `ResonantOnInk` and `ResonantDim` read the active theme, so a screen takes the new colors without knowing themes exist. `ThemePaletteTest` checks every pairing is at least 7:1. Quiz right/wrong screens keep their green and red in every theme.
+
 </details>
 
 <div align="center">
@@ -213,10 +217,11 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
 | Left edge | Tap | Pause / resume speech |
 | Left edge | Double-tap | Repeat the current unit |
-| Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×); remembered between launches |
+| Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in ten steps (0.75×–4×); remembered between launches |
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
 | Right edge | Tap | Nothing, deliberately (no accidental triggers) |
 | Lesson (reading) | Pinch with two fingers | Text size, 100% to 250%. A tick plays at each quarter step and an edge bump at the limits; the size is saved. Three-finger hold says the current size |
+| Anywhere | Four fingers, drag left | Rewind: a tick for every 5 seconds of travel (about ½ inch each), and the audio jumps back when you lift. A short flick is about 10 s; a long slow drag goes further, even into the unit before. Playback then carries on forward from there. Edge bump if there is nothing to go back to |
 | Anywhere | Three-finger tap | Repeat the current unit |
 | Anywhere | Three-finger hold | "Where am I?" — screen, position, playback state |
 
@@ -237,7 +242,7 @@ The Debug screen (Settings → Debug Mode) mirrors live state — screen, semant
 Resonant's gestures are raw touches read by its own detector. With TalkBack on, TalkBack owns the touch stream and Resonant's swipes/taps/holds never arrive, so the app detects it at launch (and live, if toggled from Quick Settings) and shows a notice with two ways forward:
 
 1. Turn TalkBack off and use the gestures above.
-2. Keep TalkBack on and use its Actions menu on any Resonant screen. `GestureSurface` exposes the grammar as custom actions — Next, Previous, Select, Continue, Back, Leave screen, Pause or resume, Repeat, Where am I, Faster speech, Slower speech (and Larger text, Smaller text on the lesson screen). Each one is dispatched through the same handler as the real gesture, so every screen supports it with no extra code.
+2. Keep TalkBack on and use its Actions menu on any Resonant screen. `GestureSurface` exposes the grammar as custom actions — Next, Previous, Select, Continue, Back, Leave screen, Pause or resume, Repeat, Where am I, Faster speech, Slower speech, Rewind 10 seconds (and Larger text, Smaller text on the lesson screen). Each one is dispatched through the same handler as the real gesture, so every screen supports it with no extra code.
 
 Known limits of path 2: Resonant's own voice and TalkBack's voice can overlap, and it has not yet been tested against real TalkBack users. Whether a direct-touch / pass-through mechanism could let the raw gestures coexist with TalkBack is still an open investigation.
 
