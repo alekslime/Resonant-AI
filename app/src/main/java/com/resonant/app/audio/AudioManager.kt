@@ -19,6 +19,10 @@ class AudioManager(context: Context, initialEngine: String? = null) {
     companion object {
         val SPEEDS = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f, 3.5f, 4.0f)
         const val DEFAULT_SPEED_INDEX = 1
+        /** One step of the four-finger rewind drag. */
+        const val REWIND_STEP_SECONDS = 5f
+        private const val MAX_HISTORY_UNITS = 12
+        private const val MAX_HISTORY_SECONDS = 90f
         /** Every announcement gets a unique id under this prefix (see [announce]). */
         private const val ANNOUNCE_PREFIX = "resonant_announce_"
         private const val PCM_PREFIX = "resonant_pcm_"
@@ -61,6 +65,15 @@ class AudioManager(context: Context, initialEngine: String? = null) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, WavPcm>) = size > 16
     }
     private var pcmGen = 0
+
+    // What has been heard, for rewind. Units are played from decoded audio, so going back is a
+    // matter of playing that audio again from an earlier point. [history] holds the units left
+    // behind (and how much of each was heard); [curWav] is the unit playing now.
+    private class Played(val index: Int, val wav: WavPcm, val frames: Int)
+    private val history = ArrayDeque<Played>()
+    private var curWav: WavPcm? = null
+    private var curIndex = -1
+    private var curFrames = 0 // how far into curWav playback got when it stopped
     // A unit that must start once the currently playing announcement has finished.
     private var deferredUnit = false
     @Volatile private var levelPeak = 0f
@@ -152,6 +165,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
         awaitingMore = false
         deferredUnit = false
         cancelUnitSpeech()
+        clearHistory()
         tts?.stop()
         tts?.shutdown()
         tts = null
@@ -304,6 +318,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
         autoAdvance: Boolean = false,
         queueBehindAnnouncement: Boolean = false
     ) {
+        clearHistory()
         _queue.value = units
         autoAdvanceEnabled = autoAdvance
         awaitingMore = false
@@ -348,6 +363,9 @@ class AudioManager(context: Context, initialEngine: String? = null) {
         }
         _isPaused.value = false
         val t = tts ?: return
+        // Moving to another unit: keep what was heard of this one for rewind. Replaying the
+        // same unit (repeat, resume, new speed) replaces it instead.
+        if (_index.value != curIndex) archiveCurrent() else curWav = null
         if (queueBehindAnnouncement && activeAnnounceId != null) {
             // Wait for the announcement; settleAnnouncement starts this unit when it ends.
             cancelUnitSpeech()
@@ -365,6 +383,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
 
     /** Drops any in-flight synthesis or playback of the current unit. */
     private fun cancelUnitSpeech() {
+        curWav?.let { curFrames = (pcm.positionFrames() ?: curFrames).coerceIn(0, it.frames) }
         pcmGen++ // late callbacks from the old request see a stale generation and are ignored
         pcm.stop()
         _isSpeaking.value = false
@@ -385,12 +404,15 @@ class AudioManager(context: Context, initialEngine: String? = null) {
         val file = pcmFile(gen)
         val unit = _currentUnit.value
         if (gen != pcmGen || tts == null || unit == null) { file.delete(); return }
-        val ok = pcm.play(
+        val wav = pcm.play(
             file,
             onStarted = { if (gen == pcmGen) { _isSpeaking.value = true; _isPaused.value = false } },
             onFinished = { onUnitFinished(gen) }
         )
-        if (!ok) fallbackSpeak(unit)
+        if (wav == null) { fallbackSpeak(unit); return }
+        curWav = wav
+        curIndex = _index.value
+        curFrames = 0
     }
 
     private fun onSynthesisFailed(gen: Int) {
@@ -409,6 +431,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
     private fun onUnitFinished(gen: Int) {
         if (gen != pcmGen) return
         _isSpeaking.value = false
+        curWav?.let { curFrames = it.frames }
         if (autoAdvanceEnabled && !_isPaused.value) {
             // Ran off the end of a stream that is still open: remember to pick up with the
             // next appended unit.
@@ -417,6 +440,67 @@ class AudioManager(context: Context, initialEngine: String? = null) {
     }
 
     fun repeatCurrent() = speakCurrent()
+
+    private fun archiveCurrent() {
+        val wav = curWav ?: return
+        val frames = (pcm.positionFrames() ?: curFrames).coerceIn(0, wav.frames)
+        curWav = null
+        if (frames > 0) history.addLast(Played(curIndex, wav, frames))
+        fun heardSeconds() = history.sumOf { it.frames.toDouble() / it.wav.sampleRate }
+        while (history.size > MAX_HISTORY_UNITS || (history.size > 1 && heardSeconds() > MAX_HISTORY_SECONDS)) {
+            history.removeFirst()
+        }
+    }
+
+    private fun clearHistory() {
+        history.clear()
+        curWav = null
+        curIndex = -1
+        curFrames = 0
+    }
+
+    /**
+     * Jumps back [seconds] of what was heard and plays on from there, like a podcast player's
+     * rewind. It can cross into the unit before; after that, playback carries on forward as
+     * normal (the later units are spoken again). If less than [seconds] was heard it goes back
+     * as far as it can. Returns false when there is nothing to go back to.
+     */
+    fun rewind(seconds: Float): Boolean {
+        if (!ready) return false
+        val cur = curWav
+        val pos = if (cur != null) (pcm.positionFrames() ?: curFrames).coerceIn(0, cur.frames) else 0
+        val heard = history.map { RewindPlanner.Segment(it.wav.sampleRate, it.frames) } +
+            listOfNotNull(cur?.let { RewindPlanner.Segment(it.sampleRate, pos) })
+        val at = RewindPlanner.locate(seconds, heard) ?: return false
+        if (at.segment == history.size && cur != null) {
+            playFrom(curIndex, cur, at.frame)
+        } else {
+            val target = history[at.segment]
+            while (history.size > at.segment) history.removeLast()
+            playFrom(target.index, target.wav, at.frame)
+        }
+        return true
+    }
+
+    private fun playFrom(index: Int, wav: WavPcm, startFrame: Int) {
+        val gen = ++pcmGen
+        deferredUnit = false
+        awaitingMore = false
+        cancelAnnouncement()
+        tts?.stop()
+        _index.value = index
+        _currentUnit.value = _queue.value.getOrNull(index)
+        curWav = wav
+        curIndex = index
+        curFrames = startFrame
+        _isPaused.value = false
+        pcm.playFrom(
+            wav,
+            startFrame,
+            onStarted = { if (gen == pcmGen) { _isSpeaking.value = true; _isPaused.value = false } },
+            onFinished = { onUnitFinished(gen) }
+        )
+    }
 
     fun next(): Boolean {
         val q = _queue.value
