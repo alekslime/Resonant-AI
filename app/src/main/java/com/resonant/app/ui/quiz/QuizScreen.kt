@@ -1,5 +1,6 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -154,6 +155,7 @@ fun QuizScreen(
     // Question text: black on orange and on the lime "correct" screen (Figma); white on red.
     val questionTextColor = when {
         submitted && lastAnswerCorrect == false -> Color.White
+        submitted && lastAnswerCorrect == true -> Color.Black
         else -> BrandInk
     }
 
@@ -240,7 +242,7 @@ fun QuizScreen(
                 ) {
                     val showUp = !submitted && queueIndex > 1
                     Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
-                        if (showUp) VerticalArrow(up = true, tint = BrandInk.copy(alpha = 0.8f))
+                        if (showUp) VerticalArrow(up = true, tint = questionTextColor.copy(alpha = 0.8f))
                     }
 
                     Box(
@@ -250,7 +252,7 @@ fun QuizScreen(
                             .padding(vertical = 20.dp)
                             .heightIn(min = 140.dp)
                             .clip(RoundedCornerShape(32.dp))
-                            .background(if (visibleOptionIndex != null) Color.White else Color.White.copy(alpha = 0.3f))
+                            .background(if (visibleOptionIndex != null) ResonantCard else ResonantCard.copy(alpha = 0.3f))
                             .padding(horizontal = 28.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -268,7 +270,7 @@ fun QuizScreen(
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 24.sp,
-                                color = BrandInk.copy(alpha = 0.6f),
+                                color = questionTextColor.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -277,7 +279,7 @@ fun QuizScreen(
                     val showDown = !submitted && visibleOptionIndex != null &&
                         visibleOptionIndex < question.options.size - 1
                     Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
-                        if (showDown) VerticalArrow(up = false, tint = BrandInk.copy(alpha = 0.8f))
+                        if (showDown) VerticalArrow(up = false, tint = questionTextColor.copy(alpha = 0.8f))
                     }
                 }
             }

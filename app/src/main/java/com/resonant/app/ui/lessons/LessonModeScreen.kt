@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -123,7 +124,7 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
                                 .weight(1f)
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(32.dp))
-                                .background(Color.White)
+                                .background(ResonantCard)
                                 .clickable { audio.jumpTo(i); pick(i) }
                                 .semantics {
                                     contentDescription = m.spoken + if (i == index) " Focused." else ""

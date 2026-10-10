@@ -29,6 +29,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getString(KEY_TTS_ENGINE, null)
         set(value) = putOrRemove(KEY_TTS_ENGINE, value)
 
+    /** Id of the chosen color theme (see Palettes). Null means the default. */
+    var colorTheme: String?
+        get() = prefs.getString(KEY_COLOR_THEME, null)
+        set(value) = putOrRemove(KEY_COLOR_THEME, value)
+
     /** Reading-screen text scale from pinching, 1.0 to 2.5. */
     var textScale: Float
         get() = prefs.getFloat(KEY_TEXT_SCALE, 1f).coerceIn(1f, 2.5f)
@@ -109,6 +114,7 @@ class ResonantPrefs(context: Context) {
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
         const val KEY_SPEED_INDEX = "speed_index"
         const val KEY_TTS_ENGINE = "tts_engine"
+        const val KEY_COLOR_THEME = "color_theme"
         const val KEY_TEXT_SCALE = "text_scale"
         const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"

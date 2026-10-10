@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantOnInk
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,9 +57,9 @@ import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
-private val CardBackground = Color.White
-private val CardButtonBackground = Color(0xFF0A0A0A)
-private val TopBarBackground = Color(0xFF0A0A0A)
+private val CardBackground = get() = ResonantCard
+private val CardButtonBackground = get() = BrandInk
+private val TopBarBackground = get() = BrandInk
 
 // Figma "Lessons" frame: 20dp margins, 20dp gaps, 28dp card radius.
 private val ScreenMargin = 20.dp
@@ -199,8 +201,8 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Continue lesson", style = CardButtonStyle, color = Color.White)
-            ArrowIcon(pointRight = true, tint = Color.White, modifier = Modifier.size(22.dp))
+            Text(text = "Continue lesson", style = CardButtonStyle, color = ResonantOnInk)
+            ArrowIcon(pointRight = true, tint = ResonantOnInk, modifier = Modifier.size(22.dp))
         }
     }
 }

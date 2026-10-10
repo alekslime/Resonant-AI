@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantOnInk
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +49,7 @@ internal fun LessonsTopBar(
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
-    val bar = Color(0xFF0A0A0A)
+    val bar = BrandInk
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -67,11 +68,11 @@ internal fun LessonsTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ArrowIcon(pointRight = false, tint = Color.White, modifier = Modifier.size(22.dp))
+            ArrowIcon(pointRight = false, tint = ResonantOnInk, modifier = Modifier.size(22.dp))
             Text(
                 text = title,
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-                color = Color.White
+                color = ResonantOnInk
             )
         }
         if (showSettings) Box(
@@ -82,7 +83,7 @@ internal fun LessonsTopBar(
                 .then(if (onSettings != null) Modifier.clickable { onSettings() } else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            SettingsIcon(tint = Color.White, modifier = Modifier.size(24.dp))
+            SettingsIcon(tint = ResonantOnInk, modifier = Modifier.size(24.dp))
         }
     }
 }

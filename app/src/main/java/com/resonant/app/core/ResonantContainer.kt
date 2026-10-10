@@ -1,5 +1,7 @@
 package com.resonant.app.core
 
+import com.resonant.app.ui.theme.ActivePalette
+import com.resonant.app.ui.theme.Palettes
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.resonant.app.audio.AudioManager
@@ -17,6 +19,11 @@ import com.resonant.app.sound.SoundCueManager
 class ResonantContainer(context: Context) {
     // prefs first: the managers below read their saved state from it.
     val prefs = ResonantPrefs(context)
+
+    // The color theme is applied before the first screen draws.
+    init {
+        ActivePalette.current = Palettes.byId(prefs.colorTheme)
+    }
 
     // Speech speed survives a restart. Restoring happens before the TTS engine
     // finishes starting, so the very first utterance already uses the saved rate.

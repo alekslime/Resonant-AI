@@ -1,5 +1,6 @@
 package com.resonant.app.ui.chat
 
+import com.resonant.app.ui.theme.ResonantOnInk
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -41,8 +42,8 @@ import com.resonant.app.ui.home.MicIcon
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
-private val PillColor = Color(0xFF0F0F0F)
-private val PillText = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, color = Color.White)
+private val PillColor get() = BrandInk
+private val PillText get() = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, color = ResonantOnInk)
 
 /**
  * "Ask anything…" — type a question, or tap the mic to ask by voice (same path as tapping the
@@ -91,7 +92,7 @@ fun AskPill(
                 onValueChange = { text = it },
                 singleLine = true,
                 textStyle = PillText,
-                cursorBrush = SolidColor(Color.White),
+                cursorBrush = SolidColor(ResonantOnInk),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { submit() }),
                 modifier = Modifier
@@ -103,7 +104,7 @@ fun AskPill(
             Modifier
                 .size(54.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(ResonantOnInk)
                 .semantics {
                     role = Role.Button
                     contentDescription = if (listening) "Listening" else "Ask by voice"

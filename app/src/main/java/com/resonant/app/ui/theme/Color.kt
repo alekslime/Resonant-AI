@@ -34,11 +34,20 @@ val ResonantYellow = Color(0xFFFFD400)
 // gradient system every other screen sits on (see ResonantSurface): these two
 // screens are a fixed brand moment, the same way the launcher icon isn't
 // re-themed for dark mode either.
-val BrandOrange = Color(0xFFFFAE00)
+val BrandOrange: Color get() = ActivePalette.current.background
 
 /** Text/icon color on top of [BrandOrange] — fixed, not theme-derived, same
  *  reasoning as the background itself. */
-val BrandInk = Color(0xFF0A0A0A)
+val BrandInk: Color get() = ActivePalette.current.ink
+
+/** Fill of cards and unfocused rows in the current theme. */
+val ResonantCard: Color get() = ActivePalette.current.card
+
+/** Text and icons drawn on an ink fill (buttons, bars, focused rows) in the current theme. */
+val ResonantOnInk: Color get() = ActivePalette.current.onInk
+
+/** Unfocused menu text on the screen background in the current theme. */
+val ResonantDim: Color get() = ActivePalette.current.dim
 
 // Dark-theme accent text. Lighter than ResonantOrange on purpose: FF5A1F
 // only measures ~5:1 against the darkest gradient stop. FF9D3D clears 7:1

@@ -1,5 +1,7 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.ResonantOnInk
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -243,7 +245,7 @@ private fun QuizCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White)
+            .background(ResonantCard)
             .clickable(onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
             // Progress/status/category aren't drawn (Figma), but stay in the spoken description.
@@ -263,7 +265,7 @@ private fun QuizCard(
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(RoundedCornerShape(50))
-                .background(Color.Black)
+                .background(BrandInk)
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -272,9 +274,9 @@ private fun QuizCard(
                 text = progress.buttonLabel.split(" ")
                     .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } },
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-                color = Color.White
+                color = ResonantOnInk
             )
-            ArrowIcon(pointRight = true, tint = Color.White, modifier = Modifier.size(22.dp))
+            ArrowIcon(pointRight = true, tint = ResonantOnInk, modifier = Modifier.size(22.dp))
         }
     }
 }

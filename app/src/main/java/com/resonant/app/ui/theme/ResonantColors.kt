@@ -20,11 +20,11 @@ data class ResonantExtendedColors(
     val incorrectFill: Color,
     val feedbackText: Color,
     /** Color of the top of [gradient]; the status and navigation bars are painted with it. */
-    val statusBar: Color = BrandOrange
+    val statusBar: Color = Palettes.DEFAULT.background
 )
 
 val LightResonantColors = ResonantExtendedColors(
-    gradient = Brush.verticalGradient(listOf(BrandOrange, BrandOrange)),
+    gradient = Brush.verticalGradient(listOf(Palettes.DEFAULT.background, Palettes.DEFAULT.background)),
     text = ResonantTextOnLight,
     focusedFill = ResonantFocusedFillLight,
     focusedText = ResonantFocusedTextLight,

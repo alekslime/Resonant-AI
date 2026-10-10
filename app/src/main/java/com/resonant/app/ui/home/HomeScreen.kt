@@ -1,5 +1,6 @@
 package com.resonant.app.ui.home
 
+import com.resonant.app.ui.theme.ResonantDim
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -179,7 +180,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     Text(
                         text = item.label,
                         style = MenuTextStyle,
-                        color = if (focused) BrandInk else Color.White,
+                        color = if (focused) BrandInk else ResonantDim,
                         modifier = Modifier
                             .clickable {
                                 audio.jumpTo(i)

@@ -1,5 +1,7 @@
 package com.resonant.app.ui.components
 
+import com.resonant.app.ui.theme.ResonantOnInk
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -50,7 +52,7 @@ fun ResonantButton(
             .heightIn(min = 56.dp)
             .alpha(if (enabled) 1f else 0.5f)
             .clip(RoundedCornerShape(50))
-            .background(if (filled) BrandInk else Color.White)
+            .background(if (filled) BrandInk else ResonantCard)
             .semantics { role = Role.Button }
             .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 20.dp, vertical = 14.dp),
@@ -59,7 +61,7 @@ fun ResonantButton(
         Text(
             text = text,
             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-            color = if (filled) Color.White else BrandInk,
+            color = if (filled) ResonantOnInk else BrandInk,
             textAlign = TextAlign.Center
         )
     }
@@ -84,17 +86,17 @@ fun ResonantTextField(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White)
+            .background(ResonantCard)
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
             text = label,
             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
-            color = Color(0xFF4A4A4A)
+            color = BrandInk
         )
         Box(Modifier.padding(top = 6.dp)) {
             if (value.isEmpty() && placeholder != null) {
-                Text(placeholder, style = valueStyle, color = Color(0xFF6B6B6B), maxLines = 1)
+                Text(placeholder, style = valueStyle, color = BrandInk.copy(alpha = 0.6f), maxLines = 1)
             }
             BasicTextField(
                 value = value,

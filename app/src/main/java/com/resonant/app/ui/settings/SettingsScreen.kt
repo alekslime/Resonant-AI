@@ -1,5 +1,9 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.theme.ActivePalette
+import com.resonant.app.ui.theme.Palettes
+import com.resonant.app.ui.theme.ResonantOnInk
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +62,7 @@ import kotlinx.coroutines.launch
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val YOUR_NAME = "Your name"
 private const val SOUND_CUES = "Sound cues"
+private const val COLOR_THEME = "Color theme"
 private const val VOICE_ENGINE = "Voice engine"
 private const val LIVE_VOICE = "Live voice"
 private const val LIVE_SPEED = "Live speed"
@@ -66,7 +71,7 @@ private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, COLOR_THEME, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
@@ -82,6 +87,7 @@ private fun labelFor(
     liveHold: Boolean,
     engineLabel: String
 ) = when (item) {
+    COLOR_THEME -> "$COLOR_THEME: ${ActivePalette.current.label}"
     VOICE_ENGINE -> "$VOICE_ENGINE: $engineLabel"
     LIVE_VOICE -> "$LIVE_VOICE: ${liveVoiceLabel(liveVoiceId)}"
     LIVE_SPEED -> "$LIVE_SPEED: ${liveSpeedLabel(liveSpeed)}"
@@ -192,6 +198,18 @@ fun SettingsScreen(
                 )
                 // Turning them on: sound one, so the change is heard and not only announced.
                 if (now) haptics.play(HapticPattern.CONFIRM)
+            }
+            COLOR_THEME -> {
+                val next = Palettes.next(ActivePalette.current)
+                ActivePalette.current = next
+                prefs.colorTheme = next.id
+                // Re-queueing at the same position speaks the new theme ("Color theme: Yellow on black").
+                audio.setQueue(
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
+                    startIndex = settingsItems.indexOf(COLOR_THEME),
+                    autoAdvance = false
+                )
+                haptics.play(HapticPattern.CONFIRM)
             }
             VOICE_ENGINE -> {
                 audio.cycleEngine()
@@ -315,7 +333,7 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(28.dp))
                             // Focus is the same idea as Home: the current item is the inverted one.
-                            .background(if (focused) BrandInk else Color.White)
+                            .background(if (focused) BrandInk else ResonantCard)
                             .clickable {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
@@ -327,7 +345,7 @@ fun SettingsScreen(
                         Text(
                             label,
                             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 34.sp),
-                            color = if (focused) Color.White else BrandInk
+                            color = if (focused) ResonantOnInk else BrandInk
                         )
                     }
                 }

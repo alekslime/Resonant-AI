@@ -1,5 +1,6 @@
 package com.resonant.app.ui.splash
 
+import com.resonant.app.ui.theme.BrandInk
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -42,7 +43,7 @@ import kotlinx.coroutines.launch
  * color per the Figma redesign — kept in one place instead of two copies of
  * the same hex.
  */
-private val SplashMark = Color(0xFF0A0A0A)
+private val SplashMark = get() = BrandInk
 
 private const val WORDMARK = "RESONANT"
 

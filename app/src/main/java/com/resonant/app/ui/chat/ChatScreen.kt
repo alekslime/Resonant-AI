@@ -1,5 +1,6 @@
 package com.resonant.app.ui.chat
 
+import com.resonant.app.ui.theme.ResonantOnInk
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -918,7 +919,7 @@ fun ChatScreen(
                     .semantics { role = Role.Button; contentDescription = "Settings" }
                     .clickable { onOpenSettings() },
                 contentAlignment = Alignment.Center
-            ) { SettingsIcon(tint = Color.White, modifier = Modifier.size(24.dp)) }
+            ) { SettingsIcon(tint = ResonantOnInk, modifier = Modifier.size(24.dp)) }
         },
         bottomBar = {
             Column {
