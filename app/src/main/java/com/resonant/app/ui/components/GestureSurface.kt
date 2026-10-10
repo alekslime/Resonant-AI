@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.resonant.app.audio.AudioManager
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
@@ -56,6 +57,7 @@ fun GestureSurface(
     hints: Boolean = true,
     hint: String? = null,
     onPinch: ((Float) -> Unit)? = null,
+    rewind: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
@@ -75,6 +77,19 @@ fun GestureSurface(
         if (onPinch == null) null else { factor: Float ->
             engine.noteGesture(SystemClock.uptimeMillis())
             latestOnPinch?.invoke(factor)
+        }
+    }
+
+    // Rewind (four fingers dragged left, or the TalkBack action): a tick per 5 s step while the
+    // fingers move, and the audio jumps back when they lift. Nothing to go back to = edge bump.
+    val rewindHandler: ((Int, Boolean) -> Unit)? = remember(audio, haptics, engine, rewind) {
+        if (!rewind) null else { steps: Int, release: Boolean ->
+            if (!release) {
+                haptics.play(HapticPattern.PREVIOUS)
+            } else {
+                engine.noteGesture(SystemClock.uptimeMillis())
+                if (!audio.rewind(steps * AudioManager.REWIND_STEP_SECONDS)) haptics.play(HapticPattern.EDGE)
+            }
         }
     }
 
@@ -114,12 +129,12 @@ fun GestureSurface(
         }
     }
 
-    val actions = remember(dispatch, pinchHandler) { talkBackActions(dispatch, pinchHandler) }
+    val actions = remember(dispatch, pinchHandler, rewindHandler) { talkBackActions(dispatch, pinchHandler, rewindHandler) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .resonantGestureDetector(twoFingerSwipe, ignoreChildTaps, pinchHandler) { gesture -> dispatch(gesture) }
+            .resonantGestureDetector(twoFingerSwipe, ignoreChildTaps, pinchHandler, rewindHandler) { gesture -> dispatch(gesture) }
             .semantics(mergeDescendants = true) { customActions = actions },
         content = content
     )
@@ -133,7 +148,8 @@ fun GestureSurface(
  */
 private fun talkBackActions(
     dispatch: (ResonantGesture) -> Unit,
-    pinch: ((Float) -> Unit)?
+    pinch: ((Float) -> Unit)?,
+    rewind: ((Int, Boolean) -> Unit)?
 ): List<CustomAccessibilityAction> {
     fun action(label: String, gesture: ResonantGesture) =
         CustomAccessibilityAction(label) { dispatch(gesture); true }
@@ -150,7 +166,9 @@ private fun talkBackActions(
         action("Where am I", ResonantGesture.ThreeFingerHold),
         action("Faster speech", ResonantGesture.HoldSpeedUp),
         action("Slower speech", ResonantGesture.HoldSpeedDown)
-    ) + if (pinch == null) emptyList() else listOf(
+    ) + (if (rewind == null) emptyList() else listOf(
+        CustomAccessibilityAction("Rewind 10 seconds") { rewind(2, true); true }
+    )) + if (pinch == null) emptyList() else listOf(
         CustomAccessibilityAction("Larger text") { pinch(1.25f); true },
         CustomAccessibilityAction("Smaller text") { pinch(0.8f); true }
     )

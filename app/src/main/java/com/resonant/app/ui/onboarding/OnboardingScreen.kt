@@ -1,5 +1,7 @@
 package com.resonant.app.ui.onboarding
 
+import com.resonant.app.ui.theme.ResonantOnInk
+import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -226,7 +228,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         title = "Learn the gestures",
         subtitle = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
-            GestureSurface(twoFingerSwipe = true, hints = false, onGesture = { gesture ->
+            GestureSurface(twoFingerSwipe = true, hints = false, rewind = false, onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
                 if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) {
                     return@GestureSurface
@@ -280,7 +282,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp,
-                                color = Color.White
+                                color = ResonantOnInk
                             )
                         }
                     } else {
@@ -294,7 +296,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .weight(1f)
                             .padding(vertical = 16.dp)
                             .clip(RoundedCornerShape(28.dp))
-                            .background(Color.White)
+                            .background(ResonantCard)
                             .padding(24.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -336,7 +338,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             fontFamily = MetropolisBlack,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
-                            color = Color.White
+                            color = ResonantOnInk
                         )
                     }
                 }
