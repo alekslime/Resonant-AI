@@ -110,7 +110,8 @@ internal fun FittedTitle(
     maxSp: Float = 56f,
     lineRatio: Float = 72f / 56f,
     minSp: Float = 26f,
-    textAlign: TextAlign = TextAlign.Start
+    textAlign: TextAlign = TextAlign.Start,
+    color: Color = BrandInk
 ) {
     val measurer = rememberTextMeasurer()
     val base = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold)
@@ -130,7 +131,7 @@ internal fun FittedTitle(
         Text(
             text = title,
             style = base.copy(fontSize = sizeSp.sp, lineHeight = (sizeSp * lineRatio).sp),
-            color = BrandInk,
+            color = color,
             textAlign = textAlign,
             modifier = Modifier.fillMaxWidth()
         )

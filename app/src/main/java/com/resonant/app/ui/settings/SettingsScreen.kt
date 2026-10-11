@@ -1,5 +1,8 @@
 package com.resonant.app.ui.settings
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.TextSpacings
 import com.resonant.app.ui.theme.ActiveMotion
@@ -177,6 +180,7 @@ private fun voiceModelCategory(state: WhisperModelManager.State): String = when 
     is WhisperModelManager.State.Failed -> "failed"
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     onOpenDebug: () -> Unit,
@@ -511,9 +515,13 @@ fun SettingsScreen(
                 settingsItems.forEachIndexed { i, item ->
                     val focused = i == index
                     val label = labelFor(item, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)
+                    // Keep the focused row on screen as focus moves down the list.
+                    val inView = remember { BringIntoViewRequester() }
+                    LaunchedEffect(focused) { if (focused) inView.bringIntoView() }
                     Box(
                         Modifier
                             .fillMaxWidth()
+                            .bringIntoViewRequester(inView)
                             .clip(cardShape())
                             // Focus is the same idea as Home: the current item is the inverted one.
                             .background(if (focused) BrandInk else ResonantCard)

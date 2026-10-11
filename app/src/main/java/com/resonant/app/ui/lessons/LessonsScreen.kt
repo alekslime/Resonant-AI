@@ -1,5 +1,8 @@
 package com.resonant.app.ui.lessons
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
 import com.resonant.app.ui.components.pressScale
@@ -185,21 +188,26 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
     val pressSource = remember { MutableInteractionSource() }
+    // The focused card is the inverted one, as on Settings, and the list scrolls to keep it in view.
+    val inView = remember { BringIntoViewRequester() }
+    LaunchedEffect(focused) { if (focused) inView.bringIntoView() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .bringIntoViewRequester(inView)
             .pressScale(pressSource)
             .clip(cardShape())
-            .background(CardBackground)
+            .background(if (focused) BrandInk else CardBackground)
             .cardBorder(cardShape())
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
     ) {
-        FittedTitle(title)
+        FittedTitle(title, color = if (focused) ResonantOnInk else BrandInk)
 
         Spacer(Modifier.height(24.dp))
 
@@ -209,14 +217,15 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
-                .background(CardButtonBackground)
+                .background(if (focused) ResonantOnInk else CardButtonBackground)
                 .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Continue lesson", style = CardButtonStyle, color = ResonantOnButton)
-            ArrowIcon(pointRight = true, tint = ResonantOnButton, modifier = Modifier.size(22.dp))
+            val onButton = if (focused) BrandInk else ResonantOnButton
+            Text(text = "Continue lesson", style = CardButtonStyle, color = onButton)
+            ArrowIcon(pointRight = true, tint = onButton, modifier = Modifier.size(22.dp))
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
 import com.resonant.app.ui.components.pressScale
@@ -243,6 +246,7 @@ fun QuizBrowserScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun QuizCard(
     quiz: QuizSet,
@@ -251,12 +255,16 @@ private fun QuizCard(
     onClick: () -> Unit
 ) {
     val pressSource = remember { MutableInteractionSource() }
+    // The focused card is the inverted one, as on Settings, and the list scrolls to keep it in view.
+    val inView = remember { BringIntoViewRequester() }
+    LaunchedEffect(focused) { if (focused) inView.bringIntoView() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .bringIntoViewRequester(inView)
             .pressScale(pressSource)
             .clip(cardShape())
-            .background(ResonantCard)
+            .background(if (focused) BrandInk else ResonantCard)
             .cardBorder(cardShape())
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
@@ -268,7 +276,7 @@ private fun QuizCard(
                     if (focused) " Focused." else ""
             }
     ) {
-        FittedTitle(quiz.title, maxSp = 42f, lineRatio = 55f / 42f)
+        FittedTitle(quiz.title, maxSp = 42f, lineRatio = 55f / 42f, color = if (focused) ResonantOnInk else BrandInk)
 
         Spacer(Modifier.height(22.dp))
 
@@ -277,7 +285,7 @@ private fun QuizCard(
                 .fillMaxWidth()
                 .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
-                .background(ResonantButton)
+                .background(if (focused) ResonantOnInk else ResonantButton)
                 .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -287,9 +295,9 @@ private fun QuizCard(
                 text = progress.buttonLabel.split(" ")
                     .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } },
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-                color = ResonantOnButton
+                color = if (focused) BrandInk else ResonantOnButton
             )
-            ArrowIcon(pointRight = true, tint = ResonantOnButton, modifier = Modifier.size(22.dp))
+            ArrowIcon(pointRight = true, tint = if (focused) BrandInk else ResonantOnButton, modifier = Modifier.size(22.dp))
         }
     }
 }

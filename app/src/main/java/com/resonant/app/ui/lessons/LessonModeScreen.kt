@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantOnInk
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
 import com.resonant.app.ui.components.pressScale
@@ -130,7 +131,7 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
                                 .fillMaxWidth()
                                 .pressScale(pressSource)
                                 .clip(cardShape())
-                                .background(ResonantCard)
+                                .background(if (i == index) BrandInk else ResonantCard)
                                 .cardBorder(cardShape())
                                 .clickable(interactionSource = pressSource, indication = LocalIndication.current) { audio.jumpTo(i); pick(i) }
                                 .semantics {
@@ -143,7 +144,7 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.Black,
                                 fontSize = 54.sp,
-                                color = BrandInk
+                                color = if (i == index) ResonantOnInk else BrandInk
                             )
                         }
                     }
