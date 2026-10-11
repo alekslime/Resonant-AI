@@ -1,6 +1,7 @@
 package com.resonant.app.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
 import com.resonant.app.haptics.HapticPattern
+import com.resonant.app.ui.theme.ActiveMotion
 import kotlinx.coroutines.delay
 
 /**
@@ -63,7 +65,11 @@ fun TtsUnavailableBanner(audio: AudioManager, haptics: HapticManager, lifecycle:
         }
     }
 
-    AnimatedVisibility(visible = showBanner, enter = fadeIn(), exit = fadeOut()) {
+    AnimatedVisibility(
+        visible = showBanner,
+        enter = fadeIn(tween(ActiveMotion.ms(200))),
+        exit = fadeOut(tween(ActiveMotion.ms(200)))
+    ) {
         Text(
             "Voice is unavailable. Check that a text-to-speech engine is installed and enabled in your device settings.",
             modifier = Modifier
