@@ -90,7 +90,45 @@ object Palettes {
         cardOutline = null, controlOutline = null, outlineWidth = 0.dp
     )
 
-    val ALL = listOf(DEFAULT, LOW_VISION, CATARACTS, MONOCHROME, HANDSFREE, PHOTOPHOBIA, WARM)
+    val NIGHT_RED = ThemePalette(
+        id = "night_red", label = "Night red",
+        background = Color(0xFF000000), card = Color(0xFF140000), ink = Color(0xFFFF7878), onInk = Color(0xFF000000), dim = Color(0xFFFA7474),
+        bar = Color(0xFF140000), onBar = Color(0xFFFF7878), button = Color(0xFF140000), onButton = Color(0xFFFF7878),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val BLUE_ON_YELLOW = ThemePalette(
+        id = "blue_on_yellow", label = "Blue on yellow",
+        background = Color(0xFFFFEB3B), card = Color(0xFFFFF8C4), ink = Color(0xFF0A1B6B), onInk = Color(0xFFFFF8C4), dim = Color(0xFF23358F),
+        bar = Color(0xFF0A1B6B), onBar = Color(0xFFFFEB3B), button = Color(0xFF0A1B6B), onButton = Color(0xFFFFF8C4),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val SOFT_CREAM = ThemePalette(
+        id = "soft_cream", label = "Soft cream",
+        background = Color(0xFFF3ECD6), card = Color(0xFFFFFDF5), ink = Color(0xFF1B2A49), onInk = Color(0xFFFFFDF5), dim = Color(0xFF3A4A6B),
+        bar = Color(0xFF1B2A49), onBar = Color(0xFFF3ECD6), button = Color(0xFF1B2A49), onButton = Color(0xFFFFFDF5),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val PAPER_GRAY = ThemePalette(
+        id = "paper_gray", label = "Paper gray",
+        background = Color(0xFFDADAD6), card = Color(0xFFF2F2EF), ink = Color(0xFF1F1F1F), onInk = Color(0xFFF2F2EF), dim = Color(0xFF3A3A3A),
+        bar = Color(0xFF3A3A3A), onBar = Color(0xFFF2F2EF), button = Color(0xFF2B2B2B), onButton = Color(0xFFF2F2EF),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val WHITE_ON_BLUE = ThemePalette(
+        id = "white_on_blue", label = "White on blue",
+        background = Color(0xFF0B2A6F), card = Color(0xFF1A44A3), ink = Color(0xFFFFFFFF), onInk = Color(0xFF0B2A6F), dim = Color(0xFFB9CEFF),
+        bar = Color(0xFF061A47), onBar = Color(0xFFFFFFFF), button = Color(0xFF061A47), onButton = Color(0xFFFFFFFF),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val ALL = listOf(
+        DEFAULT, LOW_VISION, CATARACTS, MONOCHROME, HANDSFREE, PHOTOPHOBIA, WARM,
+        NIGHT_RED, BLUE_ON_YELLOW, SOFT_CREAM, PAPER_GRAY, WHITE_ON_BLUE
+    )
 
     fun byId(id: String?): ThemePalette = ALL.firstOrNull { it.id == id } ?: DEFAULT
 
