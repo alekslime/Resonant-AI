@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -24,6 +25,7 @@ import com.resonant.app.ui.nav.ResonantNavHost
 import com.resonant.app.ui.nav.Routes
 import com.resonant.app.ui.splash.SplashScreen
 import com.resonant.app.ui.talkback.TalkBackNoticeScreen
+import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.ResonantTheme
 
 /**
@@ -76,7 +78,9 @@ class MainActivity : ComponentActivity() {
                     LocalHapticManager provides container.hapticManager,
                     LocalDebugState provides container.debugState
                 ) {
-                    Box(Modifier.fillMaxSize()) {
+                    // The chosen theme's screen color sits behind everything, so a fade between
+                    // screens never lets the window's own orange show through.
+                    Box(Modifier.fillMaxSize().drawBehind { drawRect(BrandOrange) }) {
                         if (touchExplorationOn && !bypassWarning) {
                             TalkBackNoticeScreen(
                                 onOpenAccessibilitySettings = {
