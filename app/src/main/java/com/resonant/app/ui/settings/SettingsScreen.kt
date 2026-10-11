@@ -1,5 +1,6 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -524,7 +525,7 @@ fun SettingsScreen(
                             .bringIntoViewRequester(inView)
                             .clip(cardShape())
                             // Focus is the same idea as Home: the current item is the inverted one.
-                            .background(if (focused) BrandInk else ResonantCard)
+                            .background(focusColor(if (focused) BrandInk else ResonantCard))
                             .cardBorder(cardShape())
                             .clickable {
                                 if (holdDown || SystemClock.uptimeMillis() < ignoreClickUntil) return@clickable
@@ -542,7 +543,7 @@ fun SettingsScreen(
                         Text(
                             label,
                             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 34.sp),
-                            color = if (focused) ResonantOnInk else BrandInk
+                            color = focusColor(if (focused) ResonantOnInk else BrandInk)
                         )
                     }
                 }

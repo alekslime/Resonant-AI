@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -201,13 +202,13 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
             .bringIntoViewRequester(inView)
             .pressScale(pressSource)
             .clip(cardShape())
-            .background(if (focused) BrandInk else CardBackground)
+            .background(focusColor(if (focused) BrandInk else CardBackground))
             .cardBorder(cardShape())
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
     ) {
-        FittedTitle(title, color = if (focused) ResonantOnInk else BrandInk)
+        FittedTitle(title, color = focusColor(if (focused) ResonantOnInk else BrandInk))
 
         Spacer(Modifier.height(24.dp))
 
@@ -217,13 +218,13 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
-                .background(if (focused) ResonantOnInk else CardButtonBackground)
+                .background(focusColor(if (focused) ResonantOnInk else CardButtonBackground))
                 .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val onButton = if (focused) BrandInk else ResonantOnButton
+            val onButton = focusColor(if (focused) BrandInk else ResonantOnButton)
             Text(text = "Continue lesson", style = CardButtonStyle, color = onButton)
             ArrowIcon(pointRight = true, tint = onButton, modifier = Modifier.size(22.dp))
         }

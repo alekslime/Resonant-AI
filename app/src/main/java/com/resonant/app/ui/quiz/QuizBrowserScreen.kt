@@ -1,5 +1,6 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -264,7 +265,7 @@ private fun QuizCard(
             .bringIntoViewRequester(inView)
             .pressScale(pressSource)
             .clip(cardShape())
-            .background(if (focused) BrandInk else ResonantCard)
+            .background(focusColor(if (focused) BrandInk else ResonantCard))
             .cardBorder(cardShape())
             .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
@@ -276,7 +277,7 @@ private fun QuizCard(
                     if (focused) " Focused." else ""
             }
     ) {
-        FittedTitle(quiz.title, maxSp = 42f, lineRatio = 55f / 42f, color = if (focused) ResonantOnInk else BrandInk)
+        FittedTitle(quiz.title, maxSp = 42f, lineRatio = 55f / 42f, color = focusColor(if (focused) ResonantOnInk else BrandInk))
 
         Spacer(Modifier.height(22.dp))
 
@@ -285,19 +286,20 @@ private fun QuizCard(
                 .fillMaxWidth()
                 .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
-                .background(if (focused) ResonantOnInk else ResonantButton)
+                .background(focusColor(if (focused) ResonantOnInk else ResonantButton))
                 .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            val onButton = focusColor(if (focused) BrandInk else ResonantOnButton)
             Text(
                 text = progress.buttonLabel.split(" ")
                     .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } },
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-                color = if (focused) BrandInk else ResonantOnButton
+                color = onButton
             )
-            ArrowIcon(pointRight = true, tint = if (focused) BrandInk else ResonantOnButton, modifier = Modifier.size(22.dp))
+            ArrowIcon(pointRight = true, tint = onButton, modifier = Modifier.size(22.dp))
         }
     }
 }
