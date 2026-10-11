@@ -1,7 +1,10 @@
 package com.resonant.app.ui.quiz
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.ActiveSpacing
@@ -331,10 +334,23 @@ fun QuizScreen(
     }
 }
 
-/** A check or a cross, drawn with lines so it needs no icon file and scales cleanly. */
+/**
+ * A check or a cross, drawn with lines so it needs no icon file and scales cleanly. It grows
+ * from 80% and fades in once when the result appears; no bounce, and shown at once with Reduce
+ * motion.
+ */
 @Composable
 private fun ResultMark(correct: Boolean, tint: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
+    val appear = remember { Animatable(if (ActiveMotion.reduce) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        appear.animateTo(1f, tween(ActiveMotion.ms(250), easing = FastOutSlowInEasing))
+    }
+    Canvas(modifier.graphicsLayer {
+        val p = appear.value
+        alpha = p
+        scaleX = 0.8f + 0.2f * p
+        scaleY = 0.8f + 0.2f * p
+    }) {
         val w = size.width
         val h = size.height
         val stroke = w * 0.14f
