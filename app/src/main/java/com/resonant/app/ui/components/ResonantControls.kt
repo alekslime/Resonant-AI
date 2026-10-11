@@ -1,5 +1,8 @@
 package com.resonant.app.ui.components
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.runtime.remember
 import com.resonant.app.ui.theme.MinTouchTarget
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
@@ -52,16 +55,18 @@ fun ResonantButton(
     filled: Boolean = true,
     enabled: Boolean = true
 ) {
+    val pressSource = remember { MutableInteractionSource() }
     Box(
         modifier
             .fillMaxWidth()
             .heightIn(min = MinTouchTarget)
             .alpha(if (enabled) 1f else 0.5f)
+            .pressScale(pressSource)
             .clip(controlShape())
             .background(if (filled) ResonantButton else ResonantCard)
             .then(if (filled) Modifier.controlBorder(controlShape()) else Modifier.cardBorder(controlShape()))
             .semantics { role = Role.Button }
-            .clickable(enabled = enabled) { onClick() }
+            .clickable(interactionSource = pressSource, indication = LocalIndication.current, enabled = enabled) { onClick() }
             .padding(horizontal = 20.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {

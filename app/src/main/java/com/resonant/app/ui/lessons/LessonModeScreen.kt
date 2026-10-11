@@ -1,5 +1,8 @@
 package com.resonant.app.ui.lessons
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import com.resonant.app.ui.components.pressScale
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantCard
@@ -120,14 +123,16 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
                     verticalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
                     modes.forEachIndexed { i, m ->
+                        val pressSource = remember { MutableInteractionSource() }
                         Box(
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
+                                .pressScale(pressSource)
                                 .clip(cardShape())
                                 .background(ResonantCard)
                                 .cardBorder(cardShape())
-                                .clickable { audio.jumpTo(i); pick(i) }
+                                .clickable(interactionSource = pressSource, indication = LocalIndication.current) { audio.jumpTo(i); pick(i) }
                                 .semantics {
                                     contentDescription = m.spoken + if (i == index) " Focused." else ""
                                 },

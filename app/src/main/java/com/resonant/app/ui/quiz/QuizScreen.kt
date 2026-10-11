@@ -1,5 +1,8 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ActivePalette
@@ -157,17 +160,22 @@ fun QuizScreen(
     // brightness, not just hue, and the check or cross and the word below say it too, so the
     // result never depends on telling colors apart.
     val palette = ActivePalette.current
-    val screenBackground = when {
+    val targetBackground = when {
         submitted && lastAnswerCorrect == true -> palette.correct
         submitted && lastAnswerCorrect == false -> palette.incorrect
         else -> BrandOrange
     }
 
-    val questionTextColor = when {
+    val targetTextColor = when {
         submitted && lastAnswerCorrect == true -> palette.onCorrect
         submitted && lastAnswerCorrect == false -> palette.onIncorrect
         else -> BrandInk
     }
+
+    // The result fades in over about a fifth of a second; at once with Reduce motion.
+    val fade = tween<Color>(ActiveMotion.ms(200))
+    val screenBackground by animateColorAsState(targetBackground, fade, label = "resultBackground")
+    val questionTextColor by animateColorAsState(targetTextColor, fade, label = "resultText")
 
     SystemBarsColor(screenBackground)
 

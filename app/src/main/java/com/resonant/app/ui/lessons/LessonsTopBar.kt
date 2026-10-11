@@ -1,5 +1,8 @@
 package com.resonant.app.ui.lessons
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import com.resonant.app.ui.components.pressScale
 import com.resonant.app.ui.theme.MinTouchTarget
 import androidx.compose.foundation.layout.heightIn
 import com.resonant.app.ui.theme.controlShape
@@ -55,6 +58,7 @@ internal fun LessonsTopBar(
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val bar = ResonantBar
+    val pressSource = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -66,10 +70,11 @@ internal fun LessonsTopBar(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .heightIn(min = MinTouchTarget)
+                .pressScale(pressSource)
                 .clip(controlShape())
                 .background(bar)
                 .controlBorder(controlShape())
-                .clickable { haptics.play(HapticPattern.BACK); audio.announce(backAnnouncement); onBack() }
+                .clickable(interactionSource = pressSource, indication = LocalIndication.current) { haptics.play(HapticPattern.BACK); audio.announce(backAnnouncement); onBack() }
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

@@ -1,5 +1,8 @@
 package com.resonant.app.ui.quiz
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
+import com.resonant.app.ui.components.pressScale
 import com.resonant.app.ui.theme.MinTouchTarget
 import androidx.compose.foundation.layout.heightIn
 import com.resonant.app.ui.theme.cardShape
@@ -247,13 +250,15 @@ private fun QuizCard(
     focused: Boolean,
     onClick: () -> Unit
 ) {
+    val pressSource = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .pressScale(pressSource)
             .clip(cardShape())
             .background(ResonantCard)
             .cardBorder(cardShape())
-            .clickable(onClick = onClick)
+            .clickable(interactionSource = pressSource, indication = LocalIndication.current, onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
             // Progress/status/category aren't drawn (Figma), but stay in the spoken description.
             .semantics {
