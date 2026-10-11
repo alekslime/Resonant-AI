@@ -51,6 +51,9 @@ private const val TAGLINE = "Learn by listening."
 
 private const val EXIT_MS = 350
 
+/** How long the finished logo and wordmark stay on screen before the fade out. */
+private const val HOLD_MS = 1500L
+
 private const val STILL_HOLD_MS = 1500L
 
 /**
@@ -88,6 +91,7 @@ fun SplashScreen(soundCues: SoundCueManager? = null, onFinished: () -> Unit) {
             time.floatValue = ((now - start) / 1_000_000_000f * SplashSound.SPEED).coerceAtMost(SplashMotion.ANIM_S)
         } while (time.floatValue < SplashMotion.ANIM_S)
 
+        delay(HOLD_MS)
         exit.animateTo(1f, tween(EXIT_MS, easing = FastOutSlowInEasing))
         onFinished()
     }
