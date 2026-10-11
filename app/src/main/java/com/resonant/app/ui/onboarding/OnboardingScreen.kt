@@ -36,6 +36,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.resonant.app.audio.AudioManager
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
@@ -44,6 +45,8 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.gestures.explain
+import com.resonant.app.gestures.explainPinch
+import com.resonant.app.gestures.explainRewind
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
@@ -62,8 +65,12 @@ private data class GestureLesson(
     val label: String,
     val spoken: String,
     val hint: String,
-    val matches: (ResonantGesture) -> Boolean
+    val matches: (ResonantGesture) -> Boolean,
+    val tool: Tool = Tool.GESTURE
 )
+
+/** Pinch and four-finger rewind do not come in as gestures, so those steps are finished by their own callbacks. */
+private enum class Tool { GESTURE, PINCH, REWIND }
 
 private val lessons = listOf(
     GestureLesson(
@@ -97,6 +104,13 @@ private val lessons = listOf(
         matches = { it is ResonantGesture.DoubleTap && it.zone == InteractionZone.LEFT_EDGE }
     ),
     GestureLesson(
+        label = "Four fingers left",
+        spoken = "Missed more than a sentence? Put four fingers on the screen and drag them left. Every step goes back five seconds, and you feel a tick for each one. Lift your fingers to jump back.",
+        hint = "Put four fingers down, drag them left, then lift.",
+        matches = { false },
+        tool = Tool.REWIND
+    ),
+    GestureLesson(
         label = "Drag up on the right edge",
         spoken = "The right edge is a speed slider. Press and hold the right edge, then drag up to speak faster. Drag down to slow back down.",
         hint = "Hold the right edge, then drag your finger upward.",
@@ -109,6 +123,13 @@ private val lessons = listOf(
         matches = { it is ResonantGesture.LongPress && it.zone == InteractionZone.RIGHT_EDGE }
     ),
     GestureLesson(
+        label = "Pinch",
+        spoken = "On reading screens you can change the text size. Put two fingers on the screen and spread them apart for larger text, or bring them together for smaller text.",
+        hint = "Put two fingers down and spread them apart.",
+        matches = { false },
+        tool = Tool.PINCH
+    ),
+    GestureLesson(
         label = "Three-finger hold",
         spoken = "Last one. Lost your place? Hold three fingers anywhere on the screen and Resonant will tell you where you are.",
         hint = "Press and hold with three fingers anywhere.",
@@ -118,11 +139,11 @@ private val lessons = listOf(
 
 private const val INTRO =
     "Welcome to Resonant. Resonant is used entirely by touch and sound — there is nothing you need to see. " +
-        "I will teach you eight gestures, one at a time. Try each one and I will confirm it. " +
+        "I will teach you ten gestures, one at a time. Try each one and I will confirm it. " +
         "Then you can practise freely. To skip the lessons, press and hold the left edge of the screen."
 
 private const val SANDBOX_INTRO =
-    "That's all eight. Now you can practise. Nothing you do here changes anything. " +
+    "That's all ten. Now you can practise. Nothing you do here changes anything. " +
         "Try any gesture and I will tell you what it means. " +
         "When you are ready, swipe right twice to start. To leave right away, press and hold the left edge."
 
@@ -146,6 +167,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     // True right after one swipe right, so the second one finishes. One swipe is only practice.
     var exitArmed by remember { mutableStateOf(false) }
     var quietTick by remember { mutableIntStateOf(0) }
+    // A pinch has no end event, so its movements add up and it is judged once the fingers go quiet.
+    var pinchTotal by remember { mutableStateOf(1f) }
+    var pinchTick by remember { mutableIntStateOf(0) }
     val onFinishedNow by rememberUpdatedState(onFinished)
 
     fun finish() {
@@ -194,6 +218,13 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         audio.announce("Still practising? Try any gesture, or swipe right twice to start.")
     }
 
+    fun showAnswer(answer: GestureExplanation) {
+        answer.haptic?.let { haptics.play(it) }
+        sandboxLast = answer
+        exitArmed = false
+        audio.announce(answer.spoken) { quietTick += 1 }
+    }
+
     fun practise(gesture: ResonantGesture) {
         val swipedRight = gesture is ResonantGesture.Swipe &&
             gesture.zone == InteractionZone.CENTER && gesture.direction == SwipeDirection.RIGHT
@@ -223,7 +254,41 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         }
     }
 
+    fun settlePinch() {
+        val total = pinchTotal
+        pinchTotal = 1f
+        if (sandbox) {
+            showAnswer(explainPinch(total))
+        } else if (lessons.getOrNull(step)?.tool == Tool.PINCH) {
+            advance()
+        }
+    }
+
+    LaunchedEffect(pinchTick) {
+        if (pinchTick == 0) return@LaunchedEffect
+        delay(450)
+        settlePinch()
+    }
+
+    val onPinch: (Float) -> Unit = { factor ->
+        pinchTotal *= factor
+        pinchTick += 1
+    }
+
+    val onRewind: (Int, Boolean) -> Unit = { steps, release ->
+        if (!release) {
+            haptics.play(HapticPattern.PREVIOUS)
+        } else if (sandbox) {
+            showAnswer(explainRewind(steps * AudioManager.REWIND_STEP_SECONDS.toInt()))
+        } else if (lessons.getOrNull(step)?.tool == Tool.REWIND) {
+            advance()
+        }
+    }
+
     val current = lessons.getOrNull(step)
+    // Only live while they can mean something: a pinch that crept into a swipe lesson would eat the swipe.
+    val pinchOn = sandbox || current?.tool == Tool.PINCH
+    val rewindOn = sandbox || current?.tool == Tool.REWIND
 
     // Same header every other screen uses — this used to hand-roll its own copy
     // of the rule/title/subtitle motif, which meant two independent
@@ -232,7 +297,13 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         title = "Learn the gestures",
         subtitle = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
-            GestureSurface(twoFingerSwipe = true, hints = false, onGesture = { gesture ->
+            GestureSurface(
+                twoFingerSwipe = true,
+                hints = false,
+                rewind = false,
+                onPinch = if (pinchOn) onPinch else null,
+                onRewind = if (rewindOn) onRewind else null,
+                onGesture = { gesture ->
                 // Hold-start / hold-end are mechanical, never a lesson answer.
                 if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) {
                     return@GestureSurface
