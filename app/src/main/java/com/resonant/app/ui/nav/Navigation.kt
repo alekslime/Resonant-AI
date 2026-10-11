@@ -1,5 +1,10 @@
 package com.resonant.app.ui.nav
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +42,7 @@ import com.resonant.app.ui.settings.DebugScreen
 import com.resonant.app.ui.settings.NameSetupScreen
 import com.resonant.app.ui.settings.ServerSetupScreen
 import com.resonant.app.ui.settings.SettingsScreen
+import com.resonant.app.ui.theme.ActiveMotion
 
 object Routes {
     const val HOME = "home"
@@ -67,6 +73,8 @@ object Routes {
     fun quizResults(correct: Int, total: Int) = "quiz_results/$correct/$total"
 }
 
+private const val SCREEN_FADE_MS = 150
+
 @Composable
 fun ResonantNavHost(startDestination: String = Routes.HOME) {
     val navController = rememberNavController()
@@ -89,7 +97,17 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         }
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    // Short fade, no sliding. The screen that arrives fades in over the old one, and a screen that
+    // is left by Back fades out over the one under it, so the window behind never shows through.
+    // Read at each navigation, so Reduce motion applies at once (0 ms = a plain cut).
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        enterTransition = { fadeIn(tween(ActiveMotion.ms(SCREEN_FADE_MS))) },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { fadeOut(tween(ActiveMotion.ms(SCREEN_FADE_MS))) }
+    ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(onFinished = {
                 prefs.onboardingComplete = true
