@@ -215,7 +215,7 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Center | Swipe right | Continue / submit (Lesson: next section; Quiz: submit) |
 | Center | Swipe left | Back (Lesson: previous section) |
 | Center | Tap | Select / confirm (Chat: ask a question, or cancel while thinking) |
-| Left edge | Tap | Pause / resume speech |
+| Left edge | Tap | Pause / resume speech. Resuming carries on from the exact spot you paused at (the same goes after leaving the app and coming back); a double-tap starts the unit again from the top |
 | Left edge | Double-tap | Repeat the current unit |
 | Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×); remembered between launches |
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
