@@ -82,6 +82,19 @@ SYSTEM_PROMPT = (
     "If the student interrupts, answer their question first, then offer to continue."
 )
 
+def system_prompt(material_title: str = "", material_text: str = "") -> str:
+    """The tutor prompt, plus the student's own material when they chose some in the app."""
+    if not material_text:
+        return SYSTEM_PROMPT
+    return (
+        SYSTEM_PROMPT
+        + f' The student is studying their own material, titled "{material_title}". '
+        "Answer from it when the question is about it, and keep to what it says. "
+        "If it does not cover the question, say so in one short sentence, then help from what you know. "
+        "The material follows. " + material_text
+    )
+
+
 CONTINUE_PHRASES = {
     "continue", "go on", "keep going", "carry on", "go ahead", "proceed", "resume",
 }
@@ -173,6 +186,7 @@ class Conversation:
         self.local = local
         self.llm = AsyncOpenAI(base_url=OLLAMA_URL, api_key="ollama")
         self.history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.material = ("", "")  # (title, text) the student opened last in the app
         self.pending: list[rtc.AudioFrame] = []
         self.busy = False
         self.current: asyncio.Task | None = None  # the turn in progress (so it can be interrupted)
@@ -295,6 +309,24 @@ class Conversation:
             log.info("(ignored: held turn overlapped the agent's own voice)")
             return
         await self.submit(frames)
+
+    def set_material(self, raw: str | None) -> None:
+        """The phone's chosen material, as JSON {"title", "text"}. Empty or missing clears it.
+        Goes into the system message, so every answer can use it. A repeat changes nothing."""
+        title = text = ""
+        if raw:
+            try:
+                data = json.loads(raw)
+                title = str(data.get("title", "")).strip()
+                text = str(data.get("text", "")).strip()
+            except (ValueError, AttributeError):
+                log.warning("bad material from the phone")
+                return
+        if (title, text) == self.material:
+            return
+        self.material = (title, text)
+        self.history[0] = {"role": "system", "content": system_prompt(title, text)}
+        log.info("material: %s", f"{title!r} ({len(text)} characters)" if text else "none")
 
     def apply_settings(
         self,
@@ -665,6 +697,7 @@ async def entrypoint(ctx: JobContext) -> None:
         attrs = participant.attributes
         convo.apply_settings(attrs.get("voice"), attrs.get("speed"), attrs.get("mode"))
         convo.commands.set_catalog(attrs.get("catalog"))
+        convo.set_material(attrs.get("material"))
 
     for existing in ctx.room.remote_participants.values():
         apply_phone_settings(existing)  # the phone may have joined before we did
@@ -676,7 +709,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @ctx.room.on("participant_attributes_changed")
     def on_attributes_changed(changed: dict, participant: rtc.Participant):
-        if "voice" in changed or "speed" in changed or "mode" in changed or "catalog" in changed:
+        if "voice" in changed or "speed" in changed or "mode" in changed or "catalog" in changed or "material" in changed:
             apply_phone_settings(participant)
         if "ptt" in changed and participant.identity != ctx.room.local_participant.identity:
             convo.ptt_signal(changed["ptt"])
@@ -696,6 +729,8 @@ async def entrypoint(ctx: JobContext) -> None:
                 convo.apply_settings(data.get("voice"), data.get("speed"), data.get("mode"))
             except (ValueError, AttributeError) as e:
                 log.warning("bad voice packet: %s", e)
+        elif packet.topic == "material":
+            convo.set_material(packet.data.decode("utf-8", errors="ignore"))
         elif packet.topic == "text":
             convo.text_signal(packet.data.decode("utf-8", errors="ignore"))
         elif packet.topic == "ptt":

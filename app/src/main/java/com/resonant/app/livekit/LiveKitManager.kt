@@ -3,6 +3,9 @@ package com.resonant.app.livekit
 import android.content.Context
 import com.resonant.app.BuildConfig
 import com.resonant.app.content.LessonData
+import com.resonant.app.content.LessonLibrary
+import com.resonant.app.content.MaterialContext
+import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.QuizData
 import com.resonant.app.core.ResonantPrefs
 import io.livekit.android.LiveKit
@@ -44,6 +47,7 @@ class LiveKitManager(
 ) {
     companion object {
         private const val TOKEN_SERVER_ID = "resonant-1dvkl5"
+        private const val AGENT_MATERIAL_CHARS = 4000
     }
 
     private val appContext = context.applicationContext
@@ -190,19 +194,31 @@ class LiveKitManager(
      */
     private fun sendVoiceSettings() {
         val prefs = ResonantPrefs(appContext)
+        // The own material opened last, for the agent's answers. Empty when there is none.
+        // Kept short so the data packet stays well under LiveKit's size limit.
+        val material = LessonLibrary.active(MaterialStore.forContext(appContext), prefs.activeMaterialId)?.let {
+            JSONObject().put("title", it.title).put("text", MaterialContext.text(it, AGENT_MATERIAL_CHARS)).toString()
+        } ?: ""
         val voice = prefs.liveVoice
         val speed = prefs.liveSpeed
         val mode = if (prefs.liveHoldToTalk) "hold" else "open"
         scope.launch {
             try {
                 room.localParticipant.updateAttributes(
-                    mapOf("voice" to voice, "speed" to speed.toString(), "mode" to mode, "catalog" to catalogJson())
+                    mapOf(
+                        "voice" to voice, "speed" to speed.toString(), "mode" to mode,
+                        "catalog" to catalogJson(), "material" to material
+                    )
                 )
             } catch (e: Exception) {
             }
             try {
                 val json = JSONObject().put("voice", voice).put("speed", speed.toDouble()).put("mode", mode).toString()
                 room.localParticipant.publishData(json.toByteArray(), topic = "voice")
+            } catch (e: Exception) {
+            }
+            try {
+                room.localParticipant.publishData(material.toByteArray(), topic = "material")
             } catch (e: Exception) {
             }
         }
