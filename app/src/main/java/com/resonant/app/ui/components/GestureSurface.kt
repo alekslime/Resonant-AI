@@ -58,6 +58,7 @@ fun GestureSurface(
     hint: String? = null,
     onPinch: ((Float) -> Unit)? = null,
     rewind: Boolean = true,
+    onRewind: ((steps: Int, release: Boolean) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val debugState = LocalDebugState.current
@@ -82,14 +83,25 @@ fun GestureSurface(
 
     // Rewind (four fingers dragged left, or the TalkBack action): a tick per 5 s step while the
     // fingers move, and the audio jumps back when they lift. Nothing to go back to = edge bump.
-    val rewindHandler: ((Int, Boolean) -> Unit)? = remember(audio, haptics, engine, rewind) {
-        if (!rewind) null else { steps: Int, release: Boolean ->
+    // A screen can pass [onRewind] to take over (the tutorial does); [rewind] = false turns it off.
+    val latestOnRewind by rememberUpdatedState(onRewind)
+    val rewindHandler: ((Int, Boolean) -> Unit)? = remember(audio, haptics, engine, rewind, onRewind != null) {
+        val custom: (Int, Boolean) -> Unit = { steps, release ->
+            if (release) engine.noteGesture(SystemClock.uptimeMillis())
+            latestOnRewind?.invoke(steps, release)
+        }
+        val standard: (Int, Boolean) -> Unit = { steps, release ->
             if (!release) {
                 haptics.play(HapticPattern.PREVIOUS)
             } else {
                 engine.noteGesture(SystemClock.uptimeMillis())
                 if (!audio.rewind(steps * AudioManager.REWIND_STEP_SECONDS)) haptics.play(HapticPattern.EDGE)
             }
+        }
+        when {
+            onRewind != null -> custom
+            rewind -> standard
+            else -> null
         }
     }
 
