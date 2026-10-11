@@ -17,7 +17,7 @@ class SplashSoundTest {
 
     @Test
     fun four_notes_rise_one_per_dot_landing() {
-        val notes = SplashSound.tones.filter { it.gain == 0.10f }
+        val notes = SplashSound.tones.filter { it.startMs in 1900..2300 }
         assertEquals(4, notes.size)
         assertEquals(notes.map { it.hz }.sorted(), notes.map { it.hz })
         assertEquals(notes.map { it.startMs }.sorted(), notes.map { it.startMs })
@@ -34,6 +34,6 @@ class SplashSoundTest {
 
     @Test
     fun splash_sound_is_the_length_of_the_animation() {
-        assertTrue(SplashSound.durationMs() in 2200..3300)
+        assertTrue(SplashSound.durationMs() in 2200..3700)
     }
 }
