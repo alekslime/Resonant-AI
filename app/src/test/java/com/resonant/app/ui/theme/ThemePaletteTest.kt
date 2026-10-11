@@ -17,31 +17,49 @@ class ThemePaletteTest {
     }
 
     private fun contrast(a: Color, b: Color): Double {
-        val (hi, lo) = luminance(a).let { x -> luminance(b).let { y -> if (x > y) x to y else y to x } }
-        return (hi + 0.05) / (lo + 0.05)
+        val x = luminance(a)
+        val y = luminance(b)
+        return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
     }
 
     private val aaa = 7.0
 
     @Test
-    fun ink_is_readable_on_the_screen_and_on_cards() {
-        Palettes.ALL.filter { it.id != "default" }.forEach { p ->
-            assertTrue("${p.id} ink on background", contrast(p.ink, p.background) >= aaa)
-            assertTrue("${p.id} ink on card", contrast(p.ink, p.card) >= aaa)
+    fun text_is_readable_on_the_screen_and_on_cards() {
+        Palettes.ALL.forEach { p ->
+            assertTrue("${p.id} text on background", contrast(p.ink, p.background) >= aaa)
+            assertTrue("${p.id} text on card", contrast(p.ink, p.card) >= aaa)
         }
     }
 
     @Test
-    fun text_on_an_ink_fill_is_readable() {
+    fun text_on_a_focused_row_is_readable() {
         Palettes.ALL.forEach { p ->
             assertTrue("${p.id} onInk on ink", contrast(p.onInk, p.ink) >= aaa)
         }
     }
 
     @Test
+    fun bar_and_button_text_is_readable() {
+        Palettes.ALL.forEach { p ->
+            assertTrue("${p.id} onBar on bar", contrast(p.onBar, p.bar) >= aaa)
+            assertTrue("${p.id} onButton on button", contrast(p.onButton, p.button) >= aaa)
+        }
+    }
+
+    @Test
     fun unfocused_menu_text_is_readable_on_the_screen() {
+        // The default keeps its original white-on-orange menu.
         Palettes.ALL.filter { it.id != "default" }.forEach { p ->
             assertTrue("${p.id} dim on background", contrast(p.dim, p.background) >= aaa)
+        }
+    }
+
+    @Test
+    fun outlines_stand_out_from_the_screen() {
+        Palettes.ALL.forEach { p ->
+            p.cardOutline?.let { assertTrue("${p.id} card outline", contrast(it, p.background) >= 3.0) }
+            p.controlOutline?.let { assertTrue("${p.id} control outline", contrast(it, p.background) >= 3.0) }
         }
     }
 
@@ -49,6 +67,7 @@ class ThemePaletteTest {
     fun ids_are_unique_and_unknown_ids_fall_back_to_default() {
         assertEquals(Palettes.ALL.size, Palettes.ALL.map { it.id }.toSet().size)
         assertEquals(Palettes.DEFAULT, Palettes.byId("nope"))
+        assertEquals(Palettes.DEFAULT, Palettes.byId("yellow_on_black"))
         assertEquals(Palettes.DEFAULT, Palettes.byId(null))
     }
 

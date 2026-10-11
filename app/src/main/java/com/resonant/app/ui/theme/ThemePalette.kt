@@ -4,15 +4,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 /**
- * One complete color theme for the app. Every screen is drawn from these five colors:
+ * One complete color theme for the app, taken from the design mockups. Every screen is drawn
+ * from these colors:
  *
  *  - [background]: the screen.
- *  - [ink]: text and icons on the screen and on cards, and the fill of buttons and bars.
- *  - [card]: the fill of cards and unfocused rows. [ink] is always readable on it.
- *  - [onInk]: text and icons drawn on top of an [ink] fill.
+ *  - [card]: the fill of cards and unfocused rows.
+ *  - [ink]: text and icons on the screen and on cards, and the fill of the focused row.
+ *  - [onInk]: text and icons drawn on an [ink] fill.
  *  - [dim]: unfocused menu text on the screen, next to focused text in [ink].
+ *  - [bar] / [onBar]: the top bar pill, the settings circle and the ask pill, and what is drawn on them.
+ *  - [button] / [onButton]: buttons such as "Continue lesson", and what is drawn on them.
+ *  - [cardOutline] / [controlOutline]: an outline around cards, or around bars and buttons.
+ *    Null means no outline. [outlineWidth] is the thickness of both.
  *
  * Contrast of each pairing is checked in ThemePaletteTest.
  */
@@ -20,20 +27,70 @@ data class ThemePalette(
     val id: String,
     val label: String,
     val background: Color,
-    val ink: Color,
     val card: Color,
+    val ink: Color,
     val onInk: Color,
-    val dim: Color
+    val dim: Color,
+    val bar: Color,
+    val onBar: Color,
+    val button: Color,
+    val onButton: Color,
+    val cardOutline: Color?,
+    val controlOutline: Color?,
+    val outlineWidth: Dp
 )
 
 object Palettes {
-    val DEFAULT = ThemePalette("default", "Default orange", Color(0xFFFFAE00), Color(0xFF0A0A0A), Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF))
-    val YELLOW_ON_BLACK = ThemePalette("yellow_on_black", "Yellow on black", Color(0xFF000000), Color(0xFFFFFF00), Color(0xFF333333), Color(0xFF000000), Color(0xFFC8C800))
-    val WHITE_ON_BLUE = ThemePalette("white_on_blue", "White on blue", Color(0xFF0B2A6F), Color(0xFFFFFFFF), Color(0xFF1A44A3), Color(0xFF0B2A6F), Color(0xFFB9CEFF))
-    val WHITE_ON_BLACK = ThemePalette("white_on_black", "White on black", Color(0xFF000000), Color(0xFFFFFFFF), Color(0xFF333333), Color(0xFF000000), Color(0xFFC8C8C8))
-    val BLACK_ON_WHITE = ThemePalette("black_on_white", "Black on white", Color(0xFFFFFFFF), Color(0xFF000000), Color(0xFFD0D0D0), Color(0xFFFFFFFF), Color(0xFF4D4D4D))
+    val DEFAULT = ThemePalette(
+        id = "default", label = "Resonant native",
+        background = Color(0xFFFFAE00), card = Color(0xFFFFFFFF), ink = Color(0xFF0A0A0A), onInk = Color(0xFFFFFFFF), dim = Color(0xFFFFFFFF),
+        bar = Color(0xFF0A0A0A), onBar = Color(0xFFFFFFFF), button = Color(0xFF0A0A0A), onButton = Color(0xFFFFFFFF),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
 
-    val ALL = listOf(DEFAULT, YELLOW_ON_BLACK, WHITE_ON_BLUE, WHITE_ON_BLACK, BLACK_ON_WHITE)
+    val LOW_VISION = ThemePalette(
+        id = "low_vision", label = "Low vision, enormous contrast",
+        background = Color(0xFF090A0C), card = Color(0xFF191714), ink = Color(0xFFFFE100), onInk = Color(0xFF090A0C), dim = Color(0xFFD4BE00),
+        bar = Color(0xFF191714), onBar = Color(0xFFFFFFFF), button = Color(0xFF000000), onButton = Color(0xFFFFFFFF),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val CATARACTS = ThemePalette(
+        id = "cataracts", label = "Cataracts, high clarity",
+        background = Color(0xFF22252C), card = Color(0xFF22211D), ink = Color(0xFFF8F7F6), onInk = Color(0xFF22211D), dim = Color(0xFFC5C8CF),
+        bar = Color(0xFF484745), onBar = Color(0xFFFFFFFF), button = Color(0xFF16140E), onButton = Color(0xFFFFFFFF),
+        cardOutline = Color(0xFFFFE100), controlOutline = null, outlineWidth = 4.dp
+    )
+
+    val MONOCHROME = ThemePalette(
+        id = "monochrome", label = "Monochrome, colorblind",
+        background = Color(0xFFFFFFFF), card = Color(0xFFE5E5E5), ink = Color(0xFF000000), onInk = Color(0xFFFFFFFF), dim = Color(0xFF4D4D4D),
+        bar = Color(0xFF000000), onBar = Color(0xFFFFFFFF), button = Color(0xFF000000), onButton = Color(0xFFFFFFFF),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val HANDSFREE = ThemePalette(
+        id = "handsfree", label = "Handsfree, screen reader",
+        background = Color(0xFF000000), card = Color(0xFF000000), ink = Color(0xFFFFFFFF), onInk = Color(0xFF000000), dim = Color(0xFFB3B3B3),
+        bar = Color(0xFF000000), onBar = Color(0xFFFFFFFF), button = Color(0xFF000000), onButton = Color(0xFFFFFFFF),
+        cardOutline = Color(0xFFFFFFFF), controlOutline = Color(0xFFFFFFFF), outlineWidth = 3.dp
+    )
+
+    val PHOTOPHOBIA = ThemePalette(
+        id = "photophobia", label = "Photophobia",
+        background = Color(0xFF2C2922), card = Color(0xFF22211D), ink = Color(0xFFFFF8E9), onInk = Color(0xFF22211D), dim = Color(0xFFC9C0AA),
+        bar = Color(0xFF15130F), onBar = Color(0xFFFFF8E9), button = Color(0xFF16140E), onButton = Color(0xFFD3B86D),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val WARM = ThemePalette(
+        id = "warm_ambiance", label = "Warm ambiance",
+        background = Color(0xFFE6D9BA), card = Color(0xFFFFF8E9), ink = Color(0xFF000000), onInk = Color(0xFFFFF8E9), dim = Color(0xFF3D3D3D),
+        bar = Color(0xFFCEBC99), onBar = Color(0xFF000000), button = Color(0xFF000000), onButton = Color(0xFFFFF8E9),
+        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+    )
+
+    val ALL = listOf(DEFAULT, LOW_VISION, CATARACTS, MONOCHROME, HANDSFREE, PHOTOPHOBIA, WARM)
 
     fun byId(id: String?): ThemePalette = ALL.firstOrNull { it.id == id } ?: DEFAULT
 

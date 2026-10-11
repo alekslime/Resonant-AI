@@ -46,6 +46,14 @@ val ResonantCard: Color get() = ActivePalette.current.card
 /** Text and icons drawn on an ink fill (buttons, bars, focused rows) in the current theme. */
 val ResonantOnInk: Color get() = ActivePalette.current.onInk
 
+/** Top bar pill, settings circle and ask pill in the current theme, and what is drawn on them. */
+val ResonantBar: Color get() = ActivePalette.current.bar
+val ResonantOnBar: Color get() = ActivePalette.current.onBar
+
+/** Buttons such as "Continue lesson" in the current theme, and what is drawn on them. */
+val ResonantButton: Color get() = ActivePalette.current.button
+val ResonantOnButton: Color get() = ActivePalette.current.onButton
+
 /** Unfocused menu text on the screen background in the current theme. */
 val ResonantDim: Color get() = ActivePalette.current.dim
 
