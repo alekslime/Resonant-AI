@@ -17,6 +17,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.lifecycleScope
+import com.resonant.app.content.MaterialImporter
+import com.resonant.app.haptics.HapticPattern
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
@@ -52,6 +58,8 @@ class MainActivity : ComponentActivity() {
 
         // First launch drops straight into the tutorial; after that, Home.
         val start = if (container.prefs.onboardingComplete) Routes.HOME else Routes.ONBOARDING
+
+        importShared(intent)
 
         setContent {
             ResonantTheme {
@@ -111,6 +119,34 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        importShared(intent)
+    }
+
+    /**
+     * "Share to Resonant": saves the shared text or file, then says what happened. While the
+     * live mic is open it only vibrates, so the PC agent never hears the app talk.
+     */
+    private fun importShared(intent: Intent) {
+        if (intent.action != Intent.ACTION_SEND) return
+        // Handled once: a rotation or recreate must not import the same share again.
+        val shared = Intent(intent)
+        intent.action = null
+        val app = application as ResonantApp
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { MaterialImporter.fromIntent(app, shared) } ?: return@launch
+            val micOpen = app.liveKitManager.micEnabled.value
+            val saved = result is MaterialImporter.Result.Saved
+            app.container.hapticManager.play(
+                if (saved) HapticPattern.CONFIRM else HapticPattern.ERROR,
+                withSound = !micOpen
+            )
+            if (!micOpen) app.container.audioManager.announce(MaterialImporter.message(result))
         }
     }
 
