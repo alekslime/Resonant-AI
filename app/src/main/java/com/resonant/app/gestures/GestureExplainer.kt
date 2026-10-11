@@ -58,7 +58,7 @@ fun explain(gesture: ResonantGesture): GestureExplanation? = when (gesture) {
         InteractionZone.RIGHT_EDGE ->
             said("Hold the right edge", "held the right edge", "back. On other screens it takes you out of the screen", HapticPattern.BACK)
         InteractionZone.CENTER ->
-            said("Hold the middle", "held the middle", "hold to talk in Chat, if you turned that on in Settings", null)
+            said("Hold the middle", "held the middle", "hold to talk in Chat, if you turned that on in Settings. On the theme, font and spacing rows in Settings it opens a preview", null)
         InteractionZone.LEFT_EDGE -> null
     }
     ResonantGesture.HoldSpeedUp ->

@@ -23,7 +23,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import android.os.SystemClock
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +85,52 @@ private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, COLOR
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
+
+/** Rows you can hold and swipe through, with the screen showing each option as a preview. */
+private val previewable = listOf(COLOR_THEME, FONT, TEXT_SPACING)
+
+private const val SETTINGS_HINT =
+    "Swipe down with two fingers for the next item, tap the middle to choose, hold the middle on a theme, font or spacing row to preview it, or hold three fingers to hear where you are."
+private const val PREVIEW_HINT =
+    "Swipe left or right to preview, tap the middle to keep, or hold the right edge to cancel."
+
+/** [start] is what was in use when the preview opened, so cancelling can put it back. */
+private data class Pick(val item: String, val start: Int, val index: Int)
+
+private fun optionCount(item: String) = when (item) {
+    COLOR_THEME -> Palettes.ALL.size
+    FONT -> AppFonts.ALL.size
+    else -> TextSpacings.ALL.size
+}
+
+private fun optionLabel(item: String, i: Int) = when (item) {
+    COLOR_THEME -> Palettes.ALL[i].label
+    FONT -> AppFonts.ALL[i].label
+    else -> TextSpacings.ALL[i].label
+}
+
+private fun currentOption(item: String) = when (item) {
+    COLOR_THEME -> Palettes.ALL.indexOf(ActivePalette.current)
+    FONT -> AppFonts.ALL.indexOf(ActiveFont.current)
+    else -> TextSpacings.ALL.indexOf(ActiveSpacing.current)
+}.coerceAtLeast(0)
+
+/** Shows the option on screen. Does not save it. */
+private fun showOption(item: String, i: Int) {
+    when (item) {
+        COLOR_THEME -> ActivePalette.current = Palettes.ALL[i]
+        FONT -> ActiveFont.current = AppFonts.ALL[i]
+        else -> ActiveSpacing.current = TextSpacings.ALL[i]
+    }
+}
+
+private fun saveOption(prefs: ResonantPrefs, item: String, i: Int) {
+    when (item) {
+        COLOR_THEME -> prefs.colorTheme = Palettes.ALL[i].id
+        FONT -> prefs.font = AppFonts.ALL[i].id
+        else -> prefs.textSpacing = TextSpacings.ALL[i].id
+    }
+}
 
 private fun liveSpeedLabel(speed: Float) = "${speed}x"
 
@@ -146,6 +195,11 @@ fun SettingsScreen(
     var engineLabel by remember { mutableStateOf(audio.engineLabel()) }
     var index by remember { mutableIntStateOf(0) }
     var awaitingClearConfirm by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf<Pick?>(null) }
+    // Lifting the finger after the hold that opened a preview also clicks the row under it.
+    // Ignore that click, or the preview would be kept the moment it opened.
+    var holdDown by remember { mutableStateOf(false) }
+    var ignoreClickUntil by remember { mutableStateOf(0L) }
     val speedIndex by audio.speedIndex.collectAsState()
     val speed = AudioManager.SPEEDS[speedIndex]
 
@@ -174,6 +228,12 @@ fun SettingsScreen(
         audio.index.collect { idx ->
             index = idx.coerceIn(0, (settingsItems.size - 1).coerceAtLeast(0))
         }
+    }
+
+    // Leaving mid-preview (system back, another screen) must not leave an unsaved option on screen.
+    val pickingNow by rememberUpdatedState(picking)
+    DisposableEffect(Unit) {
+        onDispose { pickingNow?.let { showOption(it.item, it.start) } }
     }
 
     // Re-announce the voice-model line only when its category actually changes
@@ -306,16 +366,78 @@ fun SettingsScreen(
         }
     }
 
+    fun requeueAt(item: String, behindAnnouncement: Boolean = false) {
+        audio.setQueue(
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
+            startIndex = settingsItems.indexOf(item),
+            autoAdvance = false,
+            queueBehindAnnouncement = behindAnnouncement
+        )
+    }
+
+    fun startPick(item: String) {
+        val at = currentOption(item)
+        picking = Pick(item, start = at, index = at)
+        holdDown = true
+        awaitingClearConfirm = false
+        haptics.play(HapticPattern.HOLD_ENGAGED)
+        audio.announce("Preview. Swipe left or right, tap to keep, hold the right edge to cancel. " +
+            OptionPicker.describe(optionLabel(item, at), at, optionCount(item)))
+    }
+
+    fun movePick(delta: Int) {
+        val p = picking ?: return
+        val count = optionCount(p.item)
+        val to = OptionPicker.move(p.index, delta, count)
+        if (to == null) {
+            haptics.play(HapticPattern.EDGE)
+            audio.announce((if (delta > 0) "Last. " else "First. ") + OptionPicker.describe(optionLabel(p.item, p.index), p.index, count))
+            return
+        }
+        showOption(p.item, to)
+        picking = p.copy(index = to)
+        haptics.play(if (delta > 0) HapticPattern.NEXT else HapticPattern.PREVIOUS)
+        audio.announce(OptionPicker.describe(optionLabel(p.item, to), to, count))
+    }
+
+    fun confirmPick() {
+        val p = picking ?: return
+        saveOption(prefs, p.item, p.index)
+        picking = null
+        haptics.play(HapticPattern.CONFIRM)
+        // Re-queueing at the same row speaks the kept value ("Color theme: Warm").
+        requeueAt(p.item)
+    }
+
+    fun cancelPick() {
+        val p = picking ?: return
+        showOption(p.item, p.start)
+        picking = null
+        haptics.play(HapticPattern.BACK)
+        audio.announce("Cancelled.")
+        requeueAt(p.item, behindAnnouncement = true)
+    }
+
     ResonantScaffold(
         title = "Settings",
-        subtitle = "Speech speed: ${speed}x",
-        onBack = onBack,
-        backAnnouncement = "Back to Home."
+        subtitle = picking?.let { "Previewing: ${optionLabel(it.item, it.index)}. Tap to keep" } ?: "Speech speed: ${speed}x",
+        onBack = { if (picking != null) cancelPick() else onBack() },
+        backAnnouncement = if (picking != null) "Cancelled." else "Back to Home."
     ) {
-        GestureSurface(twoFingerSwipe = true, ignoreChildTaps = true, onGesture = { gesture ->
+        GestureSurface(
+            twoFingerSwipe = true,
+            ignoreChildTaps = true,
+            hint = if (picking != null) PREVIEW_HINT else SETTINGS_HINT,
+            onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
-                    when (gesture.direction) {
+                    if (picking != null) {
+                        when (gesture.direction) {
+                            SwipeDirection.RIGHT -> movePick(+1)
+                            SwipeDirection.LEFT -> movePick(-1)
+                            else -> {}
+                        }
+                    } else when (gesture.direction) {
                         SwipeDirection.UP -> if (audio.next()) { awaitingClearConfirm = false; haptics.play(HapticPattern.NEXT) }
                         SwipeDirection.DOWN -> if (audio.previous()) { awaitingClearConfirm = false; haptics.play(HapticPattern.PREVIOUS) }
                         else -> {}
@@ -323,18 +445,32 @@ fun SettingsScreen(
                 }
                 is ResonantGesture.Tap -> when (gesture.zone) {
                     InteractionZone.CENTER -> {
-                        haptics.play(HapticPattern.SELECT)
-                        activate(settingsItems[index])
+                        if (picking != null) {
+                            confirmPick()
+                        } else {
+                            haptics.play(HapticPattern.SELECT)
+                            activate(settingsItems[index])
+                        }
                     }
                     InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
                     InteractionZone.RIGHT_EDGE -> {}
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
-                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
-                    awaitingClearConfirm = false
-                    haptics.play(HapticPattern.BACK)
-                    audio.announce("Back to Home.")
-                    onBack()
+                is ResonantGesture.LongPress -> when (gesture.zone) {
+                    InteractionZone.RIGHT_EDGE -> if (picking != null) {
+                        cancelPick()
+                    } else {
+                        awaitingClearConfirm = false
+                        haptics.play(HapticPattern.BACK)
+                        audio.announce("Back to Home.")
+                        onBack()
+                    }
+                    InteractionZone.CENTER -> if (picking == null && settingsItems[index] in previewable) startPick(settingsItems[index])
+                    InteractionZone.LEFT_EDGE -> {}
+                }
+                is ResonantGesture.LongPressEnd -> if (gesture.zone == InteractionZone.CENTER) {
+                    holdDown = false
+                    ignoreClickUntil = SystemClock.uptimeMillis() + 300
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(
@@ -368,6 +504,11 @@ fun SettingsScreen(
                             .background(if (focused) BrandInk else ResonantCard)
                             .cardBorder(RoundedCornerShape(28.dp))
                             .clickable {
+                                if (holdDown || SystemClock.uptimeMillis() < ignoreClickUntil) return@clickable
+                                if (picking != null) {
+                                    confirmPick()
+                                    return@clickable
+                                }
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
                                 activate(item)
