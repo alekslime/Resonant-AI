@@ -73,27 +73,17 @@ SYSTEM_PROMPT = (
     "You are Resonant, a warm private tutor for a student who learns by listening. "
     "Everything you say is spoken aloud, so use two to four short, natural sentences. "
     "No lists, no markdown, no emojis, no symbols. "
-    "Teach one small idea at a time. Before a new topic, ask what the student already knows. "
-    "After each idea, ask one short question to check they understood. "
-    "Listen to the answer: praise what is right, gently correct what is wrong, then build on it. "
+    "Answer what the student actually said. If they greet you, thank you or say goodbye, "
+    "reply with one short friendly sentence and stop. Never comment on how they phrased something. "
+    "When you teach, give one small idea at a time. You may then ask one short question to check "
+    "they understood, but not after every reply and never after small talk. "
+    "If the student answers one of your questions, say briefly what is right, gently correct "
+    "what is wrong, then carry on. "
     "If the student is lost, explain it again in a different way with an everyday example. "
     "When a few connected ideas are done, you may offer a quiz once, in one short sentence. "
     "If you are not sure of a fact, say so instead of guessing. "
     "If the student interrupts, answer their question first, then offer to continue."
 )
-
-def system_prompt(material_title: str = "", material_text: str = "") -> str:
-    """The tutor prompt, plus the student's own material when they chose some in the app."""
-    if not material_text:
-        return SYSTEM_PROMPT
-    return (
-        SYSTEM_PROMPT
-        + f' The student is studying their own material, titled "{material_title}". '
-        "Answer from it when the question is about it, and keep to what it says. "
-        "If it does not cover the question, say so in one short sentence, then help from what you know. "
-        "The material follows. " + material_text
-    )
-
 
 CONTINUE_PHRASES = {
     "continue", "go on", "keep going", "carry on", "go ahead", "proceed", "resume",
@@ -312,7 +302,7 @@ class Conversation:
 
     def set_material(self, raw: str | None) -> None:
         """The phone's chosen material, as JSON {"title", "text"}. Empty or missing clears it.
-        Goes into the system message, so every answer can use it. A repeat changes nothing."""
+        Each turn then carries it (see _messages). A repeat changes nothing."""
         title = text = ""
         if raw:
             try:
@@ -325,8 +315,27 @@ class Conversation:
         if (title, text) == self.material:
             return
         self.material = (title, text)
-        self.history[0] = {"role": "system", "content": system_prompt(title, text)}
         log.info("material: %s", f"{title!r} ({len(text)} characters)" if text else "none")
+
+    def _messages(self) -> list[dict]:
+        """The chat history for the model. The student's material rides on the newest question,
+        where a small model reads it best and where a long chat cannot push it out of view."""
+        title, text = self.material
+        if not text:
+            return self.history
+        messages = list(self.history)
+        last = messages[-1]
+        messages[-1] = {
+            "role": "user",
+            "content": (
+                f'The student opened their own material, "{title}". Here it is:\n{text}\n\n'
+                "Use it only when the question is about it; keep to what it says. If it does not cover "
+                "the question, say so in one short sentence, then help from what you know. "
+                "For small talk, ignore the material.\n\n"
+                f'The student says: {last["content"]}'
+            ),
+        }
+        return messages
 
     def apply_settings(
         self,
@@ -563,6 +572,8 @@ class Conversation:
                 return
 
         self.history.append({"role": "user", "content": tutor_ask(text)})
+        if self.material[1]:
+            log.info("answering with the material %r", self.material[0])
         q: asyncio.Queue = asyncio.Queue()
         synth: list[asyncio.Task] = []
         player = asyncio.create_task(self._play(q, t_start)) if self.kokoro else None
@@ -578,7 +589,7 @@ class Conversation:
 
         try:
             stream = await self.llm.chat.completions.create(
-                model=OLLAMA_MODEL, messages=self.history, max_tokens=260, stream=True
+                model=OLLAMA_MODEL, messages=self._messages(), max_tokens=260, stream=True
             )
             async for chunk in stream:
                 if not chunk.choices:
