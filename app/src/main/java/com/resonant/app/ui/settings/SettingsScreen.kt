@@ -68,6 +68,12 @@ import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberCoroutineScope
+import com.resonant.app.content.MaterialImporter
+import com.resonant.app.content.MaterialStore
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -75,6 +81,7 @@ import kotlinx.coroutines.launch
 
 private const val REPLAY_TUTORIAL = "Replay Tutorial"
 private const val YOUR_NAME = "Your name"
+private const val ADD_MATERIAL = "Add material from a file"
 private const val SOUND_CUES = "Sound cues"
 private const val COLOR_THEME = "Color theme"
 private const val FONT = "Font"
@@ -88,7 +95,7 @@ private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, COLOR_THEME, FONT, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, ADD_MATERIAL, SOUND_CUES, COLOR_THEME, FONT, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
@@ -224,6 +231,22 @@ fun SettingsScreen(
     // VoiceInputController.downloadOfflineModel(), which this mirrors.
     val downloadScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
 
+    // "Add material from a file": the system file picker, then the same import as Share to Resonant.
+    val pickScope = rememberCoroutineScope()
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            audio.announce("Nothing was added.")
+        } else {
+            pickScope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    MaterialImporter.fromUri(context, MaterialStore.forContext(context), uri)
+                }
+                haptics.play(if (result is MaterialImporter.Result.Saved) HapticPattern.CONFIRM else HapticPattern.ERROR)
+                audio.announce(MaterialImporter.message(result))
+            }
+        }
+    }
+
     // Single effect: setQueue must land before collection starts, or the first
     // collected value could be the pre-queue default instead of the real start.
     LaunchedEffect(Unit) {
@@ -263,6 +286,11 @@ fun SettingsScreen(
         when (item) {
             REPLAY_TUTORIAL -> onReplayTutorial()
             YOUR_NAME -> onOpenName()
+            ADD_MATERIAL -> {
+                haptics.play(HapticPattern.SELECT)
+                audio.announce("Choose a text or Markdown file.")
+                pickFile.launch(arrayOf("text/*", "application/octet-stream"))
+            }
             SOUND_CUES -> {
                 val now = !soundCuesOn
                 soundCues.enabled = now
