@@ -543,7 +543,13 @@ class AudioManager(context: Context, initialEngine: String? = null) {
 
     fun resume() {
         if (!_isPaused.value) return
-        speakCurrent()
+        // Carry on from where the pause stopped it. Without the decoded audio of this unit
+        // (plain-TTS voice, engine not back yet) the unit starts again from the top.
+        val wav = curWav
+        val from = if (ready && wav != null) {
+            ResumePlanner.startFrame(curIndex, _index.value, curFrames, wav.frames)
+        } else null
+        if (wav != null && from != null) playFrom(curIndex, wav, from) else speakCurrent()
     }
 
     fun togglePause() {
