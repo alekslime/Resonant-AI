@@ -12,6 +12,12 @@ object LessonLibrary {
         LessonData.allLessons.map { Item(it.id, it.title, own = false) } +
             store.list().map { Item(it.id, it.title, own = true) }
 
+    /** The person's own material with this id, or null for a built-in lesson, no id or a missing file. */
+    fun active(store: MaterialStore, id: String?): Lesson? {
+        if (id == null || LessonData.allLessons.any { it.id == id }) return null
+        return store.lesson(id)
+    }
+
     /** Null when no lesson has this id. Parses the material when it is the person's own. */
     fun find(store: MaterialStore, id: String?): Lesson? {
         if (id == null) return null

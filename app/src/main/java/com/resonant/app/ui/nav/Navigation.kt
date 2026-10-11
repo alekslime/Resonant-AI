@@ -176,6 +176,10 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
             val lesson = remember(id) {
                 LessonLibrary.find(MaterialStore.forContext(context), id) ?: LessonData.binarySearchLesson
             }
+            // Chat answers from the own material opened last; a built-in lesson clears it.
+            LaunchedEffect(lesson.id) {
+                prefs.activeMaterialId = if (LessonData.allLessons.any { it.id == lesson.id }) null else lesson.id
+            }
             LessonScreen(
                 lesson = lesson,
                 autoAdvance = auto,

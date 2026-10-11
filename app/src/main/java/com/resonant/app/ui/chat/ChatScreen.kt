@@ -69,6 +69,10 @@ import androidx.core.content.ContextCompat
 import com.resonant.app.content.ChatData
 import com.resonant.app.content.ChatExchange
 import com.resonant.app.content.ChatHistoryStore
+import com.resonant.app.content.LessonData
+import com.resonant.app.content.LessonLibrary
+import com.resonant.app.content.MaterialContext
+import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.OfflineAnswers
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
@@ -141,6 +145,10 @@ fun ChatScreen(
     liveMode: Boolean = false
 ) {
     val context = LocalContext.current
+    // The own material opened last, if any: Chat answers from it.
+    fun activeMaterial() = LessonLibrary.active(
+        MaterialStore.forContext(context), ResonantPrefs(context).activeMaterialId
+    )
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
@@ -405,7 +413,7 @@ fun ChatScreen(
             }
 
             val history = buildList {
-                add(ChatMessage("system", ChatData.systemPrompt))
+                add(ChatMessage("system", MaterialContext.systemPrompt(ChatData.systemPrompt, activeMaterial())))
                 // Same cap ChatHistoryStore saves with — sending unbounded history to the
                 // model isn't new to this feature, but persistence makes it far more likely
                 // to actually be hit (a demo session was never going to run 20+ exchanges).
@@ -447,7 +455,8 @@ fun ChatScreen(
 
             // When the AI server can't answer, the lesson text does: a degraded demo, not a dead one.
             fun answerFromLessons() {
-                OfflineAnswers.answer(userText).sentences.forEach { onSentence(it) }
+                val lessons = listOfNotNull(activeMaterial()) + LessonData.allLessons
+                OfflineAnswers.answer(userText, lessons).sentences.forEach { onSentence(it) }
             }
 
             suspend fun serverCameBack(): Boolean {

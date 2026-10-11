@@ -53,6 +53,18 @@ class LessonLibraryTest {
     }
 
     @Test
+    fun active_is_only_ever_the_persons_own_material() {
+        val s = store
+        val a = s.add("notes.txt", "Cells are small.", 1000)!!
+        assertEquals("notes", LessonLibrary.active(s, a.id)!!.title)
+        assertNull(LessonLibrary.active(s, LessonData.allLessons.first().id))
+        assertNull(LessonLibrary.active(s, null))
+        assertNull(LessonLibrary.active(s, "nope"))
+        s.delete(a.id)
+        assertNull(LessonLibrary.active(s, a.id))
+    }
+
+    @Test
     fun a_deleted_material_leaves_the_list() {
         val s = store
         val a = s.add("notes.txt", "Cells are small.", 1000)!!
