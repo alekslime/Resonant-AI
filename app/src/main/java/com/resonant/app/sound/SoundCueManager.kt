@@ -89,6 +89,27 @@ class SoundCueManager(
         }
     }
 
+    private val splashSamples: ShortArray by lazy { SplashSound.render() }
+
+    @Suppress("DEPRECATION")
+    fun playSplash() {
+        if (!enabled || !inForeground) return
+        try {
+            val samples = splashSamples
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(attributes)
+                .setAudioFormat(format)
+                .setBufferSizeInBytes(samples.size * Short.SIZE_BYTES)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+            track.write(samples, 0, samples.size)
+            track.play()
+            handler.postDelayed({ releaseQuietly(track) }, (SplashSound.durationMs() + RELEASE_SLACK_MS).toLong())
+        } catch (e: Exception) {
+            // a missing splash sound is harmless
+        }
+    }
+
     private fun releaseQuietly(track: AudioTrack) {
         try {
             track.release()
