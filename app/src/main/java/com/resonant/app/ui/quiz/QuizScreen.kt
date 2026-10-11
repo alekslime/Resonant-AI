@@ -1,5 +1,13 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.ActivePalette
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.Canvas
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -50,8 +58,6 @@ import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
 // Figma "correct" frame: bright lime background, text stays black.
-private val CorrectGreen = Color(0xFF80FF00)
-private val WrongRed = Color(0xFFE53935)
 
 @Composable
 fun QuizScreen(
@@ -145,17 +151,19 @@ fun QuizScreen(
         }
     }
 
-    // Background: green on correct, red on wrong, orange otherwise
+    // After an answer the screen takes the theme's "correct" or "incorrect" colors. They differ in
+    // brightness, not just hue, and the check or cross and the word below say it too, so the
+    // result never depends on telling colors apart.
+    val palette = ActivePalette.current
     val screenBackground = when {
-        submitted && lastAnswerCorrect == true -> CorrectGreen
-        submitted && lastAnswerCorrect == false -> WrongRed
+        submitted && lastAnswerCorrect == true -> palette.correct
+        submitted && lastAnswerCorrect == false -> palette.incorrect
         else -> BrandOrange
     }
 
-    // Question text: black on orange and on the lime "correct" screen (Figma); white on red.
     val questionTextColor = when {
-        submitted && lastAnswerCorrect == false -> Color.White
-        submitted && lastAnswerCorrect == true -> Color.Black
+        submitted && lastAnswerCorrect == true -> palette.onCorrect
+        submitted && lastAnswerCorrect == false -> palette.onIncorrect
         else -> BrandInk
     }
 
@@ -232,6 +240,30 @@ fun QuizScreen(
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
 
+                // The result in shape and words. It is already spoken, so TalkBack skips it.
+                if (submitted) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .clearAndSetSemantics { },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ResultMark(
+                            correct = lastAnswerCorrect == true,
+                            tint = questionTextColor,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = if (lastAnswerCorrect == true) "Correct" else "Incorrect",
+                            fontFamily = MetropolisBlack,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 36.sp,
+                            color = questionTextColor
+                        )
+                    }
+                }
+
                 // Arrow / option card / arrow — card takes whatever height is left
                 Column(
                     modifier = Modifier
@@ -283,6 +315,23 @@ fun QuizScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** A check or a cross, drawn with lines so it needs no icon file and scales cleanly. */
+@Composable
+private fun ResultMark(correct: Boolean, tint: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val stroke = w * 0.14f
+        if (correct) {
+            drawLine(tint, Offset(w * 0.18f, h * 0.54f), Offset(w * 0.40f, h * 0.76f), stroke, StrokeCap.Round)
+            drawLine(tint, Offset(w * 0.40f, h * 0.76f), Offset(w * 0.84f, h * 0.26f), stroke, StrokeCap.Round)
+        } else {
+            drawLine(tint, Offset(w * 0.22f, h * 0.22f), Offset(w * 0.78f, h * 0.78f), stroke, StrokeCap.Round)
+            drawLine(tint, Offset(w * 0.78f, h * 0.22f), Offset(w * 0.22f, h * 0.78f), stroke, StrokeCap.Round)
         }
     }
 }

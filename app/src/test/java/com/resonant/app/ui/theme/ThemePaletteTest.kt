@@ -75,4 +75,19 @@ class ThemePaletteTest {
     fun next_wraps_around() {
         assertEquals(Palettes.DEFAULT, Palettes.next(Palettes.ALL.last()))
     }
+
+    @Test
+    fun quiz_result_text_is_readable() {
+        Palettes.ALL.forEach { p ->
+            assertTrue("${p.id} onCorrect", contrast(p.onCorrect, p.correct) >= aaa)
+            assertTrue("${p.id} onIncorrect", contrast(p.onIncorrect, p.incorrect) >= aaa)
+        }
+    }
+
+    @Test
+    fun correct_and_incorrect_differ_in_brightness_not_just_color() {
+        Palettes.ALL.forEach { p ->
+            assertTrue("${p.id} correct vs incorrect", contrast(p.correct, p.incorrect) >= 2.0)
+        }
+    }
 }
