@@ -59,7 +59,7 @@ object SplashSound {
                 val hz = tone.hz * ratio.pow(x) // exponential glide (a no-op when hz == hzEnd)
                 phase += 2.0 * PI * hz / rate
                 val env = if (i < attack) {
-                    tone.gain * i / attack
+                    tone.gain.toDouble() * i / attack
                 } else {
                     val d = (i - attack).toDouble() / (n - attack).coerceAtLeast(1)
                     tone.gain * exp(ln(FLOOR / tone.gain) * d)
