@@ -1,5 +1,6 @@
 package com.resonant.app.gestures
 
+import com.resonant.app.haptics.HapticPattern
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -78,5 +79,25 @@ class GestureExplainerTest {
         val e = explain(ResonantGesture.Tap(InteractionZone.RIGHT_EDGE))!!
         assertNull(e.haptic)
         assertTrue(e.spoken.contains("does nothing"))
+    }
+
+    @Test
+    fun pinch_apart_is_larger_and_pinch_together_is_smaller() {
+        val bigger = explainPinch(1.6f)
+        val smaller = explainPinch(0.5f)
+        assertTrue(bigger.spoken.contains("larger"))
+        assertTrue(smaller.spoken.contains("smaller"))
+        assertEquals(HapticPattern.SPEED_UP, bigger.haptic)
+        assertEquals(HapticPattern.SPEED_DOWN, smaller.haptic)
+        assertTrue(bigger.title != smaller.title)
+    }
+
+    @Test
+    fun rewind_says_how_far_it_would_go() {
+        assertEquals(
+            "You just dragged four fingers left, which means rewind. In a lesson it would go back 15 seconds.",
+            explainRewind(15).spoken
+        )
+        assertNull(explainRewind(5).haptic)
     }
 }

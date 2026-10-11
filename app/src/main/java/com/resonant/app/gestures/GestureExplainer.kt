@@ -71,3 +71,18 @@ fun explain(gesture: ResonantGesture): GestureExplanation? = when (gesture) {
         said("Three-finger hold", "held three fingers", "where am I. On other screens I tell you the screen and your place in it", null)
     is ResonantGesture.LongPressEnd, ResonantGesture.HoldStart, ResonantGesture.HoldEnd -> null
 }
+
+/**
+ * The practice area's answer for a pinch. [factor] is the total change over the whole pinch:
+ * more than 1 = fingers moved apart.
+ */
+fun explainPinch(factor: Float): GestureExplanation =
+    if (factor >= 1f) {
+        said("Pinch apart", "spread two fingers apart", "larger text. It works on reading screens", HapticPattern.SPEED_UP)
+    } else {
+        said("Pinch together", "pinched two fingers together", "smaller text. It works on reading screens", HapticPattern.SPEED_DOWN)
+    }
+
+/** The practice area's answer for a four-finger drag left that went back [seconds] seconds' worth. */
+fun explainRewind(seconds: Int): GestureExplanation =
+    said("Four fingers left", "dragged four fingers left", "rewind. In a lesson it would go back $seconds seconds", null)
