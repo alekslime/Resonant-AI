@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
         val container = (application as ResonantApp).container
         val accessibilityManager = getSystemService(AccessibilityManager::class.java)
 
+        // Speech is prepared under the splash but only played once it starts to fade.
+        container.audioManager.holdPlayback()
+
         // First launch drops straight into the tutorial; after that, Home.
         val start = if (container.prefs.onboardingComplete) Routes.HOME else Routes.ONBOARDING
 
@@ -99,7 +102,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (showSplash) {
-                            SplashScreen(soundCues = container.soundCues, onFinished = { showSplash = false })
+                            SplashScreen(
+                                soundCues = container.soundCues,
+                                onExitStart = { container.audioManager.releasePlayback() },
+                                onFinished = { showSplash = false }
+                            )
                         }
                     }
                 }

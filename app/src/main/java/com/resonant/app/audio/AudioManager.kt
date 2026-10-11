@@ -30,6 +30,25 @@ class AudioManager(context: Context, initialEngine: String? = null) {
 
     private val appContext: Context = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private var playbackHeld = false
+    private val heldPlays = mutableListOf<() -> Unit>()
+
+    /**
+     * Speech is still prepared but not played until [releasePlayback]. Used under the splash, so
+     * the first words are ready the moment it fades. Releases itself after [maxMs] as a safety.
+     */
+    fun holdPlayback(maxMs: Long = 8000L) {
+        playbackHeld = true
+        mainHandler.postDelayed({ releasePlayback() }, maxMs)
+    }
+
+    fun releasePlayback() {
+        playbackHeld = false
+        val plays = heldPlays.toList()
+        heldPlays.clear()
+        plays.forEach { it() }
+    }
     private var ready = false
     private val _isReady = MutableStateFlow(false)
     /** True once the engine is speech-capable. False at launch, and stays false
@@ -401,6 +420,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
     }
 
     private fun onSynthesized(gen: Int) {
+        if (playbackHeld) { heldPlays += { onSynthesized(gen) }; return }
         val file = pcmFile(gen)
         val unit = _currentUnit.value
         if (gen != pcmGen || tts == null || unit == null) { file.delete(); return }
@@ -707,6 +727,7 @@ class AudioManager(context: Context, initialEngine: String? = null) {
 
     /** Synthesis finished (main thread) — or, for a fallback id, the spoken fallback finished. */
     private fun onAnnouncementSynthesized(id: String) {
+        if (playbackHeld) { heldPlays += { onAnnouncementSynthesized(id) }; return }
         if (annFallbackIds.remove(id)) { settleAnnouncement(id); return }
         val pending = annPending.remove(id)
         val file = annFile(id)
