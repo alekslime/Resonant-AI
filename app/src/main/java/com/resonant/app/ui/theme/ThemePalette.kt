@@ -75,7 +75,7 @@ object Palettes {
         background = Color(0xFF22252C), card = Color(0xFF22211D), ink = Color(0xFFF8F7F6), onInk = Color(0xFF22211D), dim = Color(0xFFC5C8CF),
         bar = Color(0xFF484745), onBar = Color(0xFFFFFFFF), button = Color(0xFF16140E), onButton = Color(0xFFFFFFFF),
         correct = Color(0xFF6FB8F0), onCorrect = Color(0xFF0B1620), incorrect = Color(0xFF6B2B00), onIncorrect = Color(0xFFFFFFFF),
-        cardOutline = Color(0xFFFFE100), controlOutline = null, outlineWidth = 4.dp,
+        cardOutline = Color(0xFFFFE100), controlOutline = Color(0xFFFFE100), outlineWidth = 4.dp,
         cardRadius = 20.dp, controlRadius = 20.dp
     )
 
@@ -102,7 +102,7 @@ object Palettes {
         background = Color(0xFF2C2922), card = Color(0xFF22211D), ink = Color(0xFFFFF8E9), onInk = Color(0xFF22211D), dim = Color(0xFFC9C0AA),
         bar = Color(0xFF15130F), onBar = Color(0xFFFFF8E9), button = Color(0xFF16140E), onButton = Color(0xFFD3B86D),
         correct = Color(0xFF3F5666), onCorrect = Color(0xFFFFF8E9), incorrect = Color(0xFF2A1006), onIncorrect = Color(0xFFFFF8E9),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp,
+        cardOutline = Color(0xFF837E74), controlOutline = Color(0xFF837E74), outlineWidth = 2.dp,
         cardRadius = 36.dp, controlRadius = 50.dp
     )
 
@@ -111,7 +111,7 @@ object Palettes {
         background = Color(0xFFE6D9BA), card = Color(0xFFFFF8E9), ink = Color(0xFF000000), onInk = Color(0xFFFFF8E9), dim = Color(0xFF3D3D3D),
         bar = Color(0xFFCEBC99), onBar = Color(0xFF000000), button = Color(0xFF000000), onButton = Color(0xFFFFF8E9),
         correct = Color(0xFFBFE0F5), onCorrect = Color(0xFF000000), incorrect = Color(0xFF6B2400), onIncorrect = Color(0xFFFFF8E9),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp,
+        cardOutline = Color(0xFF756F5F), controlOutline = Color(0xFF756F5F), outlineWidth = 2.dp,
         cardRadius = 24.dp, controlRadius = 50.dp
     )
 
@@ -120,7 +120,7 @@ object Palettes {
         background = Color(0xFF000000), card = Color(0xFF140000), ink = Color(0xFFFF7878), onInk = Color(0xFF000000), dim = Color(0xFFFA7474),
         bar = Color(0xFF140000), onBar = Color(0xFFFF7878), button = Color(0xFF140000), onButton = Color(0xFFFF7878),
         correct = Color(0xFFFF7878), onCorrect = Color(0xFF000000), incorrect = Color(0xFF140000), onIncorrect = Color(0xFFFF9494),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+        cardOutline = Color(0xFF9E4A4A), controlOutline = Color(0xFF9E4A4A), outlineWidth = 2.dp
     )
 
     val BLUE_ON_YELLOW = ThemePalette(
@@ -128,7 +128,7 @@ object Palettes {
         background = Color(0xFFFFEB3B), card = Color(0xFFFFF8C4), ink = Color(0xFF0A1B6B), onInk = Color(0xFFFFF8C4), dim = Color(0xFF23358F),
         bar = Color(0xFF0A1B6B), onBar = Color(0xFFFFEB3B), button = Color(0xFF0A1B6B), onButton = Color(0xFFFFF8C4),
         correct = Color(0xFF0A1B6B), onCorrect = Color(0xFFFFEB3B), incorrect = Color(0xFFFFFFFF), onIncorrect = Color(0xFF0A1B6B),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+        cardOutline = Color(0xFF7B7B55), controlOutline = null, outlineWidth = 2.dp
     )
 
     val SOFT_CREAM = ThemePalette(
@@ -136,7 +136,7 @@ object Palettes {
         background = Color(0xFFF3ECD6), card = Color(0xFFFFFDF5), ink = Color(0xFF1B2A49), onInk = Color(0xFFFFFDF5), dim = Color(0xFF3A4A6B),
         bar = Color(0xFF1B2A49), onBar = Color(0xFFF3ECD6), button = Color(0xFF1B2A49), onButton = Color(0xFFFFFDF5),
         correct = Color(0xFFBFD9F2), onCorrect = Color(0xFF1B2A49), incorrect = Color(0xFF6B2400), onIncorrect = Color(0xFFFFFDF5),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+        cardOutline = Color(0xFF787D86), controlOutline = null, outlineWidth = 2.dp
     )
 
     val PAPER_GRAY = ThemePalette(
@@ -144,7 +144,7 @@ object Palettes {
         background = Color(0xFFDADAD6), card = Color(0xFFF2F2EF), ink = Color(0xFF1F1F1F), onInk = Color(0xFFF2F2EF), dim = Color(0xFF3A3A3A),
         bar = Color(0xFF3A3A3A), onBar = Color(0xFFF2F2EF), button = Color(0xFF2B2B2B), onButton = Color(0xFFF2F2EF),
         correct = Color(0xFFBFE0F5), onCorrect = Color(0xFF1F1F1F), incorrect = Color(0xFF6B2400), onIncorrect = Color(0xFFF2F2EF),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+        cardOutline = Color(0xFF6F6F6E), controlOutline = null, outlineWidth = 2.dp
     )
 
     val WHITE_ON_BLUE = ThemePalette(
@@ -152,7 +152,7 @@ object Palettes {
         background = Color(0xFF0B2A6F), card = Color(0xFF1A44A3), ink = Color(0xFFFFFFFF), onInk = Color(0xFF0B2A6F), dim = Color(0xFFB9CEFF),
         bar = Color(0xFF061A47), onBar = Color(0xFFFFFFFF), button = Color(0xFF061A47), onButton = Color(0xFFFFFFFF),
         correct = Color(0xFFFFFFFF), onCorrect = Color(0xFF0B2A6F), incorrect = Color(0xFF4A1A00), onIncorrect = Color(0xFFFFFFFF),
-        cardOutline = null, controlOutline = null, outlineWidth = 0.dp
+        cardOutline = Color(0xFF7183AB), controlOutline = Color(0xFF7183AB), outlineWidth = 2.dp
     )
 
     val ALL = listOf(

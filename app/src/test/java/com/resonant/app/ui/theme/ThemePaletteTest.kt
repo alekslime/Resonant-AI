@@ -90,4 +90,24 @@ class ThemePaletteTest {
             assertTrue("${p.id} correct vs incorrect", contrast(p.correct, p.incorrect) >= 2.0)
         }
     }
+
+    // The brand look keeps its white cards on orange, as designed. Every other theme has to show
+    // where a card or a bar/button ends: by color (3:1 against the screen) or by an outline.
+    private val edge = 3.0
+
+    @Test
+    fun cards_are_visible_against_the_screen() {
+        Palettes.ALL.filter { it.id != "default" }.forEach { p ->
+            val byColor = contrast(p.card, p.background) >= edge
+            assertTrue("${p.id} card has no visible edge", byColor || p.cardOutline != null)
+        }
+    }
+
+    @Test
+    fun bars_and_buttons_are_visible_against_the_screen() {
+        Palettes.ALL.filter { it.id != "default" }.forEach { p ->
+            val byColor = contrast(p.bar, p.background) >= edge && contrast(p.button, p.background) >= edge
+            assertTrue("${p.id} bar or button has no visible edge", byColor || p.controlOutline != null)
+        }
+    }
 }
