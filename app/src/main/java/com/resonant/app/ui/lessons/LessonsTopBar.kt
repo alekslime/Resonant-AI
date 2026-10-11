@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.controlBorder
 import com.resonant.app.ui.theme.ResonantOnBar
 import com.resonant.app.ui.theme.ResonantBar
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,9 +64,9 @@ internal fun LessonsTopBar(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .height(52.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(controlShape())
                 .background(bar)
-                .controlBorder(RoundedCornerShape(50))
+                .controlBorder(controlShape())
                 .clickable { haptics.play(HapticPattern.BACK); audio.announce(backAnnouncement); onBack() }
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,

@@ -1,5 +1,7 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.cardShape
+import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
 import com.resonant.app.ui.theme.controlBorder
@@ -20,8 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -248,9 +248,9 @@ private fun QuizCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(cardShape())
             .background(ResonantCard)
-            .cardBorder(RoundedCornerShape(28.dp))
+            .cardBorder(cardShape())
             .clickable(onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 32.dp)
             // Progress/status/category aren't drawn (Figma), but stay in the spoken description.
@@ -269,9 +269,9 @@ private fun QuizCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(controlShape())
                 .background(ResonantButton)
-                .controlBorder(RoundedCornerShape(50))
+                .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

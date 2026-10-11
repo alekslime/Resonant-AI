@@ -1,7 +1,9 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ActivePalette
+import com.resonant.app.ui.theme.cardBorder
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -285,8 +286,9 @@ fun QuizScreen(
                             .fillMaxWidth()
                             .padding(vertical = 20.dp)
                             .heightIn(min = 140.dp)
-                            .clip(RoundedCornerShape(32.dp))
+                            .clip(cardShape())
                             .background(if (visibleOptionIndex != null) ResonantCard else ResonantCard.copy(alpha = 0.3f))
+                            .then(if (visibleOptionIndex != null) Modifier.cardBorder(cardShape()) else Modifier)
                             .padding(horizontal = 28.dp),
                         contentAlignment = Alignment.Center
                     ) {

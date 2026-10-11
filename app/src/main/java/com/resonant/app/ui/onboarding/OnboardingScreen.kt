@@ -1,5 +1,7 @@
 package com.resonant.app.ui.onboarding
 
+import com.resonant.app.ui.theme.cardShape
+import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
 import com.resonant.app.ui.theme.controlBorder
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -348,9 +349,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     if (step >= 0) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(50.dp))
+                                .clip(controlShape())
                                 .background(ResonantButton)
-                                .controlBorder(RoundedCornerShape(50.dp))
+                                .controlBorder(controlShape())
                                 .padding(horizontal = 18.dp, vertical = 10.dp)
                         ) {
                             Text(
@@ -371,9 +372,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .fillMaxWidth()
                             .weight(1f)
                             .padding(vertical = 16.dp)
-                            .clip(RoundedCornerShape(28.dp))
+                            .clip(cardShape())
                             .background(ResonantCard)
-                            .cardBorder(RoundedCornerShape(28.dp))
+                            .cardBorder(cardShape())
                             .padding(24.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -405,9 +406,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
-                            .clip(RoundedCornerShape(50.dp))
+                            .clip(controlShape())
                             .background(ResonantButton)
-                            .controlBorder(RoundedCornerShape(50.dp))
+                            .controlBorder(controlShape())
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {

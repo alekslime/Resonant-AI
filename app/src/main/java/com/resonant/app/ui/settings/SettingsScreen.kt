@@ -1,5 +1,6 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.TextSpacings
 import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.ActiveSpacing
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import android.os.SystemClock
@@ -514,10 +514,10 @@ fun SettingsScreen(
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(28.dp))
+                            .clip(cardShape())
                             // Focus is the same idea as Home: the current item is the inverted one.
                             .background(if (focused) BrandInk else ResonantCard)
-                            .cardBorder(RoundedCornerShape(28.dp))
+                            .cardBorder(cardShape())
                             .clickable {
                                 if (holdDown || SystemClock.uptimeMillis() < ignoreClickUntil) return@clickable
                                 if (picking != null) {

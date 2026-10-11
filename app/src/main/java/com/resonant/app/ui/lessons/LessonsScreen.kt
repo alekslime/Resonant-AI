@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.cardShape
+import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantBar
 import com.resonant.app.ui.theme.ResonantButton
@@ -23,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -185,9 +185,9 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(cardShape())
             .background(CardBackground)
-            .cardBorder(RoundedCornerShape(28.dp))
+            .cardBorder(cardShape())
             .clickable(onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
@@ -201,9 +201,9 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(controlShape())
                 .background(CardButtonBackground)
-                .controlBorder(RoundedCornerShape(50))
+                .controlBorder(controlShape())
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -193,9 +193,9 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(28.dp))
+                            .clip(cardShape())
                             .background(ResonantCard)
-                            .cardBorder(RoundedCornerShape(28.dp))
+                            .cardBorder(cardShape())
                             .padding(horizontal = 20.dp, vertical = 18.dp)
                     ) {
                         FittedTitle(lesson.title, maxSp = 50f, lineRatio = 1.2f)
