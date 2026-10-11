@@ -6,6 +6,8 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.TextSpacings
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.AppFonts
@@ -538,11 +540,20 @@ fun SettingsScreen(
                             .padding(horizontal = 20.dp, vertical = 22.dp)
                             .semantics { contentDescription = label + if (focused) ", focused" else "" }
                     ) {
-                        Text(
-                            label,
-                            style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 34.sp),
-                            color = focusColor(if (focused) ResonantOnInk else BrandInk)
-                        )
+                        val textColor = focusColor(if (focused) ResonantOnInk else BrandInk)
+                        // A changed value fades into the new one. The model download line ticks
+                        // every percent, so it is left alone.
+                        Crossfade(
+                            targetState = label,
+                            animationSpec = tween(if (item == OFFLINE_VOICE_MODEL) 0 else ActiveMotion.ms(150)),
+                            label = "settingValue"
+                        ) { shown ->
+                            Text(
+                                shown,
+                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 34.sp),
+                                color = textColor
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(24.dp))
