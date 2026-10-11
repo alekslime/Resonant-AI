@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -92,6 +94,8 @@ fun QuizResultsScreen(
         animationSpec = if (ActiveMotion.reduce) snap() else tween(900, delayMillis = 200, easing = FastOutSlowInEasing),
         label = "score"
     )
+    // The number counts up in step with the bar, so both land together.
+    val shownCorrect = if (total > 0) (fraction * total).roundToInt().coerceIn(0, total) else 0
 
     fun retry() {
         haptics.play(HapticPattern.SELECT)
@@ -167,10 +171,11 @@ fun QuizResultsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "$correct / $total",
+                        text = "$shownCorrect / $total",
                         style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 72.sp, lineHeight = 78.sp),
                         color = BrandInk,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.clearAndSetSemantics { contentDescription = "$correct / $total" }
                     )
                     Text(
                         text = resultLabel,
