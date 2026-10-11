@@ -1,5 +1,6 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -160,6 +161,7 @@ fun QuizResultsScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(28.dp))
                         .background(ResonantCard)
+                        .cardBorder(RoundedCornerShape(28.dp))
                         .padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

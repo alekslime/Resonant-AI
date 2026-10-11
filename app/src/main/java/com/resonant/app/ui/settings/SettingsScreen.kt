@@ -1,5 +1,6 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ActivePalette
 import com.resonant.app.ui.theme.Palettes
 import com.resonant.app.ui.theme.ResonantOnInk
@@ -334,6 +335,7 @@ fun SettingsScreen(
                             .clip(RoundedCornerShape(28.dp))
                             // Focus is the same idea as Home: the current item is the inverted one.
                             .background(if (focused) BrandInk else ResonantCard)
+                            .cardBorder(RoundedCornerShape(28.dp))
                             .clickable {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)

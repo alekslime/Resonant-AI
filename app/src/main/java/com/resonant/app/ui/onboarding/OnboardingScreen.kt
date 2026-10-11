@@ -1,5 +1,9 @@
 package com.resonant.app.ui.onboarding
 
+import com.resonant.app.ui.theme.ResonantOnButton
+import com.resonant.app.ui.theme.ResonantButton
+import com.resonant.app.ui.theme.controlBorder
+import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantOnInk
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
@@ -274,7 +278,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50.dp))
-                                .background(BrandInk)
+                                .background(ResonantButton)
+                                .controlBorder(RoundedCornerShape(50.dp))
                                 .padding(horizontal = 18.dp, vertical = 10.dp)
                         ) {
                             Text(
@@ -282,7 +287,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp,
-                                color = ResonantOnInk
+                                color = ResonantOnButton
                             )
                         }
                     } else {
@@ -297,6 +302,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .padding(vertical = 16.dp)
                             .clip(RoundedCornerShape(28.dp))
                             .background(ResonantCard)
+                            .cardBorder(RoundedCornerShape(28.dp))
                             .padding(24.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -329,7 +335,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .clip(RoundedCornerShape(50.dp))
-                            .background(BrandInk)
+                            .background(ResonantButton)
+                            .controlBorder(RoundedCornerShape(50.dp))
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -338,7 +345,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             fontFamily = MetropolisBlack,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
-                            color = ResonantOnInk
+                            color = ResonantOnButton
                         )
                     }
                 }

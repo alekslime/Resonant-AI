@@ -1,5 +1,10 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantOnButton
+import com.resonant.app.ui.theme.ResonantBar
+import com.resonant.app.ui.theme.ResonantButton
+import com.resonant.app.ui.theme.cardBorder
+import com.resonant.app.ui.theme.controlBorder
 import com.resonant.app.ui.theme.ResonantOnInk
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.Canvas
@@ -58,8 +63,8 @@ import com.resonant.app.ui.theme.BrandOrange
 import com.resonant.app.ui.theme.MetropolisBlack
 
 private val CardBackground get() = ResonantCard
-private val CardButtonBackground get() = BrandInk
-private val TopBarBackground get() = BrandInk
+private val CardButtonBackground get() = ResonantButton
+private val TopBarBackground get() = ResonantBar
 
 // Figma "Lessons" frame: 20dp margins, 20dp gaps, 28dp card radius.
 private val ScreenMargin = 20.dp
@@ -182,6 +187,7 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(CardBackground)
+            .cardBorder(RoundedCornerShape(28.dp))
             .clickable(onClick = onClick)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
             .semantics { contentDescription = title + if (focused) ", focused" else "" }
@@ -197,12 +203,13 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
                 .height(56.dp)
                 .clip(RoundedCornerShape(50))
                 .background(CardButtonBackground)
+                .controlBorder(RoundedCornerShape(50))
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Continue lesson", style = CardButtonStyle, color = ResonantOnInk)
-            ArrowIcon(pointRight = true, tint = ResonantOnInk, modifier = Modifier.size(22.dp))
+            Text(text = "Continue lesson", style = CardButtonStyle, color = ResonantOnButton)
+            ArrowIcon(pointRight = true, tint = ResonantOnButton, modifier = Modifier.size(22.dp))
         }
     }
 }

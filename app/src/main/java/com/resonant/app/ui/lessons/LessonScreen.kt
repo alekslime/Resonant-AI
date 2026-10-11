@@ -1,5 +1,8 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ResonantOnButton
+import com.resonant.app.ui.theme.ResonantButton
+import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantOnInk
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
@@ -191,6 +194,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(28.dp))
                             .background(ResonantCard)
+                            .cardBorder(RoundedCornerShape(28.dp))
                             .padding(horizontal = 20.dp, vertical = 18.dp)
                     ) {
                         FittedTitle(lesson.title, maxSp = 50f, lineRatio = 1.2f)
@@ -254,7 +258,7 @@ private fun StepRow(number: Int, title: String, scale: Float) {
                 .padding(top = (6 * scale).dp)
                 .size((24 * scale).dp)
                 .clip(CircleShape)
-                .background(BrandInk),
+                .background(ResonantButton),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -262,7 +266,7 @@ private fun StepRow(number: Int, title: String, scale: Float) {
                 fontFamily = MetropolisBlack,
                 fontWeight = FontWeight.Black,
                 fontSize = (14 * scale).sp,
-                color = ResonantOnInk
+                color = ResonantOnButton
             )
         }
         Spacer(Modifier.width(20.dp))

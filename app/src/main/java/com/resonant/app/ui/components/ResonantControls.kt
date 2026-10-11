@@ -1,5 +1,9 @@
 package com.resonant.app.ui.components
 
+import com.resonant.app.ui.theme.ResonantOnButton
+import com.resonant.app.ui.theme.ResonantButton
+import com.resonant.app.ui.theme.controlBorder
+import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantOnInk
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
@@ -52,7 +56,8 @@ fun ResonantButton(
             .heightIn(min = 56.dp)
             .alpha(if (enabled) 1f else 0.5f)
             .clip(RoundedCornerShape(50))
-            .background(if (filled) BrandInk else ResonantCard)
+            .background(if (filled) ResonantButton else ResonantCard)
+            .then(if (filled) Modifier.controlBorder(RoundedCornerShape(50)) else Modifier.cardBorder(RoundedCornerShape(50)))
             .semantics { role = Role.Button }
             .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 20.dp, vertical = 14.dp),
@@ -61,7 +66,7 @@ fun ResonantButton(
         Text(
             text = text,
             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-            color = if (filled) ResonantOnInk else BrandInk,
+            color = if (filled) ResonantOnButton else BrandInk,
             textAlign = TextAlign.Center
         )
     }
@@ -87,6 +92,7 @@ fun ResonantTextField(
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(ResonantCard)
+            .cardBorder(RoundedCornerShape(28.dp))
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(

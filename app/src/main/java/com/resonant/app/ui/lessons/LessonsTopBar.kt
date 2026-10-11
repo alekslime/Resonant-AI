@@ -1,5 +1,8 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.controlBorder
+import com.resonant.app.ui.theme.ResonantOnBar
+import com.resonant.app.ui.theme.ResonantBar
 import com.resonant.app.ui.theme.ResonantOnInk
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +52,7 @@ internal fun LessonsTopBar(
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
-    val bar = BrandInk
+    val bar = ResonantBar
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,16 +66,17 @@ internal fun LessonsTopBar(
                 .height(52.dp)
                 .clip(RoundedCornerShape(50))
                 .background(bar)
+                .controlBorder(RoundedCornerShape(50))
                 .clickable { haptics.play(HapticPattern.BACK); audio.announce(backAnnouncement); onBack() }
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ArrowIcon(pointRight = false, tint = ResonantOnInk, modifier = Modifier.size(22.dp))
+            ArrowIcon(pointRight = false, tint = ResonantOnBar, modifier = Modifier.size(22.dp))
             Text(
                 text = title,
                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-                color = ResonantOnInk
+                color = ResonantOnBar
             )
         }
         if (showSettings) Box(
@@ -80,10 +84,11 @@ internal fun LessonsTopBar(
                 .size(52.dp)
                 .clip(CircleShape)
                 .background(bar)
+                .controlBorder(CircleShape)
                 .then(if (onSettings != null) Modifier.clickable { onSettings() } else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            SettingsIcon(tint = ResonantOnInk, modifier = Modifier.size(24.dp))
+            SettingsIcon(tint = ResonantOnBar, modifier = Modifier.size(24.dp))
         }
     }
 }
