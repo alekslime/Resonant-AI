@@ -1,5 +1,6 @@
 package com.resonant.app.ui.home
 
+import com.resonant.app.ui.theme.BrandFamily
 import com.resonant.app.ui.theme.ResonantDim
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,13 +73,13 @@ private val homeItems = listOf(
  *    (res/drawable/ic_mic.xml, ic_settings.xml) and wrapped in Icons.kt.
  */
 private val WordmarkStyle = TextStyle(
-    fontFamily = MetropolisBlack,
+    fontFamily = BrandFamily,
     fontWeight = FontWeight.Black,
     fontSize = 130.sp
 )
 
 // Figma: ~60 size, ~83 line pitch (1.38x), block vertically centered.
-private val MenuTextStyle = TextStyle(
+private val MenuTextStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
     fontSize = 60.sp,

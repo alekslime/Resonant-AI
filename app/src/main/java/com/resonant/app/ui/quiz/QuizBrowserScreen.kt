@@ -71,39 +71,39 @@ private val ProgressBarBackground = Color(0xFF3A3A3A)
 private val ProgressBarFill = Color(0xFFFFAE00)
 private val TopBarBackground = Color(0xFF0A0A0A)
 
-private val TopBarTitleStyle = TextStyle(
+private val TopBarTitleStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
     fontSize = 18.sp
 )
-private val HeadlineStyle = TextStyle(
+private val HeadlineStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
     fontSize = 28.sp,
     lineHeight = 34.sp
 )
-private val SubheadStyle = TextStyle(
+private val SubheadStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Normal,
     fontSize = 14.sp,
     lineHeight = 20.sp
 )
-private val CardTitleStyle = TextStyle(
+private val CardTitleStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Black,
     fontSize = 18.sp
 )
-private val CardMetaStyle = TextStyle(
+private val CardMetaStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Normal,
     fontSize = 13.sp
 )
-private val CardStatusStyle = TextStyle(
+private val CardStatusStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Bold,
     fontSize = 13.sp
 )
-private val CardButtonStyle = TextStyle(
+private val CardButtonStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.Bold,
     fontSize = 14.sp

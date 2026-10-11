@@ -1,5 +1,6 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ActivePalette
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
@@ -235,7 +236,8 @@ fun QuizScreen(
                     fontFamily = MetropolisBlack,
                     fontWeight = FontWeight.Black,
                     fontSize = 35.sp,
-                    lineHeight = 48.sp,
+                    lineHeight = ActiveSpacing.lineHeight(48f),
+                    letterSpacing = ActiveSpacing.letterSpacing,
                     color = questionTextColor,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )

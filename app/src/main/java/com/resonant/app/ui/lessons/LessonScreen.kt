@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
 import com.resonant.app.ui.theme.cardBorder
@@ -214,7 +215,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                         fontFamily = MetropolisBlack,
                         fontWeight = FontWeight.Black,
                         fontSize = (32 * textScale).sp,
-                        lineHeight = (42 * textScale).sp,
+                        lineHeight = ActiveSpacing.lineHeight(42 * textScale),
+                        letterSpacing = ActiveSpacing.letterSpacing,
                         color = BrandInk,
                         modifier = Modifier.padding(top = 36.dp)
                     )
@@ -234,7 +236,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                                     fontFamily = MetropolisBlack,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = (24 * textScale).sp,
-                                    lineHeight = (32 * textScale).sp,
+                                    lineHeight = ActiveSpacing.lineHeight(32 * textScale),
+                                    letterSpacing = ActiveSpacing.letterSpacing,
                                     color = BrandInk,
                                     modifier = Modifier.padding(bottom = 20.dp)
                                 )
@@ -275,7 +278,8 @@ private fun StepRow(number: Int, title: String, scale: Float) {
             fontFamily = MetropolisBlack,
             fontWeight = FontWeight.SemiBold,
             fontSize = (28 * scale).sp,
-            lineHeight = (36 * scale).sp,
+            lineHeight = ActiveSpacing.lineHeight(36 * scale),
+            letterSpacing = ActiveSpacing.letterSpacing,
             color = BrandInk,
             modifier = Modifier.weight(1f)
         )

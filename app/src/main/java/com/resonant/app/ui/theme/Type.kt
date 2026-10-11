@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
  * (labelMedium) is still 20sp, because nothing in this app should read as a
  * disposable caption to its actual audience.
  */
-val ResonantTypography = Typography(
+val ResonantTypography: Typography get() = Typography(
     displayLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 56.sp, lineHeight = 64.sp),
     headlineLarge = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 52.sp),
     headlineMedium = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 42.sp),

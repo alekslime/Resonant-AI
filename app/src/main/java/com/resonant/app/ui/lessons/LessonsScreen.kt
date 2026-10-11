@@ -71,18 +71,18 @@ private val ScreenMargin = 20.dp
 private const val CardTitleMaxSp = 56f
 private const val CardTitleMinSp = 26f
 
-private val TopBarTitleStyle = TextStyle(
+private val TopBarTitleStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.SemiBold,
     fontSize = 22.sp
 )
-private val CardTitleStyle = TextStyle(
+private val CardTitleStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.SemiBold,
     fontSize = CardTitleMaxSp.sp,
     lineHeight = 72.sp
 )
-private val CardButtonStyle = TextStyle(
+private val CardButtonStyle get() = TextStyle(
     fontFamily = MetropolisBlack,
     fontWeight = FontWeight.SemiBold,
     fontSize = 22.sp

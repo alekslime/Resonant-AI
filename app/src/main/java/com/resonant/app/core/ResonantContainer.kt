@@ -1,5 +1,9 @@
 package com.resonant.app.core
 
+import com.resonant.app.ui.theme.TextSpacings
+import com.resonant.app.ui.theme.ActiveSpacing
+import com.resonant.app.ui.theme.AppFonts
+import com.resonant.app.ui.theme.ActiveFont
 import com.resonant.app.ui.theme.ActivePalette
 import com.resonant.app.ui.theme.Palettes
 import android.content.Context
@@ -23,6 +27,8 @@ class ResonantContainer(context: Context) {
     // The color theme is applied before the first screen draws.
     init {
         ActivePalette.current = Palettes.byId(prefs.colorTheme)
+        ActiveFont.current = AppFonts.byId(prefs.font)
+        ActiveSpacing.current = TextSpacings.byId(prefs.textSpacing)
     }
 
     // Speech speed survives a restart. Restoring happens before the TTS engine
