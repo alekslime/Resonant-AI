@@ -56,7 +56,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.resonant.app.content.LessonData
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
+import com.resonant.app.content.LessonLibrary
+import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
@@ -102,8 +105,42 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
-    val lessons = LessonData.allLessons
+    val context = LocalContext.current
+    val store = remember { MaterialStore.forContext(context) }
+    // Built-in lessons, then the person's own material. Only ids and titles are read here.
+    var lessons by remember { mutableStateOf(LessonLibrary.items(store)) }
     var index by remember { mutableIntStateOf(0) }
+    // Id of the material the person has been asked to confirm deleting, if any.
+    var confirmDelete by remember { mutableStateOf<String?>(null) }
+
+    // Hold the middle on your own material: the first hold asks, the second deletes.
+    fun holdToDelete() {
+        val item = lessons.getOrNull(index) ?: return
+        if (!item.own) {
+            haptics.play(HapticPattern.ERROR)
+            audio.announce("${item.title} is built in and cannot be deleted.")
+        } else if (confirmDelete != item.id) {
+            confirmDelete = item.id
+            haptics.play(HapticPattern.HOLD_ENGAGED)
+            audio.announce("Delete ${item.title}? Hold the middle again to confirm. Any other touch cancels.")
+        } else {
+            confirmDelete = null
+            if (store.delete(item.id)) {
+                val remaining = LessonLibrary.items(store)
+                lessons = remaining
+                haptics.play(HapticPattern.CONFIRM)
+                audio.setQueue(
+                    remaining.mapIndexed { i, l -> SemanticUnit("lesson_list_$i", l.title) },
+                    startIndex = index.coerceAtMost(remaining.size - 1),
+                    autoAdvance = false
+                )
+                audio.announce("Deleted ${item.title}.")
+            } else {
+                haptics.play(HapticPattern.ERROR)
+                audio.announce("I could not delete ${item.title}.")
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         debug.setScreen("Lessons")
@@ -125,6 +162,9 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
             .background(BrandOrange)
     ) {
         GestureSurface(twoFingerSwipe = true, ignoreChildTaps = true, onGesture = { gesture ->
+            val isHold = gesture is ResonantGesture.LongPress || gesture is ResonantGesture.LongPressEnd ||
+                gesture is ResonantGesture.HoldStart || gesture is ResonantGesture.HoldEnd
+            if (!isHold) confirmDelete = null
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
@@ -143,10 +183,14 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
                     InteractionZone.RIGHT_EDGE -> {}
                 }
                 is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
-                is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
-                    haptics.play(HapticPattern.BACK)
-                    audio.announce("Back to Home.")
-                    onBack()
+                is ResonantGesture.LongPress -> when (gesture.zone) {
+                    InteractionZone.RIGHT_EDGE -> {
+                        haptics.play(HapticPattern.BACK)
+                        audio.announce("Back to Home.")
+                        onBack()
+                    }
+                    InteractionZone.CENTER -> holdToDelete()
+                    InteractionZone.LEFT_EDGE -> {}
                 }
                 ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
                 ResonantGesture.ThreeFingerHold -> audio.announce(

@@ -23,6 +23,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.resonant.app.content.LessonData
+import com.resonant.app.content.LessonLibrary
+import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.QuizData
 import com.resonant.app.content.QuizProgressStore
 import com.resonant.app.content.QuizQuestion
@@ -170,7 +172,10 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("lessonId")
             val auto = backStackEntry.arguments?.getBoolean("auto") ?: true
-            val lesson = LessonData.allLessons.firstOrNull { it.id == id } ?: LessonData.binarySearchLesson
+            val context = LocalContext.current
+            val lesson = remember(id) {
+                LessonLibrary.find(MaterialStore.forContext(context), id) ?: LessonData.binarySearchLesson
+            }
             LessonScreen(
                 lesson = lesson,
                 autoAdvance = auto,
