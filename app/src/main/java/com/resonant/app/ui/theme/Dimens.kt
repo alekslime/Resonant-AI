@@ -18,3 +18,6 @@ val ScreenTopPadding = 48.dp
  *  wider than the old 48.dp, closer to a size that's forgiving to hit
  *  without precise aim. */
 val EdgeZoneWidth = 64.dp
+
+/** The smallest height or width of anything you tap. Bigger things stay bigger; nothing is smaller. */
+val MinTouchTarget = 56.dp

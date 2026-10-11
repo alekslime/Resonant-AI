@@ -1,5 +1,6 @@
 package com.resonant.app.ui.chat
 
+import com.resonant.app.ui.theme.MinTouchTarget
 import com.resonant.app.ui.theme.ResonantOnBar
 import com.resonant.app.ui.theme.ResonantBar
 import com.resonant.app.ui.theme.ResonantOnInk
@@ -104,7 +105,7 @@ fun AskPill(
         }
         Box(
             Modifier
-                .size(54.dp)
+                .size(MinTouchTarget)
                 .clip(CircleShape)
                 .background(ResonantOnBar)
                 .semantics {

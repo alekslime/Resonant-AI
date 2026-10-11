@@ -1,5 +1,6 @@
 package com.resonant.app.ui.chat
 
+import com.resonant.app.ui.theme.MinTouchTarget
 import com.resonant.app.ui.theme.controlBorder
 import com.resonant.app.ui.theme.ResonantOnBar
 import com.resonant.app.ui.theme.ResonantBar
@@ -916,7 +917,7 @@ fun ChatScreen(
         trailing = {
             Box(
                 Modifier
-                    .size(48.dp)
+                    .size(MinTouchTarget)
                     .clip(CircleShape)
                     .background(ResonantBar)
                     .controlBorder(CircleShape)

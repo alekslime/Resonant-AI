@@ -1,5 +1,6 @@
 package com.resonant.app.ui.components
 
+import com.resonant.app.ui.theme.MinTouchTarget
 import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.ResonantButton
 import com.resonant.app.ui.theme.controlBorder
@@ -54,7 +55,7 @@ fun ResonantButton(
     Box(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = MinTouchTarget)
             .alpha(if (enabled) 1f else 0.5f)
             .clip(controlShape())
             .background(if (filled) ResonantButton else ResonantCard)

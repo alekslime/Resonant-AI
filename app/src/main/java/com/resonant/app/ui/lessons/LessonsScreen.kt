@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.MinTouchTarget
+import androidx.compose.foundation.layout.heightIn
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
@@ -200,7 +202,7 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
                 .background(CardButtonBackground)
                 .controlBorder(controlShape())

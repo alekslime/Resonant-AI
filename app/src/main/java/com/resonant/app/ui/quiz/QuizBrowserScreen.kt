@@ -1,5 +1,7 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.MinTouchTarget
+import androidx.compose.foundation.layout.heightIn
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
@@ -268,7 +270,7 @@ private fun QuizCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
                 .background(ResonantButton)
                 .controlBorder(controlShape())

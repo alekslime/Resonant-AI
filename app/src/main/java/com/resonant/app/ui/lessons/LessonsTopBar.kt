@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.MinTouchTarget
+import androidx.compose.foundation.layout.heightIn
 import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.controlBorder
 import com.resonant.app.ui.theme.ResonantOnBar
@@ -63,7 +65,7 @@ internal fun LessonsTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .height(52.dp)
+                .heightIn(min = MinTouchTarget)
                 .clip(controlShape())
                 .background(bar)
                 .controlBorder(controlShape())
@@ -81,7 +83,7 @@ internal fun LessonsTopBar(
         }
         if (showSettings) Box(
             modifier = Modifier
-                .size(52.dp)
+                .size(MinTouchTarget)
                 .clip(CircleShape)
                 .background(bar)
                 .controlBorder(CircleShape)
