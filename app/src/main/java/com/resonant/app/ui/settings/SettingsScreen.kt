@@ -1,6 +1,7 @@
 package com.resonant.app.ui.settings
 
 import com.resonant.app.ui.theme.TextSpacings
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.AppFonts
 import com.resonant.app.ui.theme.ActiveFont
@@ -73,6 +74,7 @@ private const val SOUND_CUES = "Sound cues"
 private const val COLOR_THEME = "Color theme"
 private const val FONT = "Font"
 private const val TEXT_SPACING = "Text spacing"
+private const val REDUCE_MOTION = "Reduce motion"
 private const val VOICE_ENGINE = "Voice engine"
 private const val LIVE_VOICE = "Live voice"
 private const val LIVE_SPEED = "Live speed"
@@ -81,7 +83,7 @@ private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, COLOR_THEME, FONT, TEXT_SPACING, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, SOUND_CUES, COLOR_THEME, FONT, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
@@ -146,6 +148,7 @@ private fun labelFor(
     COLOR_THEME -> "$COLOR_THEME: ${ActivePalette.current.label}"
     FONT -> "$FONT: ${ActiveFont.current.label}"
     TEXT_SPACING -> "$TEXT_SPACING: ${ActiveSpacing.current.label}"
+    REDUCE_MOTION -> "$REDUCE_MOTION: ${if (ActiveMotion.userReduced) "on" else "off"}"
     VOICE_ENGINE -> "$VOICE_ENGINE: $engineLabel"
     LIVE_VOICE -> "$LIVE_VOICE: ${liveVoiceLabel(liveVoiceId)}"
     LIVE_SPEED -> "$LIVE_SPEED: ${liveSpeedLabel(liveSpeed)}"
@@ -299,6 +302,18 @@ fun SettingsScreen(
                 audio.setQueue(
                     settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
                     startIndex = settingsItems.indexOf(TEXT_SPACING),
+                    autoAdvance = false
+                )
+                haptics.play(HapticPattern.CONFIRM)
+            }
+            REDUCE_MOTION -> {
+                val now = !ActiveMotion.userReduced
+                ActiveMotion.userReduced = now
+                prefs.reduceMotion = now
+                // Re-queueing at the same position speaks the new state ("Reduce motion: on").
+                audio.setQueue(
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
+                    startIndex = settingsItems.indexOf(REDUCE_MOTION),
                     autoAdvance = false
                 )
                 haptics.play(HapticPattern.CONFIRM)
