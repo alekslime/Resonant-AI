@@ -4,9 +4,11 @@ import com.resonant.app.ui.theme.TextSpacings
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.AppFonts
 import com.resonant.app.ui.theme.ActiveFont
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.ActivePalette
 import com.resonant.app.ui.theme.Palettes
 import android.content.Context
+import android.provider.Settings
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.haptics.HapticManager
@@ -29,6 +31,9 @@ class ResonantContainer(context: Context) {
         ActivePalette.current = Palettes.byId(prefs.colorTheme)
         ActiveFont.current = AppFonts.byId(prefs.font)
         ActiveSpacing.current = TextSpacings.byId(prefs.textSpacing)
+        ActiveMotion.userReduced = prefs.reduceMotion
+        ActiveMotion.systemReduced =
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
 
     // Speech speed survives a restart. Restoring happens before the TTS engine

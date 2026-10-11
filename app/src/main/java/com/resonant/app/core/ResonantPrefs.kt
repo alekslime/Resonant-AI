@@ -49,6 +49,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getFloat(KEY_TEXT_SCALE, 1f).coerceIn(1f, 2.5f)
         set(value) = prefs.edit().putFloat(KEY_TEXT_SCALE, value).apply()
 
+    /** Reduce motion switched on in Settings. Off by default. */
+    var reduceMotion: Boolean
+        get() = prefs.getBoolean(KEY_REDUCE_MOTION, false)
+        set(value) = prefs.edit().putBoolean(KEY_REDUCE_MOTION, value).apply()
+
     /** Whether navigation/feedback tones play alongside the haptics. On by default. */
     var soundCuesEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND_CUES, true)
@@ -128,6 +133,7 @@ class ResonantPrefs(context: Context) {
         const val KEY_TEXT_SPACING = "text_spacing"
         const val KEY_COLOR_THEME = "color_theme"
         const val KEY_TEXT_SCALE = "text_scale"
+        const val KEY_REDUCE_MOTION = "reduce_motion"
         const val KEY_SOUND_CUES = "sound_cues"
         const val KEY_OLLAMA_BASE_URL = "ollama_base_url"
         const val KEY_OLLAMA_MODEL = "ollama_model"
