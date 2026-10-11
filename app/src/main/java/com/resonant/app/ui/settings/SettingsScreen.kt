@@ -65,7 +65,6 @@ import com.resonant.app.speech.whisper.WhisperModelManager
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.BrandInk
-import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.MetropolisBlack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -192,7 +191,6 @@ fun SettingsScreen(
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
-    val colors = LocalResonantColors.current
     val context = LocalContext.current
     val soundCues = (context.applicationContext as ResonantApp).container.soundCues
     var soundCuesOn by remember { mutableStateOf(soundCues.enabled) }

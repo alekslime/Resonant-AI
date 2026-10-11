@@ -44,7 +44,6 @@ import com.resonant.app.ui.components.ResonantButton
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.BrandInk
-import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.MetropolisBlack
 
 @Composable
@@ -81,7 +80,6 @@ fun QuizResultsScreen(
         )
     }
 
-    val colors = LocalResonantColors.current
     val percent = if (total > 0) correct * 100 / total else 0
     val resultLabel = when {
         percent == 100 -> "Perfect score!"
