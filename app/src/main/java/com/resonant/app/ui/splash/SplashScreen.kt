@@ -63,7 +63,7 @@ private const val STILL_HOLD_MS = 1500L
  * finished mark still, with no sound or buzz, and only a brief fade ends it.
  */
 @Composable
-fun SplashScreen(soundCues: SoundCueManager? = null, onFinished: () -> Unit) {
+fun SplashScreen(soundCues: SoundCueManager? = null, onExitStart: () -> Unit = {}, onFinished: () -> Unit) {
     val haptics = LocalHapticManager.current
     val reduceMotion = remember { ActiveMotion.reduce }
 
@@ -73,6 +73,7 @@ fun SplashScreen(soundCues: SoundCueManager? = null, onFinished: () -> Unit) {
     LaunchedEffect(Unit) {
         if (reduceMotion) {
             delay(STILL_HOLD_MS)
+            onExitStart()
             exit.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
             onFinished()
             return@LaunchedEffect
@@ -92,6 +93,7 @@ fun SplashScreen(soundCues: SoundCueManager? = null, onFinished: () -> Unit) {
         } while (time.floatValue < SplashMotion.ANIM_S)
 
         delay(HOLD_MS)
+        onExitStart()
         exit.animateTo(1f, tween(EXIT_MS, easing = FastOutSlowInEasing))
         onFinished()
     }
