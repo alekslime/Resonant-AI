@@ -9,7 +9,10 @@ import com.resonant.app.ui.theme.ResonantOnInk
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
+import com.resonant.app.ui.theme.ActiveMotion
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -129,8 +132,6 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
         audio.jumpTo(idx, queueBehindAnnouncement = true)
     }
 
-    val currentSection = lesson.sections.getOrNull(lastSectionIndex)
-
     SystemBarsColor(BrandOrange)
 
     Box(
@@ -201,46 +202,56 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                         FittedTitle(lesson.title, maxSp = 50f, lineRatio = 1.2f)
                     }
 
-                    val sec = currentSection
-                    val hasSteps = sec?.units?.any { it.stepTitle != null } == true
-                    // Lead line: for step sections the section title; otherwise the first unit.
-                    val lead = when {
-                        sec == null -> lesson.title
-                        hasSteps -> sec.title
-                        else -> sec.units.firstOrNull()?.text ?: sec.title
-                    }
+                    // A new section fades in over the old one instead of cutting. The section is
+                    // read from the fade's own state, so the outgoing text keeps its own words.
+                    Crossfade(
+                        targetState = lastSectionIndex,
+                        animationSpec = tween(ActiveMotion.ms(150)),
+                        label = "section"
+                    ) { shownIndex ->
+                        val sec = lesson.sections.getOrNull(shownIndex)
+                        val hasSteps = sec?.units?.any { it.stepTitle != null } == true
+                        // Lead line: for step sections the section title; otherwise the first unit.
+                        val lead = when {
+                            sec == null -> lesson.title
+                            hasSteps -> sec.title
+                            else -> sec.units.firstOrNull()?.text ?: sec.title
+                        }
 
-                    Text(
-                        text = lead,
-                        fontFamily = MetropolisBlack,
-                        fontWeight = FontWeight.Black,
-                        fontSize = (32 * textScale).sp,
-                        lineHeight = ActiveSpacing.lineHeight(42 * textScale),
-                        letterSpacing = ActiveSpacing.letterSpacing,
-                        color = BrandInk,
-                        modifier = Modifier.padding(top = 36.dp)
-                    )
+                        Column(Modifier.fillMaxWidth()) {
+                            Text(
+                                text = lead,
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.Black,
+                                fontSize = (32 * textScale).sp,
+                                lineHeight = ActiveSpacing.lineHeight(42 * textScale),
+                                letterSpacing = ActiveSpacing.letterSpacing,
+                                color = BrandInk,
+                                modifier = Modifier.padding(top = 36.dp)
+                            )
 
-                    Spacer(Modifier.height(28.dp))
+                            Spacer(Modifier.height(28.dp))
 
-                    if (sec != null) {
-                        if (hasSteps) {
-                            sec.units.forEachIndexed { i, unit ->
-                                StepRow(number = i + 1, title = unit.stepTitle ?: unit.text, scale = textScale)
-                                if (i < sec.units.size - 1) Spacer(Modifier.height(36.dp))
-                            }
-                        } else {
-                            sec.units.drop(1).forEach { unit ->
-                                Text(
-                                    text = unit.text,
-                                    fontFamily = MetropolisBlack,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = (24 * textScale).sp,
-                                    lineHeight = ActiveSpacing.lineHeight(32 * textScale),
-                                    letterSpacing = ActiveSpacing.letterSpacing,
-                                    color = BrandInk,
-                                    modifier = Modifier.padding(bottom = 20.dp)
-                                )
+                            if (sec != null) {
+                                if (hasSteps) {
+                                    sec.units.forEachIndexed { i, unit ->
+                                        StepRow(number = i + 1, title = unit.stepTitle ?: unit.text, scale = textScale)
+                                        if (i < sec.units.size - 1) Spacer(Modifier.height(36.dp))
+                                    }
+                                } else {
+                                    sec.units.drop(1).forEach { unit ->
+                                        Text(
+                                            text = unit.text,
+                                            fontFamily = MetropolisBlack,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = (24 * textScale).sp,
+                                            lineHeight = ActiveSpacing.lineHeight(32 * textScale),
+                                            letterSpacing = ActiveSpacing.letterSpacing,
+                                            color = BrandInk,
+                                            modifier = Modifier.padding(bottom = 20.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
