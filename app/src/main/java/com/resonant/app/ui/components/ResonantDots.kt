@@ -1,6 +1,5 @@
 package com.resonant.app.ui.components
 
-import android.provider.Settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,8 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.BrandInk
 import kotlin.math.PI
 import kotlin.math.abs
@@ -40,7 +39,7 @@ enum class DotsState { Idle, Listening, Transcribing, Thinking, Speaking, Offlin
  *    is unreachable and answers come from the bundled lessons.
  *
  * Decorative: cleared from the semantics tree, since state is already spoken/haptic.
- * With "remove animations" on, it holds a static pose.
+ * With Reduce motion on ([ActiveMotion]), it holds a static pose.
  *
  * @param level loudness 0..1, read every frame: speech loudness while Speaking, mic loudness
  *   while Listening. null = built-in fake voice envelope / baseline drift.
@@ -56,10 +55,7 @@ fun ResonantDots(
     timeScale: Float = 1f,
     appearFromNothing: Boolean = false
 ) {
-    val context = LocalContext.current
-    val reduceMotion = remember {
-        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-    }
+    val reduceMotion = ActiveMotion.reduce
     var time by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(reduceMotion) {
         if (reduceMotion) return@LaunchedEffect

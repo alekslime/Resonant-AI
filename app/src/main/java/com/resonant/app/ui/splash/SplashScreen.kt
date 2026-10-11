@@ -1,7 +1,7 @@
 package com.resonant.app.ui.splash
 
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.BrandInk
-import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,8 +46,15 @@ private val SplashMark get() = BrandInk
 
 private const val WORDMARK = "RESONANT"
 
-/** Idle word playback speed on the splash: the whole R-e-s-o-n-a-n-t spell-out in ~2.2 s. */
-private const val SPLASH_SPEED = 3.5f
+/** Idle word playback speed on the splash: the whole R-e-s-o-n-a-n-t spell-out in ~1.75 s. */
+private const val SPLASH_SPEED = 4.5f
+
+/** Pause on the finished wordmark, and the fade out. With the spell-out the splash lasts ~2.7 s. */
+private const val HOLD_MS = 600L
+private const val EXIT_MS = 350
+
+/** With Reduce motion: nothing moves, the mark is simply shown this long. */
+private const val STILL_HOLD_MS = 1500L
 
 /**
  * Animated launch splash. Not a fade-in: the braille "R" mark (see ResonantDots) grows in,
@@ -56,21 +62,14 @@ private const val SPLASH_SPEED = 3.5f
  * braille letter forms. It holds briefly, then the whole mark scales and fades to uncover the
  * real UI already sitting underneath it.
  *
- * Respects the system "remove animations" accessibility setting
- * (Settings.Global.ANIMATOR_DURATION_SCALE == 0): in that case the mark
- * appears instantly and only the final reveal is a plain, brief cross-fade.
+ * Respects [ActiveMotion] (the Reduce motion setting or Android's "remove animations"): in that
+ * case the mark appears at once, stays still for a moment, and only a plain, brief cross-fade
+ * ends it.
  */
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    val context = LocalContext.current
     val haptics = LocalHapticManager.current
-    val reduceMotion = remember {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }
+    val reduceMotion = remember { ActiveMotion.reduce }
 
     val letterReveal = remember { WORDMARK.map { Animatable(0f) } }
     val exit = remember { Animatable(0f) }
@@ -78,7 +77,7 @@ fun SplashScreen(onFinished: () -> Unit) {
     LaunchedEffect(Unit) {
         if (reduceMotion) {
             letterReveal.forEach { it.snapTo(1f) }
-            delay(200)
+            delay(STILL_HOLD_MS)
             exit.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
             onFinished()
             return@LaunchedEffect
@@ -103,8 +102,8 @@ fun SplashScreen(onFinished: () -> Unit) {
             }
         }
 
-        delay((idleLetterFormedAt(letterReveal.lastIndex) / SPLASH_SPEED * 1000f).toLong() + 700L)
-        exit.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+        delay((idleLetterFormedAt(letterReveal.lastIndex) / SPLASH_SPEED * 1000f).toLong() + HOLD_MS)
+        exit.animateTo(1f, tween(EXIT_MS, easing = FastOutSlowInEasing))
         onFinished()
     }
 
@@ -113,7 +112,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             .fillMaxSize()
             .graphicsLayer {
                 alpha = 1f - exit.value
-                val scale = 1f + exit.value * 0.14f
+                val scale = if (reduceMotion) 1f else 1f + exit.value * 0.14f
                 scaleX = scale
                 scaleY = scale
             }

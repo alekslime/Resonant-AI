@@ -4,6 +4,7 @@ import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantCard
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantButton
 import com.resonant.app.ui.components.ResonantScaffold
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.LocalResonantColors
 import com.resonant.app.ui.theme.MetropolisBlack
@@ -88,7 +90,7 @@ fun QuizResultsScreen(
     }
     val fraction by animateFloatAsState(
         targetValue = if (total > 0) correct.toFloat() / total else 0f,
-        animationSpec = tween(900, delayMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = if (ActiveMotion.reduce) snap() else tween(900, delayMillis = 200, easing = FastOutSlowInEasing),
         label = "score"
     )
 
