@@ -52,6 +52,7 @@ agent to join instead of falling back.
 - [x] Spatial cues: with headphones, cues pan a little left/right (`CuePan.kt`, `HeadphoneDetector.kt`, `AudioTrack.setStereoVolume`), speech stays centred, no panning on the speaker or with Mono audio on. No setting yet. Not tested on a device
 - [x] Tutorial and practice area teach pinch and four-finger rewind: two new lessons (ten in all), `GestureSurface(onRewind)` lets a screen take over the rewind, `explainPinch` / `explainRewind` in `GestureExplainer.kt` + tests. Explainer tested on the JVM; screens not compiled or run on a device yet
 - [x] Pause keeps its place: `AudioManager.resume()` plays the paused unit's audio from where it stopped (`ResumePlanner.kt` + test). Plain-TTS fallback, a speed change or Repeat still start the unit again. Planner tested on the JVM; not compiled or run on a device yet
+- [x] Theme preview in Settings: hold the middle on Color theme, Font or Text spacing, swipe left/right to preview live, tap keeps, right-edge hold cancels (`SettingsScreen.kt`, `OptionPicker.kt` + test). No detector change. Tap still cycles; TalkBack keeps tap-to-cycle (no entry action yet). Pure part tested on the JVM; not compiled or run on a device yet
 - [-] "Spoken replies on/off" setting: cancelled, the user wants speech always
 - [ ] Test by talking (voice, hold-to-talk, interrupt, swipe-review). Never run on a device
 - [ ] Make `LiveKitManager` lazy (only matters for the x86 emulator, see below)

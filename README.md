@@ -220,6 +220,7 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Right edge | Hold ~½ s (three quick ticks), then drag up / down | Speech faster / slower, in six steps (0.75×–2.0×); remembered between launches |
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
 | Right edge | Tap | Nothing, deliberately (no accidental triggers) |
+| Settings | Hold the middle on Color theme, Font or Text spacing, then swipe left / right | Preview: the screen shows each option as you swipe and Resonant says its name and place ("Warm, 7 of 12"), with a tick per step and an edge bump at the ends. Tap keeps it, hold the right edge (or the on-screen Back) cancels and puts the old one back. Tapping the row still cycles as before |
 | Lesson (reading) | Pinch with two fingers | Text size, 100% to 250%. A tick plays at each quarter step and an edge bump at the limits; the size is saved. Three-finger hold says the current size |
 | Anywhere | Four fingers dragged left | Rewind, 5 s per step with a tick for each, applied when you lift. With TalkBack: the "Rewind 10 seconds" action |
 | Anywhere | Three-finger tap | Repeat the current unit |
