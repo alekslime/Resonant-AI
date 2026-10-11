@@ -67,8 +67,8 @@ fun TtsUnavailableBanner(audio: AudioManager, haptics: HapticManager, lifecycle:
 
     AnimatedVisibility(
         visible = showBanner,
-        enter = fadeIn(tween(ActiveMotion.ms(200))),
-        exit = fadeOut(tween(ActiveMotion.ms(200)))
+        enter = fadeIn(tween(ActiveMotion.ms(250))),
+        exit = fadeOut(tween(ActiveMotion.ms(250)))
     ) {
         Text(
             "Voice is unavailable. Check that a text-to-speech engine is installed and enabled in your device settings.",

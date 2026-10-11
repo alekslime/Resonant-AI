@@ -172,8 +172,8 @@ fun QuizScreen(
         else -> BrandInk
     }
 
-    // The result fades in over about a fifth of a second; at once with Reduce motion.
-    val fade = tween<Color>(ActiveMotion.ms(200))
+    // The result fades in over about a quarter of a second; at once with Reduce motion.
+    val fade = tween<Color>(ActiveMotion.ms(250))
     val screenBackground by animateColorAsState(targetBackground, fade, label = "resultBackground")
     val questionTextColor by animateColorAsState(targetTextColor, fade, label = "resultText")
 

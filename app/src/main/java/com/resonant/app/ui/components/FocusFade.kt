@@ -8,12 +8,12 @@ import androidx.compose.ui.graphics.Color
 import com.resonant.app.ui.theme.ActiveMotion
 
 /**
- * The color a focus highlight is drawing, eased over about 150 ms when focus moves, so the eye
+ * The color a focus highlight is drawing, eased over about 250 ms when focus moves, so the eye
  * can follow it. Instant with Reduce motion. Wrap the color you would have used:
  * `focusColor(if (focused) BrandInk else ResonantCard)`.
  */
 @Composable
 fun focusColor(target: Color): Color {
-    val color by animateColorAsState(target, tween(ActiveMotion.ms(150)), label = "focus")
+    val color by animateColorAsState(target, tween(ActiveMotion.ms(250)), label = "focus")
     return color
 }

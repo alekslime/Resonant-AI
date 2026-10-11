@@ -73,7 +73,7 @@ object Routes {
     fun quizResults(correct: Int, total: Int) = "quiz_results/$correct/$total"
 }
 
-private const val SCREEN_FADE_MS = 150
+private const val SCREEN_FADE_MS = 250
 
 @Composable
 fun ResonantNavHost(startDestination: String = Routes.HOME) {
