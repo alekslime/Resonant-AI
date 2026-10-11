@@ -192,13 +192,33 @@ class LiveKitManager(
      * [interruptAgent]: attributes stay on the participant (so an agent that joins later still
      * reads them), the data packet reaches an agent that is already in the room.
      */
+    /** The own material opened last as JSON for the agent, or "" when there is none. */
+    private fun materialPayload(): String {
+        val lesson = LessonLibrary.active(MaterialStore.forContext(appContext), ResonantPrefs(appContext).activeMaterialId)
+            ?: return ""
+        return JSONObject().put("title", lesson.title)
+            .put("text", MaterialContext.text(lesson, AGENT_MATERIAL_CHARS)).toString()
+    }
+
+    /** Tell the agent about the material chosen just now. Returns once both routes are sent. */
+    suspend fun sendMaterial() {
+        if (_state.value !is LiveKitState.Connected) return
+        val material = withContext(Dispatchers.IO) { materialPayload() }
+        try {
+            room.localParticipant.updateAttributes(mapOf("material" to material))
+        } catch (e: Exception) {
+        }
+        try {
+            room.localParticipant.publishData(material.toByteArray(), topic = "material")
+        } catch (e: Exception) {
+        }
+    }
+
     private fun sendVoiceSettings() {
         val prefs = ResonantPrefs(appContext)
         // The own material opened last, for the agent's answers. Empty when there is none.
         // Kept short so the data packet stays well under LiveKit's size limit.
-        val material = LessonLibrary.active(MaterialStore.forContext(appContext), prefs.activeMaterialId)?.let {
-            JSONObject().put("title", it.title).put("text", MaterialContext.text(it, AGENT_MATERIAL_CHARS)).toString()
-        } ?: ""
+        val material = materialPayload()
         val voice = prefs.liveVoice
         val speed = prefs.liveSpeed
         val mode = if (prefs.liveHoldToTalk) "hold" else "open"

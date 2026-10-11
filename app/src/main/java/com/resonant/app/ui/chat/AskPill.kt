@@ -58,7 +58,8 @@ fun AskPill(
     listening: Boolean,
     onSubmit: (String) -> Unit,
     onMic: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddMaterial: (() -> Unit)? = null
 ) {
     var text by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
@@ -102,6 +103,21 @@ fun AskPill(
                     .fillMaxWidth()
                     .semantics { contentDescription = "Type a question, then press send" }
             )
+        }
+        if (onAddMaterial != null) {
+            Box(
+                Modifier
+                    .size(MinTouchTarget)
+                    .clip(CircleShape)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Add your own material"
+                    }
+                    .clickable { onAddMaterial() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+", style = PillText.copy(fontSize = 32.sp))
+            }
         }
         Box(
             Modifier

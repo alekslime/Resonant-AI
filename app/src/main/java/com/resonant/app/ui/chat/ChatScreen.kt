@@ -72,6 +72,7 @@ import com.resonant.app.content.ChatHistoryStore
 import com.resonant.app.content.LessonData
 import com.resonant.app.content.LessonLibrary
 import com.resonant.app.content.MaterialContext
+import com.resonant.app.content.MaterialImporter
 import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.OfflineAnswers
 import com.resonant.app.content.SemanticUnit
@@ -612,6 +613,36 @@ fun ChatScreen(
         askTypedOnPhone(question)
     }
 
+    // Add material from Chat: pick a file, save it as a lesson, make it this chat's material, then
+    // have Resonant explain it. The live mic is closed first, so the app never talks over it.
+    val pickMaterial = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            audio.announce("Nothing was added.")
+            return@rememberLauncherForActivityResult
+        }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                MaterialImporter.fromUri(context, MaterialStore.forContext(context), uri)
+            }
+            if (result is MaterialImporter.Result.Saved) {
+                ResonantPrefs(context).activeMaterialId = result.entry.id
+                haptics.play(HapticPattern.CONFIRM)
+                if (liveMode) liveKitManager.sendMaterial()
+                askTyped("I just added my own material, called ${result.entry.title}. Give me a short overview of it, in your own words.")
+            } else {
+                haptics.play(HapticPattern.ERROR)
+                audio.announce(MaterialImporter.message(result))
+            }
+        }
+    }
+
+    fun startAddMaterial() {
+        val micWasOpen = liveMode && liveMicOn
+        if (micWasOpen) scope.launch { liveKitManager.setMicrophoneEnabled(false) }
+        haptics.play(HapticPattern.SELECT, withSound = !micWasOpen)
+        pickMaterial.launch(arrayOf("text/*", "application/octet-stream"))
+    }
+
     fun toggleLiveMic() {
         if (liveKitState != LiveKitState.Connected) {
             audio.announce("Not connected yet.")
@@ -943,7 +974,12 @@ fun ChatScreen(
                     onForce = { debug.forceDots(it) },
                     onLevel = { debug.setDotsLevel(it) }
                 )
-                AskPill(listening = listening, onSubmit = { askTyped(it) }, onMic = { onAskTapped() })
+                AskPill(
+                    listening = listening,
+                    onSubmit = { askTyped(it) },
+                    onMic = { onAskTapped() },
+                    onAddMaterial = { startAddMaterial() }
+                )
             }
         }
     ) {
@@ -975,6 +1011,8 @@ fun ChatScreen(
                     onBack()
                 } else if (liveMode && holdToTalk && gesture.zone == InteractionZone.CENTER) {
                     startHoldTalk()
+                } else if (gesture.zone == InteractionZone.LEFT_EDGE) {
+                    startAddMaterial()
                 }
                 is ResonantGesture.LongPressEnd -> if (liveMode && holdToTalk) endHoldTalk()
                 ResonantGesture.ThreeFingerTap -> if (quietLive) haptics.play(HapticPattern.EDGE) else audio.repeatCurrent()
