@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         if (showSplash) {
-                            SplashScreen(onFinished = { showSplash = false })
+                            SplashScreen(soundCues = container.soundCues, onFinished = { showSplash = false })
                         }
                     }
                 }
