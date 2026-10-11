@@ -51,7 +51,7 @@ class SplashMotionTest {
         assertEquals(-1f, SplashMotion.ringProgress(0, SplashMotion.RINGS_AT - 0.01f), 0f)
         assertTrue(SplashMotion.ringProgress(0, SplashMotion.RINGS_AT + 0.1f) > 0f)
         val lastEnd = SplashMotion.RINGS_AT + (SplashMotion.RING_COUNT - 1) * SplashMotion.RING_GAP + SplashMotion.RING_LIFE
-        assertTrue(lastEnd <= SplashMotion.ANIM_S + 0.35f)
+        assertTrue(lastEnd <= SplashMotion.ANIM_S + 0.001f)
         for (j in 0 until SplashMotion.RING_COUNT) assertEquals(-1f, SplashMotion.ringProgress(j, SplashMotion.FINAL_S), 0f)
     }
 

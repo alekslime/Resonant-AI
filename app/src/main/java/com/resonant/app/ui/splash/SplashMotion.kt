@@ -27,7 +27,7 @@ internal object SplashMotion {
 
     const val WORD_AT = 2.3f
 
-    const val ANIM_S = 3.6f
+    const val ANIM_S = RINGS_AT + (RING_COUNT - 1) * RING_GAP + RING_LIFE
 
     /** Reduce motion shows this moment: everything settled. */
     const val FINAL_S = 10f
