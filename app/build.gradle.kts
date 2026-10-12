@@ -15,6 +15,9 @@ val localProps = Properties().apply {
 }
 val ollamaBaseUrl: String = localProps.getProperty("ollama.baseUrl", "http://10.0.2.2:11434")
 val ollamaModel: String = localProps.getProperty("ollama.model", "llama3.2")
+// A model that can look at pictures, to describe graphs and diagrams (ollama pull llama3.2-vision).
+//   ollama.visionModel=llama3.2-vision
+val ollamaVisionModel: String = localProps.getProperty("ollama.visionModel", "llama3.2-vision")
 
 // Live mode token server (agent/token_server.py). Leave live.tokenUrl empty to keep using
 // LiveKit's dev sandbox.
@@ -39,6 +42,7 @@ android {
 
         buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
         buildConfigField("String", "OLLAMA_MODEL", "\"$ollamaModel\"")
+        buildConfigField("String", "OLLAMA_VISION_MODEL", "\"$ollamaVisionModel\"")
         buildConfigField("String", "LIVE_TOKEN_URL", "\"$liveTokenUrl\"")
         buildConfigField("String", "LIVE_TOKEN_KEY", "\"$liveTokenKey\"")
 
@@ -115,6 +119,11 @@ dependencies {
     implementation("io.livekit:livekit-android:2.29.0")
     // Reads the text out of PDFs (content/PdfTextExtractor.kt).
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // Reads the text in photos and scanned PDFs on the phone (content/ImageTextReader.kt). The
+    // bundled model ships inside the app, so it works offline; exifinterface turns photos upright.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
