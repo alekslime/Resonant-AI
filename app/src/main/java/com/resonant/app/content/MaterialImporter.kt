@@ -64,9 +64,12 @@ object MaterialImporter {
         return Result.Saved(entry, textOnly = !ImageMaterial.hasDescription(description))
     }
 
-    /** Said before a slow read starts, or null when the read is quick. Pictures can take a minute. */
-    fun startMessage(mimeType: String?): String? =
-        if (mimeType?.startsWith("image/") == true) "Reading the picture. This can take a minute." else null
+    /** Said before a slow read starts, or null when the read is quick. Pictures and PDFs with graphs can take minutes. */
+    fun startMessage(mimeType: String?): String? = when {
+        mimeType?.startsWith("image/") == true -> "Reading the picture. This can take a minute."
+        mimeType == "application/pdf" -> "Reading the PDF. If it has graphs, this can take a few minutes."
+        else -> null
+    }
 
     /** What to say out loud. */
     fun message(result: Result): String = when (result) {
@@ -118,23 +121,57 @@ object MaterialImporter {
 
     private fun fromPdf(context: Context, store: MaterialStore, fileName: String, bytes: ByteArray): Result {
         if (bytes.size > MAX_PDF_BYTES) return Result.TooLarge
-        val text = try {
-            PdfTextExtractor.extract(context, bytes)
+        val content = try {
+            PdfTextExtractor.read(context, bytes)
         } catch (e: PdfLockedException) {
             return Result.PdfLocked
         } catch (e: OutOfMemoryError) {
             return Result.TooLarge
         }
-        if (text.count { it.isLetter() } >= MIN_PDF_LETTERS) return decodePdfText(store, fileName, text)
+        val scanned = content.pages.sumOf { page -> page.count { it.isLetter() } } < MIN_PDF_LETTERS
         // No real text: a scan. Read the pages as pictures.
-        val scanned = try {
-            PdfTextCleaner.clean(ImageTextReader.readScannedPdf(context, bytes))
+        val pageTexts = if (!scanned) content.pages else try {
+            ImageTextReader.readScannedPdf(context, bytes)
         } catch (e: Exception) {
-            ""
+            emptyList()
         } catch (e: OutOfMemoryError) {
-            ""
+            emptyList()
         }
-        return decodePdfText(store, fileName, scanned)
+        val cleaned = PdfTextCleaner.cleanPages(pageTexts)
+        val figures = describeFigures(context, bytes, cleaned, content.bigImages, scanned)
+        return decodePdfText(store, fileName, PdfFigures.compose(cleaned, figures))
+    }
+
+    /**
+     * Shows the pages that probably have a graph or figure to the vision model and returns its
+     * explanation of each, keyed by zero-based page. Empty when the server cannot be reached
+     * (two failures in a row stop the loop, so a dead server does not cost minutes).
+     */
+    private fun describeFigures(
+        context: Context, bytes: ByteArray, pages: List<String>, bigImages: List<Int>, scanned: Boolean
+    ): Map<Int, String> {
+        val candidates = PdfFigures.pick(pages.indices.filter { PdfFigures.isCandidate(pages[it], bigImages.getOrElse(it) { 0 }, scanned) })
+        if (candidates.isEmpty()) return emptyMap()
+        val jpegs = try {
+            ImageTextReader.renderPagesJpeg(context, bytes, candidates)
+        } catch (e: Exception) {
+            return emptyMap()
+        } catch (e: OutOfMemoryError) {
+            return emptyMap()
+        }
+        val out = linkedMapOf<Int, String>()
+        var failures = 0
+        for (index in candidates) {
+            val jpeg = jpegs[index] ?: continue
+            val reply = OllamaClient.describeImage(jpeg, PdfFigures.pagePrompt(pages[index]))
+            if (reply == null) {
+                if (++failures >= 2) break
+                continue
+            }
+            failures = 0
+            if (PdfFigures.usable(reply)) out[index] = reply
+        }
+        return out
     }
 
     /** Reads the words in a photo on the phone, then asks the vision model to describe it. Slow: off the main thread. */

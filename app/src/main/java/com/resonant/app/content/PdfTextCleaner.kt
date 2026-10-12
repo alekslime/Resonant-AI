@@ -11,7 +11,11 @@ object PdfTextCleaner {
     private val PAGE_NUMBER = Regex("""^(?:page\s+)?\d{1,4}(?:\s*(?:of|/)\s*\d{1,4})?$""", RegexOption.IGNORE_CASE)
     private val LIGATURES = mapOf("\uFB00" to "ff", "\uFB01" to "fi", "\uFB02" to "fl", "\uFB03" to "ffi", "\uFB04" to "ffl")
 
-    fun clean(pages: List<String>): String {
+    fun clean(pages: List<String>): String =
+        cleanPages(pages).filter { it.isNotBlank() }.joinToString("\n\n")
+
+    /** The same cleanup, one string per input page (blank for an empty page), so a page's number is kept. */
+    fun cleanPages(pages: List<String>): List<String> {
         val lines = pages.map { page ->
             var p = page.replace("\r\n", "\n").replace('\r', '\n').replace("\u00AD", "")
             LIGATURES.forEach { (from, to) -> p = p.replace(from, to) }
@@ -21,8 +25,6 @@ object PdfTextCleaner {
         return lines
             .map { page -> page.filter { it !in repeated && !PAGE_NUMBER.matches(it) }.joinToString("\n") }
             .map { HYPHEN_BREAK.replace(it, "\$1\$2") }
-            .filter { it.isNotBlank() }
-            .joinToString("\n\n")
     }
 
     /** Short lines on most pages (a header, a footer) when the document is long enough to tell. */

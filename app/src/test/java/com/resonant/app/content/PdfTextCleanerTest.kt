@@ -53,4 +53,10 @@ class PdfTextCleanerTest {
         assertEquals("Only text.", PdfTextCleaner.clean(listOf("", "  \n ", "Only text.")))
         assertEquals("", PdfTextCleaner.clean(listOf("", "7")))
     }
+
+    @Test
+    fun clean_pages_keeps_one_entry_per_page_so_page_numbers_survive() {
+        val pages = PdfTextCleaner.cleanPages(listOf("First page words.\n1", "7", "Third page words."))
+        assertEquals(listOf("First page words.", "", "Third page words."), pages)
+    }
 }

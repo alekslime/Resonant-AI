@@ -22,7 +22,7 @@ class ImageRead(val text: String, val jpeg: ByteArray)
 
 /**
  * Reads pictures on the phone: text recognition with ML Kit (the model ships inside the app, so it
- * works offline) and page rendering for scanned PDFs. Blocks until done: call off the main thread.
+ * works offline) and page rendering for scanned PDFs and for figure pages. Blocks until done: call off the main thread.
  */
 object ImageTextReader {
 
@@ -43,30 +43,55 @@ object ImageTextReader {
     }
 
     /** Recognises the text on the pages of a scanned PDF, the first [MAX_SCAN_PAGES] of them, one string per page. */
-    fun readScannedPdf(context: Context, bytes: ByteArray): List<String> {
-        val file = File.createTempFile("scan", ".pdf", context.cacheDir)
+    fun readScannedPdf(context: Context, bytes: ByteArray): List<String> =
+        withRenderer(context, bytes) { renderer ->
+            (0 until minOf(renderer.pageCount, MAX_SCAN_PAGES)).map { index ->
+                renderer.openPage(index).use { page ->
+                    val bitmap = renderPage(page)
+                    try {
+                        recognise(bitmap)
+                    } finally {
+                        bitmap.recycle()
+                    }
+                }
+            }
+        }
+
+    /** The pages at the zero-based [pages] indexes of a PDF as JPEGs, to show to the vision model. */
+    fun renderPagesJpeg(context: Context, bytes: ByteArray, pages: List<Int>): Map<Int, ByteArray> =
+        withRenderer(context, bytes) { renderer ->
+            pages.filter { it in 0 until renderer.pageCount }.associateWith { index ->
+                renderer.openPage(index).use { page ->
+                    val bitmap = renderPage(page)
+                    try {
+                        ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }.toByteArray()
+                    } finally {
+                        bitmap.recycle()
+                    }
+                }
+            }
+        }
+
+    /** Opens [bytes] as a PDF through a temporary file (PdfRenderer needs one) and always removes it. */
+    private fun <T> withRenderer(context: Context, bytes: ByteArray, block: (PdfRenderer) -> T): T {
+        val file = File.createTempFile("pdf", ".pdf", context.cacheDir)
         return try {
             file.writeBytes(bytes)
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
-                PdfRenderer(fd).use { renderer ->
-                    (0 until minOf(renderer.pageCount, MAX_SCAN_PAGES)).map { index ->
-                        renderer.openPage(index).use { page ->
-                            val (w, h) = ImageMaterial.fitSize(page.width * 2, page.height * 2)
-                            val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                            try {
-                                Canvas(bitmap).drawColor(Color.WHITE)
-                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                                recognise(bitmap)
-                            } finally {
-                                bitmap.recycle()
-                            }
-                        }
-                    }
-                }
+                PdfRenderer(fd).use(block)
             }
         } finally {
             file.delete()
         }
+    }
+
+    /** One page on a white background, at twice its size in points but no larger than [ImageMaterial.MAX_SIDE]. */
+    private fun renderPage(page: PdfRenderer.Page): Bitmap {
+        val (w, h) = ImageMaterial.fitSize(page.width * 2, page.height * 2)
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawColor(Color.WHITE)
+        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+        return bitmap
     }
 
     private fun recognise(bitmap: Bitmap): String {

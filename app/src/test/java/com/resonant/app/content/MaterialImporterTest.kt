@@ -118,9 +118,10 @@ class MaterialImporterTest {
     }
 
     @Test
-    fun a_slow_picture_read_is_announced_but_a_text_file_is_not() {
+    fun a_slow_read_is_announced_but_a_text_file_is_not() {
         assertTrue(MaterialImporter.startMessage("image/jpeg")!!.isNotBlank())
-        assertEquals(null, MaterialImporter.startMessage("application/pdf"))
+        assertTrue(MaterialImporter.startMessage("application/pdf")!!.contains("graphs"))
+        assertEquals(null, MaterialImporter.startMessage("text/plain"))
         assertEquals(null, MaterialImporter.startMessage(null))
     }
 }

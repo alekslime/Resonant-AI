@@ -51,11 +51,11 @@ No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Set
 | You add | What happens |
 |---|---|
 | Text or Markdown (up to 2 MB) | Split into sections and sentences, Markdown cleaned for the ear |
-| PDF with real text (up to 30 MB) | The text is extracted; page numbers, running headers and split words are cleaned up |
-| Scanned PDF | The first 30 pages are rendered and read on the phone (ML Kit, offline). Words only |
+| PDF with real text (up to 30 MB) | The text is extracted; page numbers, running headers and split words are cleaned up. Pages with a chart or figure (a large embedded picture, or a caption such as "Figure 3") are also shown to the vision model, and its explanation is read right after that page's text, announced as "Figure on page 3." Up to 6 such pages |
+| Scanned PDF | The first 30 pages are rendered and read on the phone (ML Kit, offline). Pages with a caption, or almost no words, are also explained like the figure pages above |
 | Photo or screenshot (up to 20 MB) | The words are read on the phone (offline). A vision model on your Ollama server also describes it: for a graph, the type, axes, units, trend, highest and lowest values; for a table or diagram, its rows or its parts. Saved as "What the picture shows" and "Text in the picture" |
 
-Reading a picture can take a minute, so the app says "Reading the picture" first. If the server or the vision model can't be reached, only the words are kept and the app says so. Setup is in "[Describing pictures](#describing-pictures)".
+Reading a picture can take a minute, and a PDF with graphs a few, so the app says so first. If the server or the vision model can't be reached, only the words are kept (for a picture the app says so; for a PDF the graphs are simply left out). Setup is in "[Describing pictures](#describing-pictures)".
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
@@ -189,7 +189,7 @@ If the server dies mid-demo the same thing happens on the next question, and a s
 | Streamed reply → speakable sentences | `speech/SentenceChunker.kt` |
 | Ollama streaming client, picture description call + build-time config | `network/OllamaClient.kt`, `network/OllamaConfig.kt` |
 | Your own material: the store, parsing into lessons, the three ways in, putting it in front of the model | `content/MaterialStore.kt`, `content/MaterialParser.kt`, `content/MaterialImporter.kt`, `content/MaterialContext.kt`, `content/LessonLibrary.kt` |
-| PDFs and pictures: text extraction and cleanup, on-device text recognition, scanned-page rendering, how a picture's description and words become material | `content/PdfTextExtractor.kt`, `content/PdfTextCleaner.kt`, `content/ImageTextReader.kt`, `content/ImageMaterial.kt` |
+| PDFs and pictures: text extraction and cleanup, on-device text recognition, page rendering, which PDF pages have a figure, how descriptions and words become material | `content/PdfTextExtractor.kt`, `content/PdfTextCleaner.kt`, `content/PdfFigures.kt`, `content/ImageTextReader.kt`, `content/ImageMaterial.kt` |
 | Shared gesture surface, debug wiring, TalkBack actions | `ui/components/GestureSurface.kt` |
 | The screens | `ui/home`, `ui/lessons`, `ui/quiz`, `ui/chat`, `ui/settings`, `ui/onboarding`, `ui/talkback` |
 | Debug/developer mode | `ui/settings/DebugScreen.kt` (Settings → Debug Mode) |
@@ -306,7 +306,7 @@ Known limits of path 2: Resonant's own voice and TalkBack's voice can overlap, a
 - Six built-in lessons and four quiz sets are included (`content/*.kt` is where you'd add more); anything else is your own material.
 - Chat keeps the last 20 exchanges (`ChatHistoryStore`), saved on the phone, and resends them each turn.
 - Only the first 6,000 characters of your chosen material are given to the AI model (`MaterialContext`), cut at a whole sentence.
-- Pictures are described only when added on their own. Graphs and figures inside a PDF, scanned or not, are not described; a scanned PDF is read for its words, for its first 30 pages only.
+- A PDF is read for graphs on at most 6 pages, chosen by a large embedded picture or a "Figure N" style caption (or, for a scan, a caption or almost no words), so an uncaptioned vector chart in a text PDF can be missed. The whole page is described, not just the figure. A scanned PDF is read for its first 30 pages only.
 - Picture descriptions come from a small model on your own server, so they can be wrong, and they are slow on a machine without a usable GPU.
 - The right-edge "contextual action" is intentionally minimal per the spec.
 - TextToSpeech quality and voice depend entirely on the engine installed on the test device.
