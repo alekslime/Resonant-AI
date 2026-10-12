@@ -443,7 +443,7 @@ Contrast of every text pairing is at least 7:1 in every theme, checked by `Theme
 
 ## License
 
-Copyright (c) 2026 [YOUR FULL NAME]. **All rights reserved.**
+Copyright (c) 2026 Aleks Lime. **All rights reserved.**
 
 The source is public so you can read it and see how Resonant works, but it is **not open source**. You may not use, copy, modify, build, redistribute or train models on it without written permission. Third-party components keep their own licenses (see Credits). The full terms are in [LICENSE](LICENSE).
 
@@ -471,4 +471,4 @@ Resonant stands on a lot of generous work. Each of these keeps its own license; 
 | [Lexend](https://www.lexend.com) | An optional typeface designed for easier reading | Lexend Project | SIL OFL 1.1 (see `docs/fonts/`) |
 | Metropolis | The default typeface and the wordmark | Chris Simpson | SIL OFL 1.1 |
 
-Design started from a Figma mockup; the braille "R" mark and the Resonant name belong to the project owner (see [LICENSE](LICENSE)).
+Design started from a Figma mockup; the braille "R" mark and the Resonant  belong to the project owner (see [LICENSE](LICENSE)).
