@@ -46,7 +46,7 @@ A native Android (Kotlin + Jetpack Compose) prototype demonstrating a non-spatia
 
 No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Settings are fully local and hardcoded. Chat is the one exception: it sends what you say to an Ollama server on your own network and speaks the reply back as it is generated (see "[Chat / voice AI setup](#chat--voice-ai-setup)").
 
-**Your own material.** Add a text, Markdown or PDF file (Settings, from Chat, or Share to Resonant from any app). It is read like a lesson at the end of the Lessons list, and Chat answers from it. PDFs need real text in them; scans and photos of pages are next.
+**Your own material.** Add a text, Markdown or PDF file, or a photo or screenshot (Settings, from Chat, or Share to Resonant from any app). It is read like a lesson at the end of the Lessons list, and Chat answers from it. Words in photos and in scanned PDFs are read on the phone (ML Kit, offline). A photo of a graph, table or diagram is also described by a vision model on your Ollama server (`ollama pull llama3.2-vision`, set `ollama.visionModel` in `local.properties`): axes, units, trend, highest and lowest values. Without the server, only the words are kept, and the app says so.
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
