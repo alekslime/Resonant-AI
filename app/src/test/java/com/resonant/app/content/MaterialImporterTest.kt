@@ -87,7 +87,40 @@ class MaterialImporterTest {
         listOf(
             MaterialImporter.Result.Empty, MaterialImporter.Result.TooLarge,
             MaterialImporter.Result.NotText, MaterialImporter.Result.Failed,
-            MaterialImporter.Result.PdfLocked, MaterialImporter.Result.PdfNoText
+            MaterialImporter.Result.PdfLocked, MaterialImporter.Result.PdfNoText,
+            MaterialImporter.Result.ImageNoText
         ).forEach { assertTrue(MaterialImporter.message(it).isNotBlank()) }
+    }
+
+    @Test
+    fun a_described_picture_is_saved_with_its_words() {
+        val r = MaterialImporter.decodeImage(
+            store, "sales chart.png", "Quarter\n\nRevenue",
+            "A bar chart of revenue by quarter. Revenue rises from about two million in the first quarter to five million in the fourth."
+        ) as MaterialImporter.Result.Saved
+        assertEquals(false, r.textOnly)
+        assertEquals("sales chart", r.entry.title)
+        assertEquals("Added sales chart to your lessons.", MaterialImporter.message(r))
+        assertEquals(1, store.list().size)
+    }
+
+    @Test
+    fun a_picture_without_a_description_keeps_only_its_words_and_says_so() {
+        val r = MaterialImporter.decodeImage(store, "page.jpg", "Photosynthesis turns light into sugar.", null) as MaterialImporter.Result.Saved
+        assertEquals(true, r.textOnly)
+        assertTrue(MaterialImporter.message(r).contains("could not get the picture described"))
+    }
+
+    @Test
+    fun a_picture_with_nothing_found_is_not_saved() {
+        assertEquals(MaterialImporter.Result.ImageNoText, MaterialImporter.decodeImage(store, "blur.jpg", " x ", null))
+        assertTrue(store.list().isEmpty())
+    }
+
+    @Test
+    fun a_slow_picture_read_is_announced_but_a_text_file_is_not() {
+        assertTrue(MaterialImporter.startMessage("image/jpeg")!!.isNotBlank())
+        assertEquals(null, MaterialImporter.startMessage("application/pdf"))
+        assertEquals(null, MaterialImporter.startMessage(null))
     }
 }

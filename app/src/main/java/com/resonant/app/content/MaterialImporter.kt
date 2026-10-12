@@ -4,26 +4,30 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.resonant.app.network.OllamaClient
 
 /**
- * Turns something the person shared or picked (a .txt / .md / .pdf file, or plain shared text)
- * into saved material. [decode], [decodePdfText], [isPdf] and [message] are pure and tested on the
+ * Turns something the person shared or picked (a .txt / .md / .pdf file, a photo or screenshot, or plain shared text)
+ * into saved material. [decode], [decodePdfText], [decodeImage], [isPdf] and [message] are pure and tested on the
  * JVM; [fromIntent] and [fromUri] do the Android reading. Run them off the main thread.
  */
 object MaterialImporter {
 
     const val MAX_BYTES = 2 * 1024 * 1024
     const val MAX_PDF_BYTES = 30 * 1024 * 1024
+    const val MAX_IMAGE_BYTES = 20 * 1024 * 1024
     private const val MIN_PDF_LETTERS = 30
     private val TEXT_EXTENSIONS = setOf("txt", "md", "markdown", "text")
 
     sealed class Result {
-        data class Saved(val entry: MaterialStore.Entry) : Result()
+        /** [textOnly]: a picture whose description could not be had, so only the words in it were kept. */
+        data class Saved(val entry: MaterialStore.Entry, val textOnly: Boolean = false) : Result()
         object Empty : Result()
         object TooLarge : Result()
         object NotText : Result()
         object PdfLocked : Result()
         object PdfNoText : Result()
+        object ImageNoText : Result()
         object Failed : Result()
     }
 
@@ -50,14 +54,31 @@ object MaterialImporter {
         return Result.Saved(entry)
     }
 
+    /**
+     * Saves what was found in a picture: the [description] of it (null when the vision model could
+     * not be reached) and the [text] written in it. Pure.
+     */
+    fun decodeImage(store: MaterialStore, fileName: String, text: String, description: String?): Result {
+        val material = ImageMaterial.compose(text, description) ?: return Result.ImageNoText
+        val entry = store.add(fileName, material) ?: return Result.Empty
+        return Result.Saved(entry, textOnly = !ImageMaterial.hasDescription(description))
+    }
+
+    /** Said before a slow read starts, or null when the read is quick. Pictures can take a minute. */
+    fun startMessage(mimeType: String?): String? =
+        if (mimeType?.startsWith("image/") == true) "Reading the picture. This can take a minute." else null
+
     /** What to say out loud. */
     fun message(result: Result): String = when (result) {
-        is Result.Saved -> "Added ${result.entry.title} to your lessons."
+        is Result.Saved ->
+            if (result.textOnly) "Added ${result.entry.title} to your lessons. I only read the words in it, because I could not get the picture described."
+            else "Added ${result.entry.title} to your lessons."
         Result.Empty -> "There was nothing to read in that."
-        Result.TooLarge -> "That file is too big. The limit is 2 megabytes for text and 30 for PDFs."
-        Result.NotText -> "I can read text, Markdown and PDF files."
+        Result.TooLarge -> "That file is too big. The limit is 2 megabytes for text, 20 for photos and 30 for PDFs."
+        Result.NotText -> "I can read text, Markdown and PDF files, and photos."
         Result.PdfLocked -> "This PDF is password protected, so I can't read it."
-        Result.PdfNoText -> "I couldn't find any text in this PDF. It may be a scan or a photo of pages. Reading those is coming soon."
+        Result.PdfNoText -> "I couldn't find any text in this PDF, even after looking at its pages."
+        Result.ImageNoText -> "I could not read any words in that picture, and I could not get it described. Try a clearer photo, and check that the server is on."
         Result.Failed -> "I could not open that."
     }
 
@@ -88,6 +109,7 @@ object MaterialImporter {
         when {
             bytes == null -> Result.Failed
             isPdf(name, bytes) -> fromPdf(context, store, name, bytes)
+            ImageMaterial.isImage(name, bytes) -> fromImage(store, name, bytes)
             else -> decode(store, name, bytes)
         }
     } catch (e: Exception) {
@@ -103,7 +125,31 @@ object MaterialImporter {
         } catch (e: OutOfMemoryError) {
             return Result.TooLarge
         }
-        return decodePdfText(store, fileName, text)
+        if (text.count { it.isLetter() } >= MIN_PDF_LETTERS) return decodePdfText(store, fileName, text)
+        // No real text: a scan. Read the pages as pictures.
+        val scanned = try {
+            PdfTextCleaner.clean(ImageTextReader.readScannedPdf(context, bytes))
+        } catch (e: Exception) {
+            ""
+        } catch (e: OutOfMemoryError) {
+            ""
+        }
+        return decodePdfText(store, fileName, scanned)
+    }
+
+    /** Reads the words in a photo on the phone, then asks the vision model to describe it. Slow: off the main thread. */
+    private fun fromImage(store: MaterialStore, fileName: String, bytes: ByteArray): Result {
+        if (bytes.size > MAX_IMAGE_BYTES) return Result.TooLarge
+        val read: ImageRead? = try {
+            ImageTextReader.read(bytes)
+        } catch (e: Exception) {
+            null
+        } catch (e: OutOfMemoryError) {
+            null
+        }
+        if (read == null) return Result.Failed
+        val description = OllamaClient.describeImage(read.jpeg, ImageMaterial.prompt(read.text))
+        return decodeImage(store, fileName, read.text, description)
     }
 
     private fun displayName(context: Context, uri: Uri): String {

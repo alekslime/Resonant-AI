@@ -139,6 +139,9 @@ class MainActivity : ComponentActivity() {
         intent.action = null
         val app = application as ResonantApp
         lifecycleScope.launch {
+            if (!app.liveKitManager.micEnabled.value) {
+                MaterialImporter.startMessage(shared.type)?.let { app.container.audioManager.announce(it) }
+            }
             val result = withContext(Dispatchers.IO) { MaterialImporter.fromIntent(app, shared) } ?: return@launch
             val micOpen = app.liveKitManager.micEnabled.value
             val saved = result is MaterialImporter.Result.Saved

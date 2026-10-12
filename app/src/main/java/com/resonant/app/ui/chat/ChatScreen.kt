@@ -621,6 +621,7 @@ fun ChatScreen(
             return@rememberLauncherForActivityResult
         }
         scope.launch {
+            MaterialImporter.startMessage(context.contentResolver.getType(uri))?.let { audio.announce(it) }
             val result = withContext(Dispatchers.IO) {
                 MaterialImporter.fromUri(context, MaterialStore.forContext(context), uri)
             }
@@ -640,7 +641,7 @@ fun ChatScreen(
         val micWasOpen = liveMode && liveMicOn
         if (micWasOpen) scope.launch { liveKitManager.setMicrophoneEnabled(false) }
         haptics.play(HapticPattern.SELECT, withSound = !micWasOpen)
-        pickMaterial.launch(arrayOf("text/*", "application/pdf", "application/octet-stream"))
+        pickMaterial.launch(arrayOf("text/*", "application/pdf", "image/*", "application/octet-stream"))
     }
 
     fun toggleLiveMic() {

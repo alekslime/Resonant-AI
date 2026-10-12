@@ -238,6 +238,7 @@ fun SettingsScreen(
             audio.announce("Nothing was added.")
         } else {
             pickScope.launch {
+                MaterialImporter.startMessage(context.contentResolver.getType(uri))?.let { audio.announce(it) }
                 val result = withContext(Dispatchers.IO) {
                     MaterialImporter.fromUri(context, MaterialStore.forContext(context), uri)
                 }
@@ -288,8 +289,8 @@ fun SettingsScreen(
             YOUR_NAME -> onOpenName()
             ADD_MATERIAL -> {
                 haptics.play(HapticPattern.SELECT)
-                audio.announce("Choose a text or Markdown file.")
-                pickFile.launch(arrayOf("text/*", "application/pdf", "application/octet-stream"))
+                audio.announce("Choose a text, Markdown, PDF or picture file.")
+                pickFile.launch(arrayOf("text/*", "application/pdf", "image/*", "application/octet-stream"))
             }
             SOUND_CUES -> {
                 val now = !soundCuesOn
