@@ -1,0 +1,37 @@
+Resonant: Proprietary License. All Rights Reserved.
+
+Copyright (c) 2026 [YOUR FULL NAME]. All rights reserved.
+
+This repository is published so that people can read the source code and see
+how the project works. It is not open source software.
+
+You MAY:
+  - View and read the source code and documentation in this repository.
+  - Use the features GitHub itself provides for public repositories, such as
+    viewing and forking the repository inside GitHub, as allowed by the GitHub
+    Terms of Service. A fork made this way gives you no license to anything in
+    it beyond reading it.
+
+You MAY NOT, without prior written permission from the copyright holder:
+  - Use the software or any part of it, for any purpose, personal or commercial.
+  - Copy, reproduce, or redistribute the software or any part of it.
+  - Modify, adapt, translate, or create derivative works based on it.
+  - Build, compile, install, or run it, or publish builds of it.
+  - Sublicense, sell, rent, lease, or otherwise commercialize it.
+  - Use the code, design, text, images, icons, logo, name "Resonant", or the
+    braille "R" mark to train, fine-tune, or evaluate machine learning models.
+  - Remove or alter this notice.
+
+Third-party components. This license applies only to the original work of the
+copyright holder. Third-party libraries, fonts, models and tools used by or
+referenced in this project (listed in the Credits section of README.md) remain
+under their own licenses, which are not changed by this file.
+
+NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+To ask for permission, contact the copyright holder through the GitHub profile
+that owns this repository.

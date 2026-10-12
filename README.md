@@ -11,7 +11,7 @@
 ![AI](https://img.shields.io/badge/AI-your%20own%20Ollama%20server-FFAE00?style=flat-square&labelColor=0A0A0A)
 ![Accessibility](https://img.shields.io/badge/built%20for-eyes--free%20use-FFAE00?style=flat-square&labelColor=0A0A0A)
 
-[Screens](#screens) &nbsp;·&nbsp; [Run it](#how-to-open-and-run-it) &nbsp;·&nbsp; [Live voice](#live-mode-talk-to-your-pc) &nbsp;·&nbsp; [Chat / voice AI](#chat--voice-ai-setup) &nbsp;·&nbsp; [Gestures](#the-gesture-grammar) &nbsp;·&nbsp; [Themes](#themes) &nbsp;·&nbsp; [Interaction model](#the-interaction-model-in-code) &nbsp;·&nbsp; [TalkBack](#talkback) &nbsp;·&nbsp; [Limitations](#known-prototype-limitations)
+[Screens](#screens) &nbsp;·&nbsp; [How it works](#how-it-fits-together) &nbsp;·&nbsp; [Run it](#how-to-open-and-run-it) &nbsp;·&nbsp; [Live voice](#live-mode-talk-to-your-pc) &nbsp;·&nbsp; [Chat / voice AI](#chat--voice-ai-setup) &nbsp;·&nbsp; [Gestures](#the-gesture-grammar) &nbsp;·&nbsp; [Themes](#themes) &nbsp;·&nbsp; [Interaction model](#the-interaction-model-in-code) &nbsp;·&nbsp; [TalkBack](#talkback) &nbsp;·&nbsp; [Limitations](#known-prototype-limitations) &nbsp;·&nbsp; [License](#license) &nbsp;·&nbsp; [Credits](#credits)
 
 <br>
 
@@ -105,6 +105,18 @@ No auth, no database, no paid AI service, no API key. Lessons, Quiz and Settings
 | Photo or screenshot (up to 20 MB) | The words are read on the phone (offline). A vision model on your Ollama server also describes it: for a graph, the type, axes, units, trend, highest and lowest values; for a table or diagram, its rows or its parts. Saved as "What the picture shows" and "Text in the picture" |
 
 Reading a picture can take a minute, and a PDF with graphs a few, so the app says so first. If the server or the vision model can't be reached, only the words are kept (for a picture the app says so; for a PDF the graphs are simply left out). Setup is in "[Describing pictures](#describing-pictures)".
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
+## How it fits together
+
+<div align="center">
+  <img src="docs/architecture.png" alt="Architecture: the Android app, LiveKit Cloud relay, and the PC agent with Silero VAD, faster-whisper, Ollama and Kokoro" width="100%">
+</div>
+
+The phone does everything that must work offline: gestures, speech out, haptics and tones, offline speech recognition (whisper.cpp), reading your files (PDFBox, ML Kit) and the lessons and quizzes. Live voice is optional and runs on your own PC; the only outside service is the LiveKit relay in the middle. If the PC isn't there, Chat falls back to talking to Ollama directly, and if Ollama is down too, it reads from the lesson.
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
@@ -424,3 +436,39 @@ Contrast of every text pairing is at least 7:1 in every theme, checked by `Theme
 - Picture descriptions come from a small model on your own server, so they can be wrong, and they are slow on a machine without a usable GPU.
 - The right-edge "contextual action" is intentionally minimal per the spec.
 - TextToSpeech quality and voice depend entirely on the engine installed on the test device.
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
+## License
+
+Copyright (c) 2026 [YOUR FULL NAME]. **All rights reserved.**
+
+The source is public so you can read it and see how Resonant works, but it is **not open source**. You may not use, copy, modify, build, redistribute or train models on it without written permission. Third-party components keep their own licenses (see Credits). The full terms are in [LICENSE](LICENSE).
+
+## Contributing
+
+Feedback is very welcome, especially from blind and low-vision users, and bug reports with your phone model, Android version and whether TalkBack was on. Code contributions are not accepted by default because of the license above; please open an issue first. Details are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Credits
+
+Resonant stands on a lot of generous work. Each of these keeps its own license; check each project for the exact terms of the version you use.
+
+| What | Used for | By | License |
+|---|---|---|---|
+| [whisper.cpp](https://github.com/ggml-org/whisper.cpp) and the Whisper `ggml-base.en` model | Offline speech recognition on the phone | ggml-org, OpenAI | MIT |
+| [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | Speech recognition in the PC agent | SYSTRAN | MIT |
+| [Silero VAD](https://github.com/snakers4/silero-vad) | Detecting when you start and stop talking | Silero | MIT |
+| [Kokoro](https://github.com/hexgrad/kokoro) and [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) | The natural PC voice | hexgrad, thewh1teagle | Apache-2.0 (model), MIT (kokoro-onnx) |
+| [Ollama](https://ollama.com) | Running the language and vision models locally | Ollama | MIT |
+| llama3.2, qwen2.5vl, llama3.2-vision, gemma3 | Chat and picture descriptions | Meta, Alibaba Cloud, Google | Each model has its own license |
+| [LiveKit](https://livekit.io), `livekit-android`, LiveKit Agents | Live voice between phone and PC | LiveKit | Apache-2.0 |
+| [PdfBox-Android](https://github.com/TomRoush/PdfBox-Android) | Reading text from PDFs | Tom Roush, Apache PDFBox | Apache-2.0 |
+| [ML Kit text recognition](https://developers.google.com/ml-kit) | Reading words in photos and scanned pages, offline | Google | ML Kit terms |
+| Jetpack Compose, AndroidX, Kotlin, kotlinx.coroutines | The app itself | Google, JetBrains | Apache-2.0 |
+| [Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont/) | An optional typeface made for low vision | Braille Institute | SIL OFL 1.1 (see `docs/fonts/`) |
+| [Lexend](https://www.lexend.com) | An optional typeface designed for easier reading | Lexend Project | SIL OFL 1.1 (see `docs/fonts/`) |
+| Metropolis | The default typeface and the wordmark | Chris Simpson | SIL OFL 1.1 |
+
+Design started from a Figma mockup; the braille "R" mark and the Resonant name belong to the project owner (see [LICENSE](LICENSE)).
