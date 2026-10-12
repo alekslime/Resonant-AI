@@ -43,6 +43,35 @@ internal fun parseStreamLine(line: String): StreamChunk? {
     return StreamChunk(delta, obj.optBoolean("done", false))
 }
 
+/** The body of a one-shot /api/chat request that asks [model] about one picture. Pure. */
+internal fun buildImageRequest(model: String, prompt: String, jpeg: ByteArray): JSONObject {
+    val image = java.util.Base64.getEncoder().encodeToString(jpeg)
+    return buildImageRequest(model, prompt, image)
+}
+
+internal fun buildImageRequest(model: String, prompt: String, base64Image: String): JSONObject =
+    JSONObject()
+        .put("model", model)
+        .put("stream", false)
+        .put("keep_alive", OllamaClient.KEEP_ALIVE)
+        .put(
+            "messages",
+            JSONArray().put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", prompt)
+                    .put("images", JSONArray().put(base64Image))
+            )
+        )
+
+/** The text of a non-streamed /api/chat reply; throws [OllamaStreamException] if the server reported an error. Pure. */
+internal fun parseChatReply(body: String): String {
+    val obj = JSONObject(body)
+    val error = obj.optString("error")
+    if (error.isNotEmpty()) throw OllamaStreamException(error)
+    return obj.optJSONObject("message")?.optString("content").orEmpty().trim()
+}
+
 /**
  * Talks to a local Ollama server's /api/chat endpoint. Deliberately just
  * HttpURLConnection + org.json — both already on the Android platform, so this
@@ -122,6 +151,38 @@ object OllamaClient {
             producer.cancel()
             connection.disconnect()
         }
+    }
+
+    /** A picture is described by a vision model, which can be slow on the first call while it loads. */
+    private const val VISION_READ_TIMEOUT_MS = 240_000
+
+    /**
+     * Asks the vision model ([OllamaConfig.VISION_MODEL]) about one picture and waits for the whole
+     * answer. Blocks: call off the main thread. Null when the server cannot be reached, does not
+     * have a model that reads pictures, or answers with nothing: the caller falls back to the text
+     * recognised on the phone.
+     */
+    fun describeImage(jpeg: ByteArray, prompt: String): String? = try {
+        val connection = (URL("${OllamaConfig.BASE_URL}/api/chat").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = VISION_READ_TIMEOUT_MS
+            setRequestProperty("Content-Type", "application/json")
+        }
+        try {
+            val body = buildImageRequest(OllamaConfig.VISION_MODEL, prompt, jpeg)
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { it.write(body.toString()) }
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                null
+            } else {
+                parseChatReply(connection.inputStream.let { readAll(it) }).takeIf { it.isNotEmpty() }
+            }
+        } finally {
+            connection.disconnect()
+        }
+    } catch (e: Exception) {
+        null
     }
 
     private fun readAll(stream: java.io.InputStream): String =

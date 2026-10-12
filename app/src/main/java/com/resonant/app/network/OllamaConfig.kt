@@ -18,6 +18,9 @@ import com.resonant.app.BuildConfig
  *   emulator's alias for the host's localhost). On a physical device, phone
  *   and server must be on the same Wi-Fi and this must be the server's LAN IP.
  * - model: any model you've already pulled (`ollama pull <name>`).
+ * - visionModel: a model that can look at pictures, used to describe graphs, diagrams and
+ *   photos (`ollama pull llama3.2-vision`, or `qwen2.5vl`, `gemma3`). Optional: without it
+ *   pictures are still read for their text on the phone.
  *
  * Plain HTTP is only permitted in debug builds (see src/debug/AndroidManifest.xml).
  * A release build needs an https:// URL.
@@ -31,6 +34,9 @@ import com.resonant.app.BuildConfig
 object OllamaConfig {
     val DEFAULT_BASE_URL: String = BuildConfig.OLLAMA_BASE_URL.trimEnd('/')
     val DEFAULT_MODEL: String = BuildConfig.OLLAMA_MODEL
+
+    /** Build-time only, no override on the phone. */
+    val VISION_MODEL: String = BuildConfig.OLLAMA_VISION_MODEL
 
     @Volatile private var baseUrlOverride: String? = null
     @Volatile private var modelOverride: String? = null

@@ -8,6 +8,10 @@ ollama.baseUrl=http://192.168.1.50:11434
 # Any model you've already pulled with `ollama pull`.
 ollama.model=llama3.2
 
+# A model that can look at pictures, to describe graphs, diagrams and photos you add.
+# `ollama pull llama3.2-vision` (or qwen2.5vl, gemma3). Without it, pictures are read for their text only.
+ollama.visionModel=llama3.2-vision
+
 # Live mode: your own token server (run `python token_server.py` in agent/).
 # Leave live.tokenUrl empty to use LiveKit's dev sandbox instead (testing only).
 live.tokenUrl=http://192.168.1.50:8787/token
