@@ -30,3 +30,7 @@
 # Keep line numbers in release stack traces so crash reports are readable.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# PDFBox-Android: optional image codecs it mentions are not shipped.
+-dontwarn com.gemalto.jp2.**
+-dontwarn com.tom_roush.pdfbox.**
