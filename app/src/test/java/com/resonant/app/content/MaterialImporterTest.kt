@@ -60,12 +60,34 @@ class MaterialImporterTest {
     }
 
     @Test
+    fun pdf_text_is_saved_under_the_file_name() {
+        val text = "This report has plenty of readable words in it, enough to count as real text."
+        val r = MaterialImporter.decodePdfText(store, "report.pdf", text) as MaterialImporter.Result.Saved
+        assertEquals("report", r.entry.title)
+        assertEquals(1, store.list().size)
+    }
+
+    @Test
+    fun a_pdf_with_no_text_is_reported_as_a_scan_and_not_saved() {
+        assertEquals(MaterialImporter.Result.PdfNoText, MaterialImporter.decodePdfText(store, "scan.pdf", "  \n 12 \n"))
+        assertTrue(store.list().isEmpty())
+    }
+
+    @Test
+    fun a_pdf_is_recognised_by_name_or_by_content() {
+        assertTrue(MaterialImporter.isPdf("Book.PDF", ByteArray(0)))
+        assertTrue(MaterialImporter.isPdf("download", "%PDF-1.7 ...".toByteArray()))
+        assertEquals(false, MaterialImporter.isPdf("notes.txt", "Hello".toByteArray()))
+    }
+
+    @Test
     fun every_result_has_a_spoken_message() {
         val saved = MaterialImporter.Result.Saved(MaterialStore.Entry("m1", "My notes", "My notes.txt", 0))
         assertEquals("Added My notes to your lessons.", MaterialImporter.message(saved))
         listOf(
             MaterialImporter.Result.Empty, MaterialImporter.Result.TooLarge,
-            MaterialImporter.Result.NotText, MaterialImporter.Result.Failed
+            MaterialImporter.Result.NotText, MaterialImporter.Result.Failed,
+            MaterialImporter.Result.PdfLocked, MaterialImporter.Result.PdfNoText
         ).forEach { assertTrue(MaterialImporter.message(it).isNotBlank()) }
     }
 }

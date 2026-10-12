@@ -289,7 +289,7 @@ fun SettingsScreen(
             ADD_MATERIAL -> {
                 haptics.play(HapticPattern.SELECT)
                 audio.announce("Choose a text or Markdown file.")
-                pickFile.launch(arrayOf("text/*", "application/octet-stream"))
+                pickFile.launch(arrayOf("text/*", "application/pdf", "application/octet-stream"))
             }
             SOUND_CUES -> {
                 val now = !soundCuesOn
