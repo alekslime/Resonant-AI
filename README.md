@@ -44,9 +44,18 @@ Resonant takes the screen out of the equation. There is nothing to find. Gesture
 
 A native Android (Kotlin + Jetpack Compose) prototype demonstrating a non-spatial interaction model: navigate lessons, listen to content, answer quizzes, and chat with an AI without ever needing to visually locate a button.
 
-No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Settings are fully local and hardcoded. Chat is the one exception: it sends what you say to an Ollama server on your own network and speaks the reply back as it is generated (see "[Chat / voice AI setup](#chat--voice-ai-setup)").
+No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Settings are fully local, and so is your own material (kept as plain files in the app's storage). The built-in content is hardcoded. Chat and picture descriptions are the exceptions: they send what you say, your chosen material and the pictures you add to an Ollama server on your own network, and nowhere else (see "[Chat / voice AI setup](#chat--voice-ai-setup)").
 
-**Your own material.** Add a text, Markdown or PDF file, or a photo or screenshot (Settings, from Chat, or Share to Resonant from any app). It is read like a lesson at the end of the Lessons list, and Chat answers from it. Words in photos and in scanned PDFs are read on the phone (ML Kit, offline). A photo of a graph, table or diagram is also described by a vision model on your Ollama server (`ollama pull llama3.2-vision`, set `ollama.visionModel` in `local.properties`): axes, units, trend, highest and lowest values. Without the server, only the words are kept, and the app says so.
+**Your own material.** Add a text, Markdown or PDF file, or a photo or screenshot (Settings, from Chat, or Share to Resonant from any app). It is read like a lesson at the end of the Lessons list, and Chat answers from it.
+
+| You add | What happens |
+|---|---|
+| Text or Markdown (up to 2 MB) | Split into sections and sentences, Markdown cleaned for the ear |
+| PDF with real text (up to 30 MB) | The text is extracted; page numbers, running headers and split words are cleaned up |
+| Scanned PDF | The first 30 pages are rendered and read on the phone (ML Kit, offline). Words only |
+| Photo or screenshot (up to 20 MB) | The words are read on the phone (offline). A vision model on your Ollama server also describes it: for a graph, the type, axes, units, trend, highest and lowest values; for a table or diagram, its rows or its parts. Saved as "What the picture shows" and "Text in the picture" |
+
+Reading a picture can take a minute, so the app says "Reading the picture" first. If the server or the vision model can't be reached, only the words are kept and the app says so. Setup is in "[Describing pictures](#describing-pictures)".
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
@@ -56,7 +65,7 @@ No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Set
 
 1. Open this folder in Android Studio (Koala/2024.1 or newer; the project targets AGP 8.5.2 / Kotlin 1.9.24 / compileSdk 34).
 2. The Gradle wrapper is committed, so `./gradlew` works from the command line and Android Studio uses it as is.
-3. Copy `local.properties.example` to `local.properties` (Android Studio may already have created that file for `sdk.dir` — just add the two Ollama lines to it) and set them for your network. See the next section.
+3. Copy `local.properties.example` to `local.properties` (Android Studio may already have created that file for `sdk.dir` — just add the Ollama lines to it) and set them for your network. See the next section.
 4. Sync, then run the `app` configuration on a device or emulator on API 26+.
 
 On Linux (Arch / Omarchy) there is a one-time setup script and a `dev.sh`; see [docs/linux.md](docs/linux.md).
@@ -95,6 +104,19 @@ ollama.model=llama3.2
 
 Plain HTTP works in debug builds only (`src/debug/AndroidManifest.xml`). A release build needs an `https://` URL.
 
+On Linux, if Ollama runs as a systemd service (the Arch package and the official installer both do this), put the setting in a drop-in rather than the unit file, so a package update can't overwrite it:
+
+```bash
+sudo systemctl edit ollama
+```
+
+```ini
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+```
+
+Then `sudo systemctl restart ollama`.
+
 Speech-to-text has two engines, chosen automatically by `VoiceInputController`:
 
 - **Whisper (offline, on the phone)** — whisper.cpp with the `ggml-base.en` model, used once the model is downloaded. Download it from Settings → Offline voice model (a one-time download of about 150 MB, best on Wi-Fi). It works without internet and behaves the same on every device.
@@ -109,6 +131,26 @@ What Chat does so that silence never looks like a crash:
 - Tapping while an answer is still being spoken starts a new question (barge-in) and stops the old stream.
 - Every failure is announced out loud in one plain sentence — no HTTP bodies or socket errors, which are logged instead (`OllamaErrors.kt`).
 - If the AI server can't be used (down, unreachable, or missing the model), Chat answers from the bundled lesson instead of only reporting the error — see "[When the AI server is down](#when-the-ai-server-is-down)" below.
+
+### Describing pictures
+
+Words in a picture are always read on the phone. To also have graphs, tables, diagrams and photos described, pull a model that can look at pictures and name it in `local.properties`:
+
+```properties
+ollama.visionModel=qwen2.5vl:3b
+```
+
+```bash
+ollama pull qwen2.5vl:3b
+```
+
+The default is `llama3.2-vision`. `qwen2.5vl:3b` is a good small choice, reads charts well and answers in seconds; `gemma3:4b` is about the same size and often better on everyday photos. Like `ollama.model`, this is a build-time setting (no override on the phone), and it is optional: without it, pictures are still read for their words.
+
+Things worth knowing:
+
+- **Video memory.** A vision model's image reader needs a lot of memory on top of the model. On a GPU with about 4 GB it can fail with `cudaMalloc failed: out of memory`, and Ollama answers `500 ... unexpected EOF`. The fix is to run Ollama on the CPU (`Environment="CUDA_VISIBLE_DEVICES=-1"` in the same drop-in as above), or use a smaller model. On a CPU a picture takes from several seconds to a minute.
+- **Test it without the app.** `ollama run qwen2.5vl:3b "Describe this chart. ./chart.png"` only attaches the picture if the path exists; look for the `Added image` line, or the model will describe a chart it never saw.
+- **Small models make mistakes.** Expect the right title, axes and numbers on a clean chart, and missed details or wrong objects on busy photos.
 
 ### Changing the server on the phone
 
@@ -145,7 +187,9 @@ If the server dies mid-demo the same thing happens on the next question, and a s
 | Hardcoded lesson / quiz content, chat framing prompt | `content/LessonData.kt`, `content/QuizData.kt`, `content/ChatData.kt` |
 | Voice input (one-shot speech-to-text): picks Whisper or the platform recognizer | `speech/VoiceInputController.kt`, `speech/WhisperSpeechInputManager.kt`, `speech/SpeechInputManager.kt`, `speech/whisper/` |
 | Streamed reply → speakable sentences | `speech/SentenceChunker.kt` |
-| Ollama streaming client + build-time config | `network/OllamaClient.kt`, `network/OllamaConfig.kt` |
+| Ollama streaming client, picture description call + build-time config | `network/OllamaClient.kt`, `network/OllamaConfig.kt` |
+| Your own material: the store, parsing into lessons, the three ways in, putting it in front of the model | `content/MaterialStore.kt`, `content/MaterialParser.kt`, `content/MaterialImporter.kt`, `content/MaterialContext.kt`, `content/LessonLibrary.kt` |
+| PDFs and pictures: text extraction and cleanup, on-device text recognition, scanned-page rendering, how a picture's description and words become material | `content/PdfTextExtractor.kt`, `content/PdfTextCleaner.kt`, `content/ImageTextReader.kt`, `content/ImageMaterial.kt` |
 | Shared gesture surface, debug wiring, TalkBack actions | `ui/components/GestureSurface.kt` |
 | The screens | `ui/home`, `ui/lessons`, `ui/quiz`, `ui/chat`, `ui/settings`, `ui/onboarding`, `ui/talkback` |
 | Debug/developer mode | `ui/settings/DebugScreen.kt` (Settings → Debug Mode) |
@@ -259,7 +303,10 @@ Known limits of path 2: Resonant's own voice and TalkBack's voice can overlap, a
 
 ## Known prototype limitations
 
-- Only one lesson and one quiz set are included (`content/*.kt` is where you'd add more).
-- Chat keeps the whole conversation in memory and resends all of it each turn; there is no cap and nothing is persisted.
+- Six built-in lessons and four quiz sets are included (`content/*.kt` is where you'd add more); anything else is your own material.
+- Chat keeps the last 20 exchanges (`ChatHistoryStore`), saved on the phone, and resends them each turn.
+- Only the first 6,000 characters of your chosen material are given to the AI model (`MaterialContext`), cut at a whole sentence.
+- Pictures are described only when added on their own. Graphs and figures inside a PDF, scanned or not, are not described; a scanned PDF is read for its words, for its first 30 pages only.
+- Picture descriptions come from a small model on your own server, so they can be wrong, and they are slow on a machine without a usable GPU.
 - The right-edge "contextual action" is intentionally minimal per the spec.
 - TextToSpeech quality and voice depend entirely on the engine installed on the test device.
