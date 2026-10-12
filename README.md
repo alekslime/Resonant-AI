@@ -6,7 +6,18 @@
 
 *A voice-first AI learning assistant built for blind and visually impaired students. Upload any material and learn entirely by listening and asking questions.*
 
-[Run it](#how-to-open-and-run-it) &nbsp;·&nbsp; [Chat / voice AI](#chat--voice-ai-setup) &nbsp;·&nbsp; [Interaction model](#the-interaction-model-in-code) &nbsp;·&nbsp; [Visual design](#visual-design) &nbsp;·&nbsp; [Gestures](#the-gesture-grammar) &nbsp;·&nbsp; [TalkBack](#talkback) &nbsp;·&nbsp; [Limitations](#known-prototype-limitations)
+![Platform](https://img.shields.io/badge/platform-Android%208%2B-FFAE00?style=flat-square&labelColor=0A0A0A)
+![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-FFAE00?style=flat-square&labelColor=0A0A0A)
+![AI](https://img.shields.io/badge/AI-your%20own%20Ollama%20server-FFAE00?style=flat-square&labelColor=0A0A0A)
+![Accessibility](https://img.shields.io/badge/built%20for-eyes--free%20use-FFAE00?style=flat-square&labelColor=0A0A0A)
+
+[Screens](#screens) &nbsp;·&nbsp; [Run it](#how-to-open-and-run-it) &nbsp;·&nbsp; [Live voice](#live-mode-talk-to-your-pc) &nbsp;·&nbsp; [Chat / voice AI](#chat--voice-ai-setup) &nbsp;·&nbsp; [Gestures](#the-gesture-grammar) &nbsp;·&nbsp; [Themes](#themes) &nbsp;·&nbsp; [Interaction model](#the-interaction-model-in-code) &nbsp;·&nbsp; [TalkBack](#talkback) &nbsp;·&nbsp; [Limitations](#known-prototype-limitations)
+
+<br>
+
+<img src="docs/gallery.png" alt="Resonant screens: Home, Chat, a lesson, a quiz answer and Settings" width="100%">
+
+<sub>Screens are renders of the app's own layout, fonts and colors, not device captures. See <a href="#a-note-on-the-screenshots">a note on the screenshots</a>.</sub>
 
 </div>
 
@@ -19,6 +30,7 @@
 <td align="center"><img src="docs/dots/speaking.gif" width="150" alt="Speaking: the dots move with the voice"><br><sub>Speaking</sub></td>
 </tr>
 </table>
+<sub>The braille "R" is Resonant's face. It shows what the app is doing, and every state also has a sound and a vibration.</sub>
 </div>
 
 <div align="center">
@@ -33,8 +45,45 @@ Resonant takes the screen out of the equation. There is nothing to find. Gesture
 
 - **Learn by listening.** Lessons are read aloud one unit at a time. Pause, repeat, slow down, speed up.
 - **Ask instead of searching.** Talk to an AI by voice and hear the answer while it is still being written.
+- **Bring your own material.** Add a text file, Markdown, a PDF or a photo of a page or graph. Resonant reads it like a lesson, and Chat answers from it.
 - **Quizzes without looking.** Every answer option has its own counted buzz and tone.
 - **No perfect connection needed.** Speech recognition can run offline on the phone, and Chat falls back to reading the lesson when the AI server is down.
+- **Made for every kind of low vision, too.** Twelve color themes, three typefaces, adjustable text spacing and size, and a Reduce motion switch.
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
+## Screens
+
+Everything here is driven by gestures; the screen is for sighted helpers and for people with some vision. Focus is always drawn as the inverted item, so it is never only spoken.
+
+<div align="center">
+<table>
+<tr>
+<td align="center"><img src="docs/screens/home.png" width="190" alt="Home"><br><b>Home</b><br><sub>Swipe to move, tap to open</sub></td>
+<td align="center"><img src="docs/screens/lessons.png" width="190" alt="Lessons list"><br><b>Lessons</b><br><sub>Built in, then your own material</sub></td>
+<td align="center"><img src="docs/screens/lesson.png" width="190" alt="Reading a lesson"><br><b>Lesson</b><br><sub>One unit at a time, pinch to resize</sub></td>
+<td align="center"><img src="docs/screens/lesson-steps.png" width="190" alt="A lesson section with numbered steps"><br><b>Steps</b><br><sub>Procedures get numbered steps</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screens/lesson-mode.png" width="190" alt="Choosing Manual or Auto"><br><b>Manual or Auto</b><br><sub>You advance, or it does</sub></td>
+<td align="center"><img src="docs/screens/quizzes.png" width="190" alt="Quiz list"><br><b>Quizzes</b><br><sub>Start, continue or review</sub></td>
+<td align="center"><img src="docs/screens/chat-hero.png" width="190" alt="Chat, ready to listen"><br><b>Chat</b><br><sub>Talk, or type in the pill</sub></td>
+<td align="center"><img src="docs/screens/chat-answer.png" width="190" alt="Chat, an answer being spoken"><br><b>An answer</b><br><sub>Spoken while it is still written</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screens/quiz-question.png" width="190" alt="A quiz question with one option showing"><br><b>Quiz question</b><br><sub>Swipe to hear each option</sub></td>
+<td align="center"><img src="docs/screens/quiz-correct.png" width="190" alt="Correct answer"><br><b>Correct</b><br><sub>Check mark, word, color, buzz</sub></td>
+<td align="center"><img src="docs/screens/quiz-incorrect.png" width="190" alt="Incorrect answer"><br><b>Incorrect</b><br><sub>Never red versus green alone</sub></td>
+<td align="center"><img src="docs/screens/settings.png" width="190" alt="Settings"><br><b>Settings</b><br><sub>Theme, font, spacing, voice, material</sub></td>
+</tr>
+</table>
+</div>
+
+### A note on the screenshots
+
+The images in `docs/screens/` are rendered from the app's own layout code, using its real fonts, colors, shapes and sizes. They are not captures from a phone. To swap in real ones, run the app, take a screenshot of each screen (or `adb exec-out screencap -p > docs/screens/home.png`) and overwrite the file with the same name. Nothing else in this README needs to change.
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
@@ -44,7 +93,7 @@ Resonant takes the screen out of the equation. There is nothing to find. Gesture
 
 A native Android (Kotlin + Jetpack Compose) prototype demonstrating a non-spatial interaction model: navigate lessons, listen to content, answer quizzes, and chat with an AI without ever needing to visually locate a button.
 
-No auth, no database, no cloud AI service, no API key — Lessons, Quiz, and Settings are fully local, and so is your own material (kept as plain files in the app's storage). The built-in content is hardcoded. Chat and picture descriptions are the exceptions: they send what you say, your chosen material and the pictures you add to an Ollama server on your own network, and nowhere else (see "[Chat / voice AI setup](#chat--voice-ai-setup)").
+No auth, no database, no paid AI service, no API key. Lessons, Quiz and Settings are fully local, and so is your own material (kept as plain files in the app's storage). The built-in content is hardcoded. Chat and picture descriptions are the exceptions: they send what you say, your chosen material and the pictures you add to an Ollama server on your own network. Live voice also relays audio through LiveKit's free cloud tier between the phone and your PC (see "[Live mode](#live-mode-talk-to-your-pc)"). Nothing goes anywhere else.
 
 **Your own material.** Add a text, Markdown or PDF file, or a photo or screenshot (Settings, from Chat, or Share to Resonant from any app). It is read like a lesson at the end of the Lessons list, and Chat answers from it.
 
@@ -65,7 +114,7 @@ Reading a picture can take a minute, and a PDF with graphs a few, so the app say
 
 1. Open this folder in Android Studio (Koala/2024.1 or newer; the project targets AGP 8.5.2 / Kotlin 1.9.24 / compileSdk 34).
 2. The Gradle wrapper is committed, so `./gradlew` works from the command line and Android Studio uses it as is.
-3. Copy `local.properties.example` to `local.properties` (Android Studio may already have created that file for `sdk.dir` — just add the Ollama lines to it) and set them for your network. See the next section.
+3. Copy `local.properties.example` to `local.properties` (Android Studio may already have created that file for `sdk.dir` — just add the Ollama and Live lines to it) and set them for your network. See the next two sections.
 4. Sync, then run the `app` configuration on a device or emulator on API 26+.
 
 On Linux (Arch / Omarchy) there is a one-time setup script and a `dev.sh`; see [docs/linux.md](docs/linux.md).
@@ -82,7 +131,34 @@ Unit tests are plain JVM tests — no device needed:
   <img src="docs/divider.png" width="80" alt="">
 </div>
 
+## Live mode: talk to your PC
+
+Chat is always Live. You talk, a small agent on your own PC listens, thinks and answers in a natural voice, and the phone plays it back. You can also type in the pill at the bottom and the same agent answers.
+
+```
+voice: phone mic -> LiveKit -> agent/agent.py on your PC
+typed: phone pill -> LiveKit (text packet) -> same agent turn
+       Silero VAD -> faster-whisper -> Ollama (llama3.2) -> Kokoro TTS -> back to the phone
+```
+
+Everything except the LiveKit relay (free tier) runs on your PC: speech recognition, the language model and the voice.
+
+1. **One-time setup.** Windows: install the Python requirements in `agent/` and put your LiveKit values in `agent/.env` (copy `agent/.env.example`). Linux: run `./scripts/setup-linux.sh`, see [docs/linux.md](docs/linux.md).
+2. **Start the PC side.** `.\dev.ps1` on Windows, `./dev.sh` on Linux. It starts Ollama, the token server (port 8787) and the agent.
+3. **Point the phone at it.** In `local.properties` set `live.tokenUrl` (your PC's LAN address, port 8787) and `live.tokenKey` (the same `TOKEN_KEY` as `agent/.env`). You can also change both on the phone: Settings, Debug Mode, swipe right, Server setup.
+4. **Open Chat.** Resonant says "Live. Connected." and you can start talking. Tap the center to mute, or switch to hold to talk in Settings → Live mic.
+
+What you can change in Settings: the agent's voice, its speaking speed, and whether the mic stays open or is hold-to-talk. Say "quiz me" (or "quiz me on photosynthesis") for a spoken quiz, or "open the lessons" to move around the app.
+
+If the agent doesn't join within 12 seconds, typed questions go straight from the phone to Ollama and are spoken with the phone's own voice, so Chat keeps working. That path is the next section.
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
 ## Chat / voice AI setup
+
+This is the on-phone path: the fallback when the PC agent is not there. It needs only Ollama.
 
 <div align="center">
   <img src="docs/flow.png" alt="How a Chat answer happens: tap, listen, ask, chunk, speak, with a fallback to the bundled lesson" width="100%">
@@ -296,6 +372,44 @@ Resonant's gestures are raw touches read by its own detector. With TalkBack on, 
 2. Keep TalkBack on and use its Actions menu on any Resonant screen. `GestureSurface` exposes the grammar as custom actions — Next, Previous, Select, Continue, Back, Leave screen, Pause or resume, Repeat, Where am I, Faster speech, Slower speech (and Larger text, Smaller text on the lesson screen). Each one is dispatched through the same handler as the real gesture, so every screen supports it with no extra code.
 
 Known limits of path 2: Resonant's own voice and TalkBack's voice can overlap, and it has not yet been tested against real TalkBack users. Whether a direct-touch / pass-through mechanism could let the raw gestures coexist with TalkBack is still an open investigation.
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
+## Themes
+
+Settings → Color theme cycles twelve themes. They are not just color swaps: each one also sets its own corner radius, outline and edge contrast, so they feel like different places. Hold the middle on the Color theme row and swipe left or right to preview each one before you keep it.
+
+<div align="center">
+  <img src="docs/themes.png" alt="The twelve color themes, shown on the Lessons screen" width="100%">
+</div>
+
+<br>
+
+After a quiz answer the screen takes the theme's own correct and incorrect colors, and always shows a check or a cross and the words Correct or Incorrect, so the result never depends on telling colors apart.
+
+<div align="center">
+  <img src="docs/quiz-states.png" alt="Quiz states: browsing an option, correct, incorrect, and correct in the Low vision theme" width="100%">
+</div>
+
+<br>
+
+Contrast of every text pairing is at least 7:1 in every theme, checked by `ThemePaletteTest`. The default orange theme is exempt from the edge-contrast check on purpose, because white cards on orange are the brand look.
+
+<div align="center">
+  <img src="docs/divider.png" width="80" alt="">
+</div>
+
+## Project layout
+
+| Path | What is in it |
+|---|---|
+| `app/` | The Android app (Kotlin, Jetpack Compose), including the whisper.cpp offline speech engine |
+| `agent/` | The PC agent for Live mode: `agent.py`, `token_server.py`, voice commands and the spoken quiz |
+| `docs/` | Images used in this README, [dots.md](docs/dots.md) (the animated R), [linux.md](docs/linux.md), a sample material file |
+| `scripts/setup-linux.sh`, `dev.sh`, `dev.ps1` | One-time Linux setup and the one-command dev start |
+| `ROADMAP.md` | Working notes and the checklist of what is done and what is not |
 
 <div align="center">
   <img src="docs/divider.png" width="80" alt="">
