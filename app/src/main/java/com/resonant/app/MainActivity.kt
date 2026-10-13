@@ -56,8 +56,13 @@ class MainActivity : ComponentActivity() {
         // Speech is prepared under the splash but only played once it starts to fade.
         container.audioManager.holdPlayback()
 
-        // First launch drops straight into the tutorial; after that, Home.
-        val start = if (container.prefs.onboardingComplete) Routes.HOME else Routes.ONBOARDING
+        // First launch: setup, then the tutorial; after that, Home. A person who quit between the two
+        // does not get the setup again.
+        val start = when {
+            container.prefs.onboardingComplete -> Routes.HOME
+            container.prefs.setupComplete -> Routes.ONBOARDING
+            else -> Routes.SETUP
+        }
 
         importShared(intent)
 

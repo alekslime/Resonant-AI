@@ -34,6 +34,7 @@ import com.resonant.app.ResonantApp
 import com.resonant.app.ui.home.HomeScreen
 import com.resonant.app.ui.home.ROUTE_EXIT
 import com.resonant.app.ui.onboarding.OnboardingScreen
+import com.resonant.app.ui.onboarding.SetupScreen
 import com.resonant.app.ui.lessons.LessonModeScreen
 import com.resonant.app.ui.lessons.LessonScreen
 import com.resonant.app.ui.lessons.LessonsScreen
@@ -69,6 +70,7 @@ object Routes {
     const val SERVER_SETUP = "server_setup"
     const val NAME_SETUP = "name_setup"
     const val ONBOARDING = "onboarding"
+    const val SETUP = "setup"
 
     fun lessonMode(id: String) = "lesson_mode/$id"
     fun lesson(id: String, auto: Boolean) = "lesson/$id?auto=$auto"
@@ -110,6 +112,15 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         popEnterTransition = { EnterTransition.None },
         popExitTransition = { fadeOut(tween(ActiveMotion.ms(SCREEN_FADE_MS))) }
     ) {
+        composable(Routes.SETUP) {
+            SetupScreen(onFinished = {
+                prefs.setupComplete = true
+                // Replace the setup, so nothing can go Back into it.
+                navController.navigate(Routes.ONBOARDING) {
+                    popUpTo(Routes.SETUP) { inclusive = true }
+                }
+            })
+        }
         composable(Routes.ONBOARDING) {
             OnboardingScreen(onFinished = {
                 prefs.onboardingComplete = true

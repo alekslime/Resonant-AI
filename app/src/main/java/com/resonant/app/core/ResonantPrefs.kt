@@ -19,6 +19,11 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, value).apply()
 
+    /** Whether the first-launch setup (theme, font, text size, speed, name) has been through or skipped. */
+    var setupComplete: Boolean
+        get() = prefs.getBoolean(KEY_SETUP_COMPLETE, false)
+        set(value) = prefs.edit().putBoolean(KEY_SETUP_COMPLETE, value).apply()
+
     /** Id of the own material the person opened last. Chat answers from it. Null when the last lesson opened was a built-in one. */
     var activeMaterialId: String?
         get() = prefs.getString(KEY_ACTIVE_MATERIAL, null)
@@ -132,6 +137,7 @@ class ResonantPrefs(context: Context) {
         private const val KEY_LIVE_TOKEN_URL = "live_token_url"
         private const val KEY_LIVE_TOKEN_KEY = "live_token_key"
         const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+        private const val KEY_SETUP_COMPLETE = "setup_complete"
         private const val KEY_ACTIVE_MATERIAL = "active_material"
         const val KEY_SPEED_INDEX = "speed_index"
         const val KEY_TTS_ENGINE = "tts_engine"

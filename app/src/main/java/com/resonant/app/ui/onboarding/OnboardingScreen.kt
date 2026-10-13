@@ -139,7 +139,7 @@ private val lessons = listOf(
 )
 
 private const val INTRO =
-    "Welcome to Resonant. Resonant is used entirely by touch and sound — there is nothing you need to see. " +
+    "Now the gestures. Resonant is used entirely by touch and sound — there is nothing you need to see. " +
         "I will teach you ten gestures, one at a time. Try each one and I will confirm it. " +
         "Then you can practise freely. To skip the lessons, press and hold the left edge of the screen."
 
