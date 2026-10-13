@@ -85,7 +85,9 @@ agent to join instead of falling back.
 - [X] Own material 9: Chat answering about the picture itself, not just its saved description; describing just the figure, not the whole page; catching uncaptioned vector charts in text PDFs
 - [X] Phone check of the design pass (the user said they would look): Photophobia and Night red outlines (may be too bright), the 97% press (too subtle or too much?), the inverted focus card in Low vision and Cataracts (very bright). (The fades were checked on the phone 2026-10-11: all stretched to 250 ms and the user likes it; the animation scale must be 1x to judge them. Still to look at: the outlines, the press and the focus card.)
 - [X] Test by talking (voice, hold-to-talk, interrupt, swipe-review).
-- [ ] Make `LiveKitManager` lazy (only matters for the x86 emulator, see below)
+- [-] Make `LiveKitManager` lazy: skipped, the phone is the only target and the gain is a little startup time. Revisit only if the x86 emulator is needed (one line in `ResonantApp`: `by lazy`)
+- [x] Firewall: `scripts/allow-lan.sh` opens 8787 and 11434 to every private range (10.x, 172.16-31.x, 192.168.x), called from `setup-linux.sh`; `dev.sh` warns when the PC address changed or `local.properties` holds another one. Script logic tested here against a stand-in `ufw`; not run on a real firewall
+- [x] Spoken Live connection errors: `LiveErrors` (pure, tested) tells timeout, refused, unknown host, wrong token key, bad token address, token server crash, no internet and a refused token apart; `LiveKitState.Error` carries what is said and the short status text. Pure part tested on the JVM; not yet checked on the phone by breaking each thing on purpose
 
 ## Design pass brief (from the user, 2026-10-11)
 - One cohesive design system: consistent spacing, type, buttons, cards, icons, motion.
