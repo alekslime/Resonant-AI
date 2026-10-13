@@ -312,7 +312,7 @@ class LiveKitManager(
                     connection.setRequestProperty("X-Resonant-Key", tokenKey)
                 }
                 if (connection.responseCode != 200) {
-                    throw IOException("Token server answered ${connection.responseCode}")
+                    throw TokenServerException(connection.responseCode)
                 }
                 val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
                 json.getString("serverUrl") to json.getString("participantToken")
@@ -335,8 +335,10 @@ class LiveKitManager(
 
             _state.value = LiveKitState.Connecting
 
+            var phase = ConnectPhase.TOKEN
             try {
                 val (serverUrl, participantToken) = fetchCredentials(participantName)
+                phase = ConnectPhase.ROOM
 
                 room.connect(serverUrl, participantToken)
 
@@ -361,8 +363,11 @@ class LiveKitManager(
                 )
                 stopPolling()
                 room.disconnect() // don't leave a half-open room behind
+                val described = LiveErrors.describe(phase, e)
                 _state.value = LiveKitState.Error(
-                    e.message ?: "Unknown LiveKit connection error"
+                    e.message ?: "Unknown LiveKit connection error",
+                    described.spoken,
+                    described.short
                 )
             }
         }

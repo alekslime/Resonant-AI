@@ -218,7 +218,7 @@ fun ChatScreen(
     // PC agent would hear the app's own voice and answer it (same rule as "Listening." below).
     LaunchedEffect(liveMode, liveKitState) {
         if (!liveMode || liveIntroDone) return@LaunchedEffect
-        when (liveKitState) {
+        when (val state = liveKitState) {
             LiveKitState.Connected -> {
                 // "Connected" only means LiveKit answered. Wait for the PC agent to actually join.
                 val late = withTimeoutOrNull(AGENT_JOIN_TIMEOUT_MS) {
@@ -256,7 +256,7 @@ fun ChatScreen(
             is LiveKitState.Error -> {
                 liveIntroDone = true
                 haptics.play(HapticPattern.ERROR)
-                audio.announce("Couldn't connect to Resonant Live. Go back and try again.")
+                audio.announce(state.spoken)
             }
             else -> {}
         }
@@ -903,7 +903,7 @@ fun ChatScreen(
     val liveStatusBase: String? = if (liveMode) {
         when {
             !liveMicGranted -> "Live · Microphone needed"
-            else -> when (liveKitState) {
+            else -> when (val live = liveKitState) {
                 LiveKitState.Disconnected -> "Live · Disconnected"
                 LiveKitState.Connecting -> "Live · Connecting…"
                 LiveKitState.Connected -> when {
@@ -919,7 +919,7 @@ fun ChatScreen(
                     agentState == "speaking" -> "Live · Speaking, tap to stop"
                     else -> "Live · Listening"
                 }
-                is LiveKitState.Error -> "Live · Connection error"
+                is LiveKitState.Error -> "Live · ${live.short}"
             }
         }
     } else null
