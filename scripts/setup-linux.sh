@@ -105,10 +105,8 @@ if [ -z "$cur" ] || [ ! -d "$cur" ]; then   # also replaces a copied-over Window
   echo "sdk.dir=$SDK" >> "$LP"
 fi
 
-if command -v ufw >/dev/null && sudo ufw status | grep -q 'Status: active'; then
-  say "Firewall: letting your LAN reach the token server (8787) and Ollama (11434)"
-  sudo ufw allow from "${LAN%.*}.0/24" to any port 8787,11434 proto tcp
-fi
+say "Firewall: letting your home network reach the token server (8787) and Ollama (11434)"
+"$ROOT/scripts/allow-lan.sh"
 
 say "Done"
 if [ -n "${NEED_ENV:-}" ]; then

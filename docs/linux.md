@@ -12,7 +12,7 @@ versions of `dev.ps1` and the one-time setup.
 Installs JDK 17, adb, uv and Ollama; the Android SDK pieces this project pins (platform 34,
 build-tools 34.0.0, NDK 26.1.10909125, CMake 3.22.1); clones whisper.cpp v1.7.6; builds
 `agent/.venv` (Python 3.13); downloads the Kokoro voice files; writes `local.properties`;
-opens ports 8787 and 11434 to your LAN if `ufw` is active.
+opens ports 8787 and 11434 to private networks if `ufw` is active (`scripts/allow-lan.sh`).
 
 Then put your LiveKit values in `agent/.env` (or copy your existing `agent/.env` over it and
 copy its `TOKEN_KEY` into `live.tokenKey` in `local.properties`).
@@ -44,6 +44,9 @@ install `android-udev`. Wi-Fi alternative: Wireless debugging, then `adb pair` /
 - **Clock**: LiveKit rejects tokens when the clock is off. `dev.sh` warns if NTP is not synced.
 - **Signing key**: each machine signs debug builds with its own `~/.android/debug.keystore`, so installing over a build from another machine fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Copy the keystore from the other machine (Windows: `C:\Users\<you>\.android\debug.keystore`) to keep the app's data, or `adb uninstall com.resonant.app` (wipes it).
 - **Gestures**: on Home, Lessons, Quiz list and Settings one finger scrolls and two fingers move between items; tapping an item opens it.
+- **Firewall**: `scripts/allow-lan.sh` opens 8787 and 11434 to every private range (10.x, 172.16-31.x,
+  192.168.x), so a new Wi-Fi does not break it. If the phone times out with "Connection error"
+  while `./dev.sh` shows no `[token]` line for it, the firewall is the usual cause: run it again.
 - **Phone address**: your PC's LAN IP can change. Fix it on the phone (Settings > Debug Mode >
   swipe right > Server setup) instead of rebuilding.
 - **Emulator**: `abiFilters` is arm only, so use a real phone (see ROADMAP).
