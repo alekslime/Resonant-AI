@@ -138,6 +138,9 @@ private const val HOLD_TAIL_MS = 300L
 /** How long the Live intro waits for the agent to publish its computer name. */
 private const val HOST_WAIT_MS = 1_000L
 
+/** Size of the dots above the pill once a conversation has started. */
+private val CHAT_DOTS_SIZE = 88.dp
+
 @Composable
 fun ChatScreen(
     onBack: () -> Unit,
@@ -898,6 +901,15 @@ fun ChatScreen(
     val userName = remember { ResonantPrefs(context).userName?.takeIf { it.isNotBlank() } }
 
     val hero = exchanges.isEmpty()
+    // Loudness for the dots: the mic while listening, the voice while speaking. Shared by the big
+    // dots on the empty chat and the small ones above the pill during a conversation.
+    val dotsLevel: () -> Float = {
+        when {
+            forcedName != null -> forcedLevel ?: -1f // -1 = simulated
+            dotsState == DotsState.Listening -> speech.micLevel()
+            else -> audio.speechLevel()
+        }
+    }
     // Live status. ResonantScaffold ignores `subtitle` whenever a custom header is
     // supplied (i.e. once there is chat history), so the status is also drawn in chatHeader.
     val liveStatusBase: String? = if (liveMode) {
@@ -975,6 +987,17 @@ fun ChatScreen(
                     onForce = { debug.forceDots(it) },
                     onLevel = { debug.setDotsLevel(it) }
                 )
+                // During a conversation the dots stay alive above the pill: listening, thinking,
+                // speaking, offline. (On the empty chat the big ones above show the same thing.)
+                if (!hero) {
+                    Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+                        ResonantDots(
+                            state = dotsState,
+                            level = dotsLevel,
+                            modifier = Modifier.size(CHAT_DOTS_SIZE)
+                        )
+                    }
+                }
                 AskPill(
                     listening = listening,
                     onSubmit = { askTyped(it) },
@@ -1042,13 +1065,7 @@ fun ChatScreen(
                     if (hero) {
                     ResonantDots(
                         state = dotsState,
-                        level = {
-                            when {
-                                forcedName != null -> forcedLevel ?: -1f // -1 = simulated
-                                dotsState == DotsState.Listening -> speech.micLevel()
-                                else -> audio.speechLevel()
-                            }
-                        },
+                        level = dotsLevel,
                         modifier = Modifier.size(dotsSize)
                     )
                     }
