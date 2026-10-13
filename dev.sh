@@ -62,5 +62,22 @@ start agent "$AGENT" "$PY" -u agent.py dev
 ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit }}')"
 echo "PC address: ${ip:-unknown}  (phone token address: ${ip:-<your PC address>}:8787)"
 
+# A new Wi-Fi means a new address. Say so, because the phone then times out with no other clue.
+if [ -n "$ip" ]; then
+  last="${XDG_CACHE_HOME:-$HOME/.cache}/resonant-last-ip"
+  prev="$(cat "$last" 2>/dev/null || true)"
+  if [ -n "$prev" ] && [ "$prev" != "$ip" ]; then
+    echo "NOTE: your PC address changed ($prev -> $ip)."
+    echo "      Update it on the phone (Settings > Debug Mode > swipe right > Server setup)"
+    echo "      and in local.properties. If the phone still cannot connect: ./scripts/allow-lan.sh"
+  fi
+  mkdir -p "$(dirname "$last")" && echo "$ip" > "$last"
+  built="$(grep -E '^live\.tokenUrl=' "$ROOT/local.properties" 2>/dev/null | cut -d= -f2- || true)"
+  case "$built" in
+    ""|*"$ip"*) ;;
+    *) echo "NOTE: local.properties still has live.tokenUrl=$built (the address built into the app)." ;;
+  esac
+fi
+
 wait -n
 [ -n "$stopping" ] || echo "A process exited; stopping the rest."
