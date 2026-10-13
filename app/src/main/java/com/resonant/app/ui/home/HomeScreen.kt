@@ -48,6 +48,7 @@ private val homeItems = listOf(
     HomeItem("Chat", "chat"),
     HomeItem("Lessons", "lessons"),
     HomeItem("Quiz", "quiz"),
+    HomeItem("Profile", "profile"),
     HomeItem("Settings", "settings"),
     HomeItem("Quit", ROUTE_EXIT)
 )

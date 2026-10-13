@@ -35,6 +35,7 @@ import com.resonant.app.ui.home.HomeScreen
 import com.resonant.app.ui.home.ROUTE_EXIT
 import com.resonant.app.ui.onboarding.OnboardingScreen
 import com.resonant.app.ui.onboarding.SetupScreen
+import com.resonant.app.ui.profile.ProfileScreen
 import com.resonant.app.ui.lessons.LessonModeScreen
 import com.resonant.app.ui.lessons.LessonScreen
 import com.resonant.app.ui.lessons.LessonsScreen
@@ -71,6 +72,7 @@ object Routes {
     const val NAME_SETUP = "name_setup"
     const val ONBOARDING = "onboarding"
     const val SETUP = "setup"
+    const val PROFILE = "profile"
 
     fun lessonMode(id: String) = "lesson_mode/$id"
     fun lesson(id: String, auto: Boolean) = "lesson/$id?auto=$auto"
@@ -320,6 +322,13 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                 onOpenDebug = { navController.navigate(Routes.DEBUG) },
                 onReplayTutorial = { navController.navigate(Routes.ONBOARDING) },
                 onOpenName = { navController.navigate(Routes.NAME_SETUP) },
+                onBack = goBack
+            )
+        }
+        composable(Routes.PROFILE) {
+            ProfileScreen(
+                onOpenName = { navController.navigate(Routes.NAME_SETUP) },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onBack = goBack
             )
         }
