@@ -2,15 +2,18 @@ package com.resonant.app.ui.onboarding
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +21,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -63,14 +65,7 @@ import com.resonant.app.ui.theme.AppFonts
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 import com.resonant.app.ui.theme.Palettes
-import com.resonant.app.ui.theme.ResonantButton
-import com.resonant.app.ui.theme.ResonantCard
-import com.resonant.app.ui.theme.ResonantOnButton
 import com.resonant.app.ui.theme.TextScale
-import com.resonant.app.ui.theme.cardBorder
-import com.resonant.app.ui.theme.cardShape
-import com.resonant.app.ui.theme.controlBorder
-import com.resonant.app.ui.theme.controlShape
 import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -364,7 +359,7 @@ fun SetupScreen(onFinished: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Step track: filled up to the step you are on.
@@ -376,116 +371,110 @@ fun SetupScreen(onFinished: () -> Unit) {
                     ) {
                         steps.forEachIndexed { i, _ ->
                             val fill by animateColorAsState(
-                                targetValue = if (i <= step) BrandInk else BrandInk.copy(alpha = 0.25f),
+                                targetValue = if (i <= step) BrandInk else BrandInk.copy(alpha = 0.2f),
                                 animationSpec = tween(ActiveMotion.ms(250)),
                                 label = "setupSegment"
                             )
                             Box(
                                 Modifier
                                     .weight(1f)
-                                    .height(8.dp)
-                                    .clip(controlShape())
+                                    .height(4.dp)
+                                    .clip(CircleShape)
                                     .background(fill)
                             )
                         }
                     }
 
-                    // Main card: what is being chosen, the option now showing, and a sample of it.
-                    Box(
-                        modifier = Modifier
+                    // No card: the choice sits straight on the screen, big, so the theme and font are the design.
+                    Column(
+                        Modifier
                             .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = 16.dp)
-                            .clip(cardShape())
-                            .background(ResonantCard)
-                            .cardBorder(cardShape())
-                            .padding(24.dp),
-                        contentAlignment = Alignment.CenterStart
+                            .weight(1f),
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Column(Modifier.fillMaxWidth()) {
+                        Text(
+                            text = (current?.let { SetupFlow.title(it) } ?: "Welcome").uppercase(),
+                            style = TextStyle(
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                letterSpacing = 1.5.sp
+                            ),
+                            color = BrandInk.copy(alpha = 0.7f),
+                            modifier = Modifier.semantics {
+                                contentDescription = current?.let { SetupFlow.prompt(it) } ?: SETUP_INTRO
+                            }
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Crossfade(
+                            targetState = optionText,
+                            animationSpec = tween(ActiveMotion.ms(150)),
+                            label = "setupOption"
+                        ) { shown ->
                             Text(
-                                text = current?.let { SetupFlow.title(it) } ?: "Welcome",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-                                color = BrandInk,
-                                modifier = Modifier.semantics {
-                                    contentDescription = current?.let { SetupFlow.prompt(it) } ?: SETUP_INTRO
-                                }
+                                text = shown,
+                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 46.sp),
+                                color = BrandInk
                             )
-                            Spacer(Modifier.height(16.dp))
-                            Crossfade(
-                                targetState = optionText,
-                                animationSpec = tween(ActiveMotion.ms(150)),
-                                label = "setupOption"
-                            ) { shown ->
-                                Text(
-                                    text = shown,
-                                    style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 30.sp, lineHeight = 36.sp),
-                                    color = BrandInk
-                                )
-                            }
+                        }
+                        if (current != SetupStep.NAME) {
                             Spacer(Modifier.height(20.dp))
-                            if (current == null || current != SetupStep.NAME) {
-                                Text(
-                                    text = SAMPLE,
-                                    style = TextStyle(
-                                        fontFamily = MetropolisBlack,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = (22 * (if (current == SetupStep.TEXT_SIZE) scale else 1f)).sp,
-                                        lineHeight = (30 * (if (current == SetupStep.TEXT_SIZE) scale else 1f)).sp
-                                    ),
-                                    color = BrandInk
-                                )
-                            }
-                            if (current != null && SetupFlow.hasOptions(current)) {
-                                Spacer(Modifier.height(24.dp))
-                                // Where this option sits in the list. Grows or shrinks as you swipe.
-                                val position by animateFloatAsState(
-                                    targetValue = SetupFlow.position(index, count(current)),
-                                    animationSpec = tween(ActiveMotion.ms(200)),
-                                    label = "setupPosition"
-                                )
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(6.dp)
-                                        .clip(controlShape())
-                                        .background(BrandInk.copy(alpha = 0.25f))
-                                ) {
+                            val sampleScale = if (current == SetupStep.TEXT_SIZE) scale else 1f
+                            Text(
+                                text = SAMPLE,
+                                style = TextStyle(
+                                    fontFamily = MetropolisBlack,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = (20 * sampleScale).sp,
+                                    lineHeight = (28 * sampleScale).sp
+                                ),
+                                color = BrandInk.copy(alpha = 0.85f)
+                            )
+                        }
+                        if (current != null && SetupFlow.hasOptions(current)) {
+                            Spacer(Modifier.height(32.dp))
+                            // One dot per option. The one showing is bigger. For themes each dot wears its own colors.
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                for (i in 0 until count(current)) {
+                                    val selected = i == index
+                                    val size by animateDpAsState(
+                                        targetValue = if (selected) 18.dp else 10.dp,
+                                        animationSpec = tween(ActiveMotion.ms(150)),
+                                        label = "setupDot"
+                                    )
+                                    val palette = if (current == SetupStep.THEME) Palettes.ALL[i] else null
                                     Box(
                                         Modifier
-                                            .fillMaxHeight()
-                                            .fillMaxWidth(position)
-                                            .clip(controlShape())
-                                            .background(BrandInk)
+                                            .size(size)
+                                            .clip(CircleShape)
+                                            .background(palette?.background ?: if (selected) BrandInk else BrandInk.copy(alpha = 0.2f))
+                                            .then(
+                                                if (palette != null) Modifier.border(if (selected) 3.dp else 1.5.dp, palette.ink, CircleShape)
+                                                else Modifier
+                                            )
                                     )
                                 }
                             }
                         }
                     }
 
-                    // Bottom pill: the one action that is always available.
-                    Box(
+                    // One quiet line instead of a button: the gestures are the controls.
+                    Text(
+                        text = when {
+                            current == null -> "Hold the left edge to skip"
+                            current == SetupStep.NAME -> "Tap to type, or swipe to skip"
+                            else -> "Swipe to try, tap to keep"
+                        },
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                        color = BrandInk.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
-                            .clip(controlShape())
-                            .background(ResonantButton)
-                            .controlBorder(controlShape())
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = when {
-                                current == null -> "Hold left edge to skip setup"
-                                current == SetupStep.NAME -> "Tap the middle to type, swipe to skip"
-                                else -> "Swipe to try, tap the middle to keep"
-                            },
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                            color = ResonantOnButton
-                        )
-                    }
+                    )
                 }
             }
         }
