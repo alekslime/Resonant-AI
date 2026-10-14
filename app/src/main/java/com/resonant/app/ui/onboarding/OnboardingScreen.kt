@@ -1,5 +1,28 @@
 package com.resonant.app.ui.onboarding
 
+import com.resonant.app.ui.theme.EdgeZoneWidth
+import com.resonant.app.ui.theme.ActiveMotion
+import com.resonant.app.ui.components.ResonantDots
+import com.resonant.app.ui.components.DotsState
+import com.resonant.app.gestures.GestureClassifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.Crossfade
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.controlShape
 import com.resonant.app.ui.theme.ResonantOnButton
@@ -168,6 +191,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     // True right after one swipe right, so the second one finishes. One swipe is only practice.
     var exitArmed by remember { mutableStateOf(false) }
     var quietTick by remember { mutableIntStateOf(0) }
+    // Counts wrong gestures (unlike [misses], which resets), so each one can trigger its own cue.
+    var missTick by remember { mutableIntStateOf(0) }
     // A pinch has no end event, so its movements add up and it is judged once the fingers go quiet.
     var pinchTotal by remember { mutableStateOf(1f) }
     var pinchTick by remember { mutableIntStateOf(0) }
@@ -291,6 +316,29 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     val pinchOn = sandbox || current?.tool == Tool.PINCH
     val rewindOn = sandbox || current?.tool == Tool.REWIND
 
+    // The mark answers what is happening: it talks while a prompt plays, bounces when a gesture is right
+    // and dips for a moment when one is wrong. Reduce motion makes all of that instant.
+    val dotsState = when {
+        step < 0 -> DotsState.Speaking
+        !sandbox && step < lessons.size && !promptSettled -> DotsState.Speaking
+        else -> DotsState.Idle
+    }
+    val pop = remember { Animatable(1f) }
+    val dip = remember { Animatable(1f) }
+    LaunchedEffect(step) {
+        if (step <= 0 || ActiveMotion.reduce) pop.snapTo(1f)
+        else { pop.snapTo(0.88f); pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 380f)) }
+    }
+    LaunchedEffect(missTick) {
+        if (missTick == 0 || ActiveMotion.reduce) dip.snapTo(1f)
+        else { dip.snapTo(0.4f); dip.animateTo(1f, tween(350)) }
+    }
+    val progressText = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} / ${lessons.size}"
+    val title = current?.label ?: if (sandbox) (sandboxLast?.title ?: "Practice") else "Welcome"
+    val detail = current?.hint ?: if (sandbox) {
+        sandboxLast?.let { "Means: ${it.meaning}" } ?: "Try any gesture. I will tell you what it means."
+    } else "Turn your volume up."
+
     // Same header every other screen uses — this used to hand-roll its own copy
     // of the rule/title/subtitle motif, which meant two independent
     // implementations of the same visual element that could silently drift.
@@ -298,6 +346,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         title = "Learn the gestures",
         subtitle = if (sandbox) "Practice" else if (step < 0) "Listen" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}"
     ) {
+            TouchLayer {
             GestureSurface(
                 twoFingerSwipe = true,
                 hints = false,
@@ -332,6 +381,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     advance()
                 } else {
                     misses += 1
+                    missTick += 1
                     haptics.play(HapticPattern.ERROR)
                     if (misses >= 2) {
                         misses = 0
@@ -342,86 +392,153 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Step counter pill
-                    if (step >= 0) {
-                        Box(
-                            modifier = Modifier
-                                .clip(controlShape())
-                                .background(ResonantButton)
-                                .controlBorder(controlShape())
-                                .padding(horizontal = 18.dp, vertical = 10.dp)
-                        ) {
-                            Text(
-                                text = if (sandbox) "Practice" else "${(step + 1).coerceAtMost(lessons.size)} of ${lessons.size}",
-                                fontFamily = MetropolisBlack,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp,
-                                color = ResonantOnButton
+                    // Progress: one segment per lesson, filled in as each is passed.
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = progressText },
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        lessons.indices.forEach { i ->
+                            val fill by animateColorAsState(
+                                targetValue = if (sandbox || i <= step) BrandInk else BrandInk.copy(alpha = 0.2f),
+                                animationSpec = tween(ActiveMotion.ms(250)),
+                                label = "lessonSegment"
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                                    .background(fill)
                             )
                         }
-                    } else {
-                        Spacer(Modifier.height(36.dp))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = if (step >= 0 || sandbox) progressText else "",
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                        color = BrandInk.copy(alpha = 0.7f)
+                    )
+
+                    // The brand mark fills the top half.
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        ResonantDots(
+                            state = dotsState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = pop.value
+                                    scaleY = pop.value
+                                    alpha = dip.value
+                                }
+                        )
                     }
 
-                    // Main card
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = 16.dp)
-                            .clip(cardShape())
-                            .background(ResonantCard)
-                            .cardBorder(cardShape())
-                            .padding(24.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Column {
-                            Text(
-                                text = current?.label ?: if (sandbox) (sandboxLast?.title ?: "Practice") else "Welcome",
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.Black
-                                ),
-                                color = BrandInk,
-                                modifier = Modifier.semantics {
+                    Crossfade(
+                        targetState = title,
+                        animationSpec = tween(ActiveMotion.ms(150)),
+                        label = "lessonTitle"
+                    ) { shown ->
+                        Text(
+                            text = shown,
+                            style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 32.sp, lineHeight = 38.sp, textAlign = TextAlign.Center),
+                            color = BrandInk,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics {
                                     contentDescription = current?.spoken
                                         ?: if (sandbox) (sandboxLast?.spoken ?: SANDBOX_INTRO) else INTRO
                                 }
-                            )
-                            Spacer(Modifier.height(20.dp))
-                            Text(
-                                text = current?.hint ?: if (sandbox) {
-                                    sandboxLast?.let { "Means: ${it.meaning}" } ?: "Try any gesture. I will tell you what it means."
-                                } else "Turn your volume up.",
-                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
-                                color = BrandInk
-                            )
-                        }
-                    }
-
-                    // Skip hint pill
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .clip(controlShape())
-                            .background(ResonantButton)
-                            .controlBorder(controlShape())
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (sandbox) "Swipe right twice to start" else "Hold left edge to skip lessons",
-                            fontFamily = MetropolisBlack,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                            color = ResonantOnButton
                         )
                     }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = detail,
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 26.sp, textAlign = TextAlign.Center),
+                        color = BrandInk.copy(alpha = 0.85f)
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = if (sandbox) "Swipe right twice to start" else "Hold the left edge to skip the lessons",
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, textAlign = TextAlign.Center),
+                        color = BrandInk.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
+            }
             }
         }
     }
 
+/**
+ * Shows where the fingers are, so the three zones can be seen as well as felt: a faint line at each edge zone,
+ * the zone being touched glows, a ring sits under each finger, and the first finger leaves a short fading trail.
+ * It only watches (before the gesture detector, consuming nothing), so it can never change what a gesture does.
+ * With Reduce motion on there is no trail, only the rings and the glow.
+ */
+@Composable
+private fun TouchLayer(content: @Composable () -> Unit) {
+    val ink = BrandInk
+    val edgePx = with(LocalDensity.current) { EdgeZoneWidth.toPx() }
+    val reduce = ActiveMotion.reduce
+    var width by remember { mutableIntStateOf(0) }
+    val fingers = remember { mutableStateListOf<Offset>() }
+    val trail = remember { mutableStateListOf<Offset>() }
+
+    LaunchedEffect(fingers.isEmpty()) {
+        if (fingers.isEmpty()) {
+            delay(250)
+            trail.clear()
+        }
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onSizeChanged { width = it.width }
+            .pointerInput(reduce) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val down = event.changes.filter { it.pressed }
+                        fingers.clear()
+                        down.forEach { fingers.add(it.position) }
+                        if (!reduce && down.isNotEmpty()) {
+                            trail.add(down.first().position)
+                            while (trail.size > 14) trail.removeAt(0)
+                        }
+                    }
+                }
+            }
+    ) {
+        content()
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val line = 2.dp.toPx()
+            drawLine(ink.copy(alpha = 0.12f), Offset(edgePx, 0f), Offset(edgePx, h), strokeWidth = line)
+            drawLine(ink.copy(alpha = 0.12f), Offset(w - edgePx, 0f), Offset(w - edgePx, h), strokeWidth = line)
+
+            fingers.map { GestureClassifier.zoneFor(it.x, width, edgePx, edgePx) }.toSet().forEach { zone ->
+                when (zone) {
+                    InteractionZone.LEFT_EDGE -> drawRect(ink.copy(alpha = 0.14f), Offset.Zero, Size(edgePx, h))
+                    InteractionZone.RIGHT_EDGE -> drawRect(ink.copy(alpha = 0.14f), Offset(w - edgePx, 0f), Size(edgePx, h))
+                    InteractionZone.CENTER -> drawRect(ink.copy(alpha = 0.07f), Offset(edgePx, 0f), Size(w - 2 * edgePx, h))
+                }
+            }
+
+            trail.forEachIndexed { i, point ->
+                val f = (i + 1f) / trail.size
+                drawCircle(ink.copy(alpha = 0.3f * f), radius = 12.dp.toPx() * f, center = point)
+            }
+            fingers.forEach { point ->
+                drawCircle(ink.copy(alpha = 0.15f), radius = 34.dp.toPx(), center = point)
+                drawCircle(ink.copy(alpha = 0.6f), radius = 34.dp.toPx(), center = point, style = Stroke(width = 3.dp.toPx()))
+            }
+        }
+    }
+}
