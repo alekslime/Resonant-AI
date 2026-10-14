@@ -1,13 +1,12 @@
 package com.resonant.app.ui.onboarding
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,9 +33,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import com.resonant.app.ui.components.DotsState
+import com.resonant.app.ui.components.ResonantDots
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -134,7 +135,6 @@ fun SetupScreen(onFinished: () -> Unit) {
     var typing by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(prefs.userName.orEmpty()) }
     var leaving by remember { mutableStateOf(false) }
-    val speedAtStart = remember { audio.speedIndex.value }
     val onFinishedNow by rememberUpdatedState(onFinished)
 
     fun stepOrNull(): SetupStep? = steps.getOrNull(step)
@@ -187,8 +187,9 @@ fun SetupScreen(onFinished: () -> Unit) {
         val s = stepOrNull() ?: return
         when (s) {
             SetupStep.SPEED -> {
-                audio.restoreSpeedIndex(speedAtStart)
-                prefs.speedIndex = speedAtStart
+                // Back to what it was when this step opened, so a speed kept earlier survives going back.
+                audio.restoreSpeedIndex(start)
+                prefs.speedIndex = start
             }
             SetupStep.NAME -> Unit
             else -> show(s, start)
@@ -263,7 +264,11 @@ fun SetupScreen(onFinished: () -> Unit) {
     }
 
     fun back() {
-        if (step <= 0) return
+        if (step <= 0) {
+            haptics.play(HapticPattern.EDGE)
+            audio.announce("This is the first step.")
+            return
+        }
         revertPending()
         haptics.play(HapticPattern.BACK)
         enter(step - 1, "Going back. ")
@@ -284,6 +289,31 @@ fun SetupScreen(onFinished: () -> Unit) {
     val optionText = current?.takeIf { SetupFlow.hasOptions(it) }?.let { label(it, index) }
         ?: if (current == SetupStep.NAME) (name.trim().ifBlank { "No name yet" }) else "Listen"
 
+    // The mark answers what is happening: it talks while the intro plays, listens on the name step, runs at the
+    // speed being chosen, shrinks and grows with the text size, and bounces a little on every change.
+    val dotsState = when {
+        step < 0 || step >= steps.size -> DotsState.Speaking
+        current == SetupStep.NAME -> DotsState.Listening
+        else -> DotsState.Idle
+    }
+    val dotsSpeed = if (current == SetupStep.SPEED) {
+        AudioManager.SPEEDS[index.coerceIn(0, AudioManager.SPEEDS.lastIndex)].coerceIn(0.5f, 3f)
+    } else 1f
+    val sizeFactor by animateFloatAsState(
+        targetValue = if (current == SetupStep.TEXT_SIZE) 0.55f + 0.45f * ((scale - 1f) / (TextScale.MAX - 1f)) else 1f,
+        animationSpec = tween(ActiveMotion.ms(250)),
+        label = "setupDotsSize"
+    )
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(step, index) {
+        if (ActiveMotion.reduce || step < 0) {
+            pop.snapTo(1f)
+        } else {
+            pop.snapTo(0.9f)
+            pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 380f))
+        }
+    }
+
     ResonantScaffold(
         title = "Make it yours",
         subtitle = if (current != null) "${step + 1} of ${steps.size}" else "Listen"
@@ -300,6 +330,7 @@ fun SetupScreen(onFinished: () -> Unit) {
                     value = name,
                     onValueChange = { name = it.take(30) },
                     label = "First name",
+                    autoFocus = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
                         imeAction = ImeAction.Done
@@ -360,120 +391,101 @@ fun SetupScreen(onFinished: () -> Unit) {
                     Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Step track: filled up to the step you are on.
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .semantics { contentDescription = "Step ${(step + 1).coerceAtLeast(0)} of ${steps.size}" },
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        steps.forEachIndexed { i, _ ->
-                            val fill by animateColorAsState(
-                                targetValue = if (i <= step) BrandInk else BrandInk.copy(alpha = 0.2f),
-                                animationSpec = tween(ActiveMotion.ms(250)),
-                                label = "setupSegment"
-                            )
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .height(4.dp)
-                                    .clip(CircleShape)
-                                    .background(fill)
-                            )
-                        }
+                    // Where you are, as plain text.
+                    Text(
+                        text = if (current != null) "${step + 1} / ${steps.size}" else "",
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                        color = BrandInk.copy(alpha = 0.7f),
+                        modifier = Modifier.semantics { contentDescription = "Step ${(step + 1).coerceAtLeast(0)} of ${steps.size}" }
+                    )
+
+                    // The brand mark takes the top half, drawn in the theme's own ink. It holds still with Reduce motion on.
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        ResonantDots(
+                            state = dotsState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val k = sizeFactor * pop.value
+                                    scaleX = k
+                                    scaleY = k
+                                },
+                            timeScale = dotsSpeed
+                        )
                     }
 
-                    // No card: the choice sits straight on the screen, big, so the theme and font are the design.
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.Center
-                    ) {
+                    // Title, then the choice with an arrow each side. An arrow dims when there is nothing further that way.
+                    Text(
+                        text = (current?.let { SetupFlow.title(it) } ?: "Welcome").uppercase(),
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, letterSpacing = 1.5.sp),
+                        color = BrandInk.copy(alpha = 0.7f),
+                        modifier = Modifier.semantics {
+                            contentDescription = current?.let { SetupFlow.prompt(it) } ?: SETUP_INTRO
+                        }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    val hasOptions = current != null && SetupFlow.hasOptions(current)
+                    val total = if (hasOptions) count(current!!) else 0
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = (current?.let { SetupFlow.title(it) } ?: "Welcome").uppercase(),
-                            style = TextStyle(
-                                fontFamily = MetropolisBlack,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                letterSpacing = 1.5.sp
-                            ),
-                            color = BrandInk.copy(alpha = 0.7f),
-                            modifier = Modifier.semantics {
-                                contentDescription = current?.let { SetupFlow.prompt(it) } ?: SETUP_INTRO
-                            }
+                            "\u2039",
+                            style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 44.sp),
+                            color = BrandInk.copy(alpha = if (hasOptions && index > 0) 1f else 0.2f),
+                            modifier = Modifier.clearAndSetSemantics { }
                         )
-                        Spacer(Modifier.height(12.dp))
                         Crossfade(
                             targetState = optionText,
                             animationSpec = tween(ActiveMotion.ms(150)),
+                            modifier = Modifier.weight(1f),
                             label = "setupOption"
                         ) { shown ->
                             Text(
                                 text = shown,
-                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 46.sp),
-                                color = BrandInk
+                                style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 32.sp, lineHeight = 38.sp, textAlign = TextAlign.Center),
+                                color = BrandInk,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
-                        if (current != SetupStep.NAME) {
-                            Spacer(Modifier.height(20.dp))
-                            val sampleScale = if (current == SetupStep.TEXT_SIZE) scale else 1f
-                            Text(
-                                text = SAMPLE,
-                                style = TextStyle(
-                                    fontFamily = MetropolisBlack,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = (20 * sampleScale).sp,
-                                    lineHeight = (28 * sampleScale).sp
-                                ),
-                                color = BrandInk.copy(alpha = 0.85f)
-                            )
-                        }
-                        if (current != null && SetupFlow.hasOptions(current)) {
-                            Spacer(Modifier.height(32.dp))
-                            // One dot per option. The one showing is bigger. For themes each dot wears its own colors.
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                for (i in 0 until count(current)) {
-                                    val selected = i == index
-                                    val size by animateDpAsState(
-                                        targetValue = if (selected) 18.dp else 10.dp,
-                                        animationSpec = tween(ActiveMotion.ms(150)),
-                                        label = "setupDot"
-                                    )
-                                    val palette = if (current == SetupStep.THEME) Palettes.ALL[i] else null
-                                    Box(
-                                        Modifier
-                                            .size(size)
-                                            .clip(CircleShape)
-                                            .background(palette?.background ?: if (selected) BrandInk else BrandInk.copy(alpha = 0.2f))
-                                            .then(
-                                                if (palette != null) Modifier.border(if (selected) 3.dp else 1.5.dp, palette.ink, CircleShape)
-                                                else Modifier
-                                            )
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            "\u203a",
+                            style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 44.sp),
+                            color = BrandInk.copy(alpha = if (hasOptions && index < total - 1) 1f else 0.2f),
+                            modifier = Modifier.clearAndSetSemantics { }
+                        )
+                    }
+                    Text(
+                        text = if (hasOptions) "${index + 1} of $total" else "",
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                        color = BrandInk.copy(alpha = 0.7f)
+                    )
+                    if (current != SetupStep.NAME) {
+                        Spacer(Modifier.height(20.dp))
+                        val sampleScale = if (current == SetupStep.TEXT_SIZE) scale else 1f
+                        Text(
+                            text = SAMPLE,
+                            style = TextStyle(
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = (18 * sampleScale).sp,
+                                lineHeight = (26 * sampleScale).sp,
+                                textAlign = TextAlign.Center
+                            ),
+                            color = BrandInk.copy(alpha = 0.85f)
+                        )
                     }
 
-                    // One quiet line instead of a button: the gestures are the controls.
+                    Spacer(Modifier.height(28.dp))
                     Text(
                         text = when {
                             current == null -> "Hold the left edge to skip"
                             current == SetupStep.NAME -> "Tap to type, or swipe to skip"
                             else -> "Swipe to try, tap to keep"
                         },
-                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, textAlign = TextAlign.Center),
                         color = BrandInk.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
             }

@@ -1,5 +1,9 @@
 package com.resonant.app.ui.components
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.runtime.remember
@@ -91,8 +95,18 @@ fun ResonantTextField(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    /** Focus the field and open the keyboard as soon as it appears, so nobody has to find it by touch. */
+    autoFocus: Boolean = false
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
+    }
     val valueStyle = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, color = BrandInk)
     Column(
         modifier
@@ -121,6 +135,7 @@ fun ResonantTextField(
                 keyboardActions = keyboardActions,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(focusRequester)
                     .semantics { contentDescription = label }
             )
         }

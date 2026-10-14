@@ -29,6 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +63,8 @@ import com.resonant.app.ui.components.ResonantDots
 import com.resonant.app.ui.components.ResonantScaffold
 import com.resonant.app.ui.components.focusColor
 import com.resonant.app.ui.theme.ActiveFont
+import com.resonant.app.ui.theme.AppFonts
+import com.resonant.app.ui.theme.Palettes
 import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.theme.ActivePalette
 import com.resonant.app.ui.theme.BrandInk
@@ -74,7 +78,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private const val PROFILE_HINT =
-    "Swipe down with two fingers for the next item, tap the middle to open it, or hold the right edge to go back."
+    "Swipe down with two fingers for the next item, tap the middle to open or change it, or hold the right edge to go back."
 
 /** One line on the screen. [action] is what a tap does; null means the line is only read. */
 private class ProfileRow(val label: String, val action: (() -> Unit)?)
@@ -95,7 +99,8 @@ fun ProfileScreen(
     val speedIndex by audio.speedIndex.collectAsState()
 
     var stats by remember { mutableStateOf<ProfileStats?>(null) }
-    var index by remember { mutableIntStateOf(0) }
+    // Saved, so coming back from Name or Settings lands on the row you left.
+    var index by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         debug.setScreen("Profile")
@@ -118,23 +123,55 @@ fun ProfileScreen(
         add(ProfileRow(ProfileSummary.quizLine(loaded), null))
         ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, null)) }
         add(ProfileRow(ProfileSummary.materialsLine(loaded), null))
-        add(ProfileRow("Color theme: ${ActivePalette.current.label}", onOpenSettings))
-        add(ProfileRow("Font: ${ActiveFont.current.label}", onOpenSettings))
-        add(ProfileRow("Speech speed: ${audio.speedLabel(AudioManager.SPEEDS[speedIndex])}", onOpenSettings))
+        // Theme and font change right here, one step per tap, as they do in Settings. Changing the label
+        // re-queues the row, which speaks the new value.
+        add(ProfileRow("Color theme: ${ActivePalette.current.label}") {
+            val next = Palettes.next(ActivePalette.current)
+            ActivePalette.current = next
+            prefs.colorTheme = next.id
+            haptics.play(HapticPattern.CONFIRM)
+        })
+        add(ProfileRow("Font: ${ActiveFont.current.label}") {
+            val next = AppFonts.next(ActiveFont.current)
+            ActiveFont.current = next
+            prefs.font = next.id
+            haptics.play(HapticPattern.CONFIRM)
+        })
+        add(ProfileRow("Speech speed: ${audio.speedLabel(AudioManager.SPEEDS[speedIndex])}") {
+            audio.announce("Hold the right edge, then drag up to speak faster or down to slow down.")
+        })
     }
     val labels = rows.map { it.label }
 
-    // The focus index comes back from the audio queue, as on Home and Settings.
-    LaunchedEffect(Unit) {
-        audio.index.collect { idx -> index = idx.coerceIn(0, (labels.size - 1).coerceAtLeast(0)) }
-    }
-    // Set the queue once the numbers are in, so nothing is read before there is something true to say.
-    LaunchedEffect(loaded != null, labels) {
+    val labelsNow by rememberUpdatedState(labels)
+
+    // Queue first, then follow focus, in one effect: collecting before the queue is set would read the
+    // previous screen's position (Home's) as this screen's focus. Waits for the numbers, so nothing is
+    // read before there is something true to say.
+    LaunchedEffect(loaded != null) {
         if (loaded == null) return@LaunchedEffect
+        val now = labelsNow
+        audio.setQueue(
+            now.mapIndexed { i, s -> SemanticUnit("profile_$i", s) },
+            startIndex = index.coerceIn(0, now.lastIndex),
+            autoAdvance = false
+        )
+        audio.index.collect { idx -> index = idx.coerceIn(0, (labelsNow.size - 1).coerceAtLeast(0)) }
+    }
+
+    // A line changed after the first queueing (the speech speed, changed from this screen). Re-queue where
+    // focus is, behind the speed announcement, so the spoken line is never stale.
+    var queuedLabels by remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(labels) {
+        if (loaded == null) return@LaunchedEffect
+        if (queuedLabels == null) { queuedLabels = labels; return@LaunchedEffect }
+        if (labels == queuedLabels) return@LaunchedEffect
+        queuedLabels = labels
         audio.setQueue(
             labels.mapIndexed { i, s -> SemanticUnit("profile_$i", s) },
             startIndex = index.coerceIn(0, labels.lastIndex),
-            autoAdvance = false
+            autoAdvance = false,
+            queueBehindAnnouncement = true
         )
     }
 
@@ -208,7 +245,8 @@ fun ProfileScreen(
                             .cardBorder(cardShape())
                             .clickable {
                                 audio.jumpTo(i)
-                                activate(i)
+                                // A line that only reads has been read by jumping to it; reading it twice is noise.
+                                if (row.action != null) activate(i) else haptics.play(HapticPattern.SELECT)
                             }
                             .padding(horizontal = 20.dp, vertical = 22.dp)
                             .semantics { contentDescription = row.label + if (focused) ", focused" else "" }
