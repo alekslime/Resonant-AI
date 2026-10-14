@@ -1,7 +1,7 @@
 """Spoken app commands for the Resonant agent. Pure logic, no audio.
 
 Commands.parse(text) returns one of:
-  {"do": "open", "to": "home" | "lessons" | "quizzes" | "settings"}
+  {"do": "open", "to": "home" | "lessons" | "quizzes" | "profile" | "settings"}
   {"do": "open", "to": "lesson" | "quiz", "id": "..."}
   {"do": "back"}
   {"say": "..."}   the agent should answer aloud (a name was not found, or is unclear)
@@ -26,9 +26,14 @@ TITLE_STOP = {"introduction", "to", "the", "and", "their", "in", "of", "a", "an"
 MATCH_MIN = 0.5
 GATE = re.compile(
     r"\b(lessons?|quiz|quizzes|settings?|home|menu|back|page|screen|open|go|take|show|switch|"
-    r"navigate|launch|start|bring)\b"
+    r"navigate|launch|start|bring|profile|progress|stats|statistics|account)\b"
+    r"|\bhow am i (doing|going)\b"
 )
-INTENTS = {"home", "lessons", "quizzes", "settings", "back", "lesson", "quiz"}
+# "how am i doing" opens the profile, where the spoken summary lives.
+PROFILE_PHRASE = re.compile(r"\bhow am i (doing|going)\b")
+# Words that mean the profile when they are all the student says (after the filler is removed).
+PROFILE_WORDS = ({"profile"}, {"progress"}, {"stats"}, {"statistics"}, {"account"})
+INTENTS = {"home", "lessons", "quizzes", "profile", "settings", "back", "lesson", "quiz"}
 LIST_OF = {"lesson": "lessons", "quiz": "quizzes"}
 
 
@@ -66,8 +71,9 @@ class Commands:
             "You are a router inside a learning app. Decide whether the student's message asks "
             "the app to move to another screen. Answer with one JSON object and nothing else, "
             'like {"intent": "none"}.\n'
-            "Intents: none, home, lessons, quizzes, settings, back, lesson, quiz.\n"
-            "lessons, quizzes and settings open that list or screen. back goes to the previous "
+            "Intents: none, home, lessons, quizzes, profile, settings, back, lesson, quiz.\n"
+            "lessons, quizzes, profile and settings open that list or screen. profile shows the "
+            "student's own progress, name and stats. back goes to the previous "
             "screen. home goes to the main menu.\n"
             "Use lesson or quiz only when the student names one of the items below, and add its id, "
             'like {"intent": "lesson", "id": "ID"}. If they name a lesson or quiz that is not in the '
@@ -78,6 +84,7 @@ class Commands:
             "Examples:\n"
             'can you open up the lessons for me? i went to the wrong page -> {"intent": "lessons"}\n'
             'take me back -> {"intent": "back"}\n'
+            'show me my progress -> {"intent": "profile"}\n'
             f'i want to read {lesson_title} -> {{"intent": "lesson", "id": "{lesson_id}"}}\n'
             'what is photosynthesis -> {"intent": "none"}\n'
             "i did not understand that lesson, explain it again -> "
@@ -105,6 +112,8 @@ class Commands:
         return {"do": "open", "to": intent}
 
     def parse(self, text: str) -> dict | None:
+        if PROFILE_PHRASE.search(text.lower()):
+            return {"do": "open", "to": "profile"}
         words = words_of(text)
         verbs = set(words) & VERBS
         rest = [w for w in words if w not in VERBS and w not in FILLER]
@@ -116,6 +125,8 @@ class Commands:
             return {"do": "open", "to": "home"}
         if rest in (["settings"], ["setting"]):
             return {"do": "open", "to": "settings"}
+        if len(rest) == 1 and {rest[0]} in PROFILE_WORDS:
+            return {"do": "open", "to": "profile"}
         if rest == ["lessons"]:
             return {"do": "open", "to": "lessons"}
         if rest == ["quizzes"]:

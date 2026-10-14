@@ -39,7 +39,7 @@ import java.net.URLEncoder
 /** One line of live captions from the PC agent. role: "user", "assistant" (one sentence) or "done". */
 data class LiveCaption(val role: String, val text: String)
 
-/** A spoken command from the PC agent. action: "open" or "back". target: home, lessons, quizzes, settings, lesson, quiz. */
+/** A spoken command from the PC agent. action: "open" or "back". target: home, lessons, quizzes, profile, settings, lesson, quiz. */
 data class LiveCommand(val action: String, val target: String, val id: String)
 
 class LiveKitManager(

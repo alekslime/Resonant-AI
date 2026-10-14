@@ -306,6 +306,7 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                             "home" -> navController.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = false } }
                             "lessons" -> navController.navigate(Routes.LESSONS)
                             "quizzes" -> navController.navigate(Routes.QUIZ_BROWSER)
+                            "profile" -> navController.navigate(Routes.PROFILE)
                             "settings" -> navController.navigate(Routes.SETTINGS)
                             "lesson" -> navController.navigate(Routes.lessonMode(cmd.id))
                             "quiz" -> navController.navigate("quiz/${cmd.id}")
