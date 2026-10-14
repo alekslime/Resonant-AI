@@ -1,5 +1,10 @@
 package com.resonant.app.ui.home
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.ExperimentalFoundationApi
 import com.resonant.app.ui.theme.BrandFamily
 import com.resonant.app.ui.theme.ResonantDim
 import androidx.compose.foundation.background
@@ -92,6 +97,7 @@ private val MenuTextStyle get() = TextStyle(
 )
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit) {
     val audio = LocalAudioManager.current
@@ -131,7 +137,7 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
             .fillMaxSize()
             .background(BrandOrange)
     ) {
-        GestureSurface(ignoreChildTaps = true, onGesture = { gesture ->
+        GestureSurface(twoFingerSwipe = true, ignoreChildTaps = true, onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
                     when (gesture.direction) {
@@ -172,18 +178,25 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
         }) {
             // Figma frame: menu only, centered on screen. Wordmark and Ask bar
             // are not in the frame, so they're not shown.
+            // One finger scrolls (six lines at this size do not fit every phone); two fingers move focus.
+            // fillMaxSize comes before verticalScroll so a short menu is still centered.
             Column(
-                Modifier.fillMaxSize(),
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 homeItems.forEachIndexed { i, item ->
                     val focused = i == index
+                    val inView = remember { BringIntoViewRequester() }
+                    LaunchedEffect(focused) { if (focused) inView.bringIntoView() }
                     Text(
                         text = item.label,
                         style = MenuTextStyle,
                         color = if (focused) BrandInk else ResonantDim,
                         modifier = Modifier
+                            .bringIntoViewRequester(inView)
                             .clickable {
                                 audio.jumpTo(i)
                                 open(i)
