@@ -112,6 +112,41 @@ internal object SetupFlow {
     fun hasOptions(step: SetupStep): Boolean = step != SetupStep.NAME
 }
 
+/** What the setup screen should do for a gesture. */
+internal sealed interface SetupAction {
+    object SkipAll : SetupAction
+    data class Move(val delta: Int) : SetupAction
+    object Keep : SetupAction
+    /** Swipe on the name step: carry on without a name. */
+    object SkipName : SetupAction
+    object Back : SetupAction
+    object WhereAmI : SetupAction
+    object None : SetupAction
+}
+
+internal object SetupGestures {
+    /**
+     * [step] is null while the intro is still playing. Skipping works then too (it is promised in the intro);
+     * nothing else does until the first step is open.
+     */
+    fun resolve(gesture: ResonantGesture, step: SetupStep?): SetupAction {
+        // Hold-to-speed is not used here, and its start and end must not be read as anything.
+        if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) return SetupAction.None
+        if (gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.LEFT_EDGE) return SetupAction.SkipAll
+        if (step == null) return SetupAction.None
+        return when {
+            gesture is ResonantGesture.Swipe && gesture.zone == InteractionZone.CENTER &&
+                (gesture.direction == SwipeDirection.LEFT || gesture.direction == SwipeDirection.RIGHT) ->
+                if (step == SetupStep.NAME) SetupAction.SkipName
+                else SetupAction.Move(if (gesture.direction == SwipeDirection.RIGHT) +1 else -1)
+            gesture is ResonantGesture.Tap && gesture.zone == InteractionZone.CENTER -> SetupAction.Keep
+            gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.RIGHT_EDGE -> SetupAction.Back
+            gesture == ResonantGesture.ThreeFingerHold -> SetupAction.WhereAmI
+            else -> SetupAction.None
+        }
+    }
+}
+
 private const val SETUP_INTRO =
     "Welcome to Resonant. First, make it yours: a color theme, a font, a text size, how fast I speak, and your name. " +
         "Each choice is applied as you try it. Swipe left or right with two fingers to try options, and tap the middle to keep one. " +
@@ -356,34 +391,20 @@ fun SetupScreen(onFinished: () -> Unit) {
                 twoFingerSwipe = true,
                 hint = "Swipe left or right with two fingers to try options, tap the middle to keep, hold the right edge to go back a step, or hold the left edge to skip setup.",
                 onGesture = { gesture ->
-                    if (gesture == ResonantGesture.HoldStart || gesture == ResonantGesture.HoldEnd) return@GestureSurface
-                    if (leaving) return@GestureSurface
-                    // Escape hatch, spoken in the intro: nobody is trapped in setup.
-                    if (gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.LEFT_EDGE) {
-                        skipAll()
-                        return@GestureSurface
-                    }
-                    val s = stepOrNull() ?: return@GestureSurface
-                    when {
-                        gesture is ResonantGesture.Swipe && gesture.zone == InteractionZone.CENTER &&
-                            (gesture.direction == SwipeDirection.LEFT || gesture.direction == SwipeDirection.RIGHT) -> {
-                            if (s == SetupStep.NAME) {
-                                haptics.play(HapticPattern.SELECT)
-                                enter(steps.size)
-                            } else {
-                                move(if (gesture.direction == SwipeDirection.RIGHT) +1 else -1)
-                            }
+                    if (!leaving) {
+                        val s = stepOrNull()
+                        when (val action = SetupGestures.resolve(gesture, s)) {
+                            SetupAction.SkipAll -> skipAll()
+                            is SetupAction.Move -> move(action.delta)
+                            SetupAction.Keep -> { haptics.play(HapticPattern.SELECT); keep() }
+                            SetupAction.SkipName -> { haptics.play(HapticPattern.SELECT); enter(steps.size) }
+                            SetupAction.Back -> back()
+                            SetupAction.WhereAmI -> if (s != null) audio.announce(
+                                "Setup, step ${step + 1} of ${steps.size}: ${SetupFlow.title(s)}. " +
+                                    if (SetupFlow.hasOptions(s)) OptionPicker.describe(label(s, index), index, count(s)) + "." else "Tap the middle to type your name."
+                            )
+                            SetupAction.None -> Unit
                         }
-                        gesture is ResonantGesture.Tap && gesture.zone == InteractionZone.CENTER -> {
-                            haptics.play(HapticPattern.SELECT)
-                            keep()
-                        }
-                        gesture is ResonantGesture.LongPress && gesture.zone == InteractionZone.RIGHT_EDGE -> back()
-                        gesture == ResonantGesture.ThreeFingerHold -> audio.announce(
-                            "Setup, step ${step + 1} of ${steps.size}: ${SetupFlow.title(s)}. " +
-                                if (SetupFlow.hasOptions(s)) OptionPicker.describe(label(s, index), index, count(s)) + "." else "Tap the middle to type your name."
-                        )
-                        else -> Unit
                     }
                 }
             ) {

@@ -29,7 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,9 +53,8 @@ import com.resonant.app.content.SemanticUnit
 import com.resonant.app.core.LocalAudioManager
 import com.resonant.app.core.LocalDebugState
 import com.resonant.app.core.LocalHapticManager
-import com.resonant.app.gestures.InteractionZone
-import com.resonant.app.gestures.ResonantGesture
-import com.resonant.app.gestures.SwipeDirection
+import com.resonant.app.gestures.ListAction
+import com.resonant.app.gestures.ListGestures
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.DotsState
 import com.resonant.app.ui.components.GestureSurface
@@ -192,32 +191,23 @@ fun ProfileScreen(
             ignoreChildTaps = true,
             hint = PROFILE_HINT,
             onGesture = { gesture ->
-                when (gesture) {
-                    is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
-                        when (gesture.direction) {
-                            SwipeDirection.UP -> if (audio.next()) haptics.play(HapticPattern.NEXT)
-                            SwipeDirection.DOWN -> if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
-                            else -> {}
-                        }
-                    }
-                    is ResonantGesture.Tap -> when (gesture.zone) {
-                        InteractionZone.CENTER -> activate(index)
-                        InteractionZone.LEFT_EDGE -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
-                        InteractionZone.RIGHT_EDGE -> {}
-                    }
-                    is ResonantGesture.DoubleTap -> if (gesture.zone == InteractionZone.LEFT_EDGE) audio.repeatCurrent()
-                    is ResonantGesture.LongPress -> if (gesture.zone == InteractionZone.RIGHT_EDGE) {
+                when (ListGestures.resolve(gesture)) {
+                    ListAction.Next -> if (audio.next()) haptics.play(HapticPattern.NEXT)
+                    ListAction.Previous -> if (audio.previous()) haptics.play(HapticPattern.PREVIOUS)
+                    ListAction.Activate -> activate(index)
+                    ListAction.TogglePause -> { audio.togglePause(); haptics.play(HapticPattern.CONFIRM) }
+                    ListAction.Repeat -> audio.repeatCurrent()
+                    ListAction.Back -> {
                         haptics.play(HapticPattern.BACK)
                         audio.announce("Back to Home.")
                         onBack()
                     }
-                    ResonantGesture.ThreeFingerTap -> audio.repeatCurrent()
-                    ResonantGesture.ThreeFingerHold -> audio.announce(
+                    ListAction.WhereAmI -> audio.announce(
                         "Profile. Currently focused: ${labels.getOrNull(index) ?: "loading"}."
                     )
-                    ResonantGesture.HoldSpeedUp -> { if (audio.increaseSpeed()) haptics.play(HapticPattern.SPEED_UP) else haptics.play(HapticPattern.ERROR) }
-                    ResonantGesture.HoldSpeedDown -> { if (audio.decreaseSpeed()) haptics.play(HapticPattern.SPEED_DOWN) else haptics.play(HapticPattern.ERROR) }
-                    else -> {}
+                    ListAction.FasterSpeech -> haptics.play(if (audio.increaseSpeed()) HapticPattern.SPEED_UP else HapticPattern.ERROR)
+                    ListAction.SlowerSpeech -> haptics.play(if (audio.decreaseSpeed()) HapticPattern.SPEED_DOWN else HapticPattern.ERROR)
+                    ListAction.None -> Unit
                 }
             }
         ) {
