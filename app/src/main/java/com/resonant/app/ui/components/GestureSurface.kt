@@ -57,6 +57,8 @@ fun GestureSurface(
     hints: Boolean = true,
     hint: String? = null,
     onPinch: ((Float) -> Unit)? = null,
+    /** A pinch resizes the app's text unless the screen handles it ([onPinch]) or turns this off. */
+    pinchResize: Boolean = true,
     rewind: Boolean = true,
     onRewind: ((steps: Int, release: Boolean) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
@@ -73,9 +75,11 @@ fun GestureSurface(
     // rememberUpdatedState always reaches the latest handler.
     val latestOnGesture by rememberUpdatedState(onGesture)
 
-    val latestOnPinch by rememberUpdatedState(onPinch)
-    val pinchHandler: ((Float) -> Unit)? = remember(engine, onPinch != null) {
-        if (onPinch == null) null else { factor: Float ->
+    val resizer = rememberTextResizer()
+    val effectivePinch: ((Float) -> Unit)? = onPinch ?: if (pinchResize) resizer else null
+    val latestOnPinch by rememberUpdatedState(effectivePinch)
+    val pinchHandler: ((Float) -> Unit)? = remember(engine, effectivePinch != null) {
+        if (effectivePinch == null) null else { factor: Float ->
             engine.noteGesture(SystemClock.uptimeMillis())
             latestOnPinch?.invoke(factor)
         }
