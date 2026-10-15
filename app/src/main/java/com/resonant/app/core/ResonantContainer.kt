@@ -1,5 +1,6 @@
 package com.resonant.app.core
 
+import com.resonant.app.content.ActivityStore
 import com.resonant.app.ui.theme.TextSpacings
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.AppFonts
@@ -48,6 +49,9 @@ class ResonantContainer(context: Context) {
     // Every haptic pattern also sounds its cue. See HapticManager.onPlay.
     val hapticManager = HapticManager(context).also { it.onPlay = soundCues::play }
     val debugState = DebugState()
+
+    // Streaks, listening time and finished lessons, for the Profile screen.
+    val activity = ActivityStore(context)
 
     init {
         OllamaConfig.applyOverrides(prefs.ollamaBaseUrl, prefs.ollamaModel)

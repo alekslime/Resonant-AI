@@ -176,6 +176,8 @@ class MainActivity : ComponentActivity() {
         container.audioManager.releaseForBackground()
         // Chat's thinking tick keeps running off-screen; it must not keep sounding.
         container.soundCues.inForeground = false
+        // Listening is counted in memory a second at a time; make sure none of it is lost.
+        container.activity.flush()
     }
 
     override fun onDestroy() {
