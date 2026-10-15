@@ -359,7 +359,7 @@ Almost the same on every screen (the two swipe rows below differ by screen, as n
 | Right edge | Hold ~½ s, release without dragging | Back / leave screen |
 | Right edge | Tap | Nothing, deliberately (no accidental triggers) |
 | Settings | Hold the middle on Color theme, Font or Text spacing, then swipe left / right | Preview: the screen shows each option as you swipe and Resonant says its name and place ("Warm, 7 of 12"), with a tick per step and an edge bump at the ends. Tap keeps it, hold the right edge (or the on-screen Back) cancels and puts the old one back. Tapping the row still cycles as before |
-| Lesson (reading) | Pinch with two fingers | Text size, 100% to 250%. A tick plays at each quarter step and an edge bump at the limits; the size is saved. Three-finger hold says the current size |
+| Any screen | Pinch with two fingers | Text size for the whole app, 75% to 250%. A tick plays at each quarter step and an edge bump at the limits; the size is saved and said once the fingers rest. Three-finger hold in a lesson says the current size. Not in the tutorial or setup (setup has its own text-size step). Home, Lesson mode and the quiz score stop growing at 120%, 130% and 100% so their large words still fit |
 | Anywhere | Four fingers dragged left | Rewind, 5 s per step with a tick for each, applied when you lift. With TalkBack: the "Rewind 10 seconds" action |
 | Anywhere | Three-finger tap | Repeat the current unit |
 | Anywhere | Three-finger hold | "Where am I?" — screen, position, playback state |
