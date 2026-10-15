@@ -1,5 +1,7 @@
 package com.resonant.app.ui.profile
 
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
@@ -241,6 +243,8 @@ fun ProfileScreen(
                         Modifier
                             .fillMaxWidth()
                             .bringIntoViewRequester(inView)
+                            .enterStagger(i)
+                            .focusLift(focused)
                             .clip(cardShape())
                             .background(focusColor(if (focused) BrandInk else ResonantCard))
                             .cardBorder(cardShape())

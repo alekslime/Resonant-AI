@@ -1,5 +1,7 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -552,6 +554,8 @@ fun SettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .bringIntoViewRequester(inView)
+                            .enterStagger(i)
+                            .focusLift(focused)
                             .clip(cardShape())
                             // Focus is the same idea as Home: the current item is the inverted one.
                             .background(focusColor(if (focused) BrandInk else ResonantCard))

@@ -1,5 +1,8 @@
 package com.resonant.app.ui.home
 
+import com.resonant.app.ui.components.focusColor
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -194,9 +197,11 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                     Text(
                         text = item.label,
                         style = MenuTextStyle,
-                        color = if (focused) BrandInk else ResonantDim,
+                        color = focusColor(if (focused) BrandInk else ResonantDim),
                         modifier = Modifier
                             .bringIntoViewRequester(inView)
+                            .enterStagger(i)
+                            .focusLift(focused, amount = 1.06f)
                             .clickable {
                                 audio.jumpTo(i)
                                 open(i)

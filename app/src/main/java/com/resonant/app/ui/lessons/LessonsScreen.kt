@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -217,6 +219,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
                         LessonCard(
                             title = lesson.title,
                             focused = i == index,
+                            index = i,
                             onClick = {
                                 audio.jumpTo(i)
                                 haptics.play(HapticPattern.SELECT)
@@ -235,7 +238,7 @@ fun LessonsScreen(onOpenLesson: (String) -> Unit, onBack: () -> Unit, onOpenSett
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
+private fun LessonCard(title: String, focused: Boolean, index: Int, onClick: () -> Unit) {
     val pressSource = remember { MutableInteractionSource() }
     // The focused card is the inverted one, as on Settings, and the list scrolls to keep it in view.
     val inView = remember { BringIntoViewRequester() }
@@ -244,6 +247,8 @@ private fun LessonCard(title: String, focused: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .bringIntoViewRequester(inView)
+            .enterStagger(index)
+            .focusLift(focused)
             .pressScale(pressSource)
             .clip(cardShape())
             .background(focusColor(if (focused) BrandInk else CardBackground))

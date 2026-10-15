@@ -1,5 +1,7 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
 import com.resonant.app.ui.theme.ResonantOnInk
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -130,6 +132,8 @@ fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpen
                             Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
+                                .enterStagger(i)
+                                .focusLift(i == index)
                                 .pressScale(pressSource)
                                 .clip(cardShape())
                                 .background(focusColor(if (i == index) BrandInk else ResonantCard))

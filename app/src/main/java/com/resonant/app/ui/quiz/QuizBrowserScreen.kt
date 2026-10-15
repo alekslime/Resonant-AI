@@ -1,5 +1,7 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.components.focusLift
+import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -237,6 +239,7 @@ fun QuizBrowserScreen(
                             quiz = quiz,
                             progress = progress,
                             focused = i == index,
+                            index = i,
                             onClick = { open(i) }
                         )
                     }
@@ -253,6 +256,7 @@ private fun QuizCard(
     quiz: QuizSet,
     progress: QuizProgress,
     focused: Boolean,
+    index: Int,
     onClick: () -> Unit
 ) {
     val pressSource = remember { MutableInteractionSource() }
@@ -263,6 +267,8 @@ private fun QuizCard(
         modifier = Modifier
             .fillMaxWidth()
             .bringIntoViewRequester(inView)
+            .enterStagger(index)
+            .focusLift(focused)
             .pressScale(pressSource)
             .clip(cardShape())
             .background(focusColor(if (focused) BrandInk else ResonantCard))
