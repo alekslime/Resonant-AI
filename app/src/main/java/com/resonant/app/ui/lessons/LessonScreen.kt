@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.ActiveTextScale
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.ActiveSpacing
 import com.resonant.app.ui.theme.ResonantOnButton
@@ -75,24 +76,9 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     val flat = remember(lesson) { flatten(lesson) }
 
     val container = (LocalContext.current.applicationContext as ResonantApp).container
-    val prefs = container.prefs
-    var textScale by remember { mutableStateOf(TextScale.clamp(prefs.textScale)) }
-    val onPinch: (Float) -> Unit = { factor ->
-        val old = textScale
-        val new = TextScale.apply(old, factor)
-        if (new != old) {
-            textScale = new
-            prefs.textScale = new
-            val atLimit = new == TextScale.MAX || new == TextScale.MIN
-            val before = TextScale.stepOf(old)
-            val after = TextScale.stepOf(new)
-            when {
-                atLimit -> haptics.play(HapticPattern.EDGE)
-                after > before -> haptics.play(HapticPattern.SPEED_UP)
-                after < before -> haptics.play(HapticPattern.SPEED_DOWN)
-            }
-        }
-    }
+    // The reading size is the app-wide text size (pinch on any screen); only the numbered circles still
+    // need it, because they are drawn in dp.
+    val textScale = ActiveTextScale.current
 
     // Saved across opening Settings from the gear, so coming back resumes at the same sentence.
     var flatIndex by rememberSaveable { mutableStateOf(0) }
@@ -145,7 +131,6 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
         GestureSurface(
             twoFingerSwipe = true,
             hint = "Tap the left edge to pause, double-tap it to repeat, swipe right for the next section, pinch with two fingers to change the text size, or hold three fingers to hear where you are.",
-            onPinch = onPinch,
             onGesture = { gesture ->
             when (gesture) {
                 is ResonantGesture.Swipe -> if (gesture.zone == InteractionZone.CENTER) {
@@ -226,8 +211,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                                 text = lead,
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.Black,
-                                fontSize = (32 * textScale).sp,
-                                lineHeight = ActiveSpacing.lineHeight(42 * textScale),
+                                fontSize = 32.sp,
+                                lineHeight = ActiveSpacing.lineHeight(42f),
                                 letterSpacing = ActiveSpacing.letterSpacing,
                                 color = BrandInk,
                                 modifier = Modifier.padding(top = 36.dp)
@@ -247,8 +232,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                                             text = unit.text,
                                             fontFamily = MetropolisBlack,
                                             fontWeight = FontWeight.SemiBold,
-                                            fontSize = (24 * textScale).sp,
-                                            lineHeight = ActiveSpacing.lineHeight(32 * textScale),
+                                            fontSize = 24.sp,
+                                            lineHeight = ActiveSpacing.lineHeight(32f),
                                             letterSpacing = ActiveSpacing.letterSpacing,
                                             color = BrandInk,
                                             modifier = Modifier.padding(bottom = 20.dp)
@@ -282,7 +267,7 @@ private fun StepRow(number: Int, title: String, scale: Float) {
                 text = number.toString(),
                 fontFamily = MetropolisBlack,
                 fontWeight = FontWeight.Black,
-                fontSize = (14 * scale).sp,
+                fontSize = 14.sp,
                 color = ResonantOnButton
             )
         }
@@ -291,8 +276,8 @@ private fun StepRow(number: Int, title: String, scale: Float) {
             text = title.uppercase(),
             fontFamily = MetropolisBlack,
             fontWeight = FontWeight.SemiBold,
-            fontSize = (28 * scale).sp,
-            lineHeight = ActiveSpacing.lineHeight(36 * scale),
+            fontSize = 28.sp,
+            lineHeight = ActiveSpacing.lineHeight(36f),
             letterSpacing = ActiveSpacing.letterSpacing,
             color = BrandInk,
             modifier = Modifier.weight(1f)
