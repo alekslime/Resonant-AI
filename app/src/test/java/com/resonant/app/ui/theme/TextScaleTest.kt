@@ -59,7 +59,7 @@ class TextScaleTest {
     }
 
     @Test
-    pinching__further_at_a_limit_does_nothing() {
+    fun pinching_further_at_a_limit_does_nothing() {
         val top = TextScale.pinch(2.5f, 1.5f)
         assertEquals(2.5f, top.scale, 0f)
         assertEquals(SizeCue.NONE, top.cue)
