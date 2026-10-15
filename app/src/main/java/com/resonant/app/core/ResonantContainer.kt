@@ -1,5 +1,6 @@
 package com.resonant.app.core
 
+import com.resonant.app.ui.theme.ActiveTextScale
 import com.resonant.app.content.ActivityStore
 import com.resonant.app.ui.theme.TextSpacings
 import com.resonant.app.ui.theme.ActiveSpacing
@@ -33,6 +34,7 @@ class ResonantContainer(context: Context) {
         ActiveFont.current = AppFonts.byId(prefs.font)
         ActiveSpacing.current = TextSpacings.byId(prefs.textSpacing)
         ActiveMotion.userReduced = prefs.reduceMotion
+        ActiveTextScale.current = prefs.textScale
         ActiveMotion.systemReduced =
             Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }

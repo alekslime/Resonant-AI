@@ -6,10 +6,18 @@ import org.junit.Test
 class TextScaleTest {
 
     @Test
-    fun scale_stays_between_normal_and_two_and_a_half() {
-        assertEquals(1f, TextScale.apply(1f, 0.5f), 0f)
+    fun scale_stays_between_three_quarters_and_two_and_a_half() {
+        assertEquals(0.75f, TextScale.apply(1f, 0.5f), 0f)
+        assertEquals(0.75f, TextScale.apply(0.75f, 0.1f), 0f)
         assertEquals(2.5f, TextScale.apply(2f, 3f), 0f)
         assertEquals(1.5f, TextScale.apply(1f, 1.5f), 0f)
+    }
+
+    @Test
+    fun a_saved_size_outside_the_range_is_pulled_back_in() {
+        assertEquals(0.75f, TextScale.clamp(0.2f), 0f)
+        assertEquals(2.5f, TextScale.clamp(9f), 0f)
+        assertEquals(1.25f, TextScale.clamp(1.25f), 0f)
     }
 
     @Test
@@ -20,7 +28,41 @@ class TextScaleTest {
 
     @Test
     fun percent_is_rounded() {
+        assertEquals(75, TextScale.percent(0.75f))
         assertEquals(150, TextScale.percent(1.5f))
         assertEquals(250, TextScale.percent(2.5f))
+    }
+
+    // ---- pinch ----
+
+    @Test
+    fun spreading_inside_a_step_changes_the_size_without_a_tick() {
+        val outcome = TextScale.pinch(1.0f, 1.1f)
+        assertEquals(1.1f, outcome.scale, 0.0001f)
+        assertEquals(SizeCue.NONE, outcome.cue)
+    }
+
+    @Test
+    fun crossing_a_quarter_step_up_ticks_larger_and_down_ticks_smaller() {
+        assertEquals(SizeCue.LARGER, TextScale.pinch(1.2f, 1.1f).cue)
+        assertEquals(SizeCue.SMALLER, TextScale.pinch(1.3f, 0.9f).cue)
+    }
+
+    @Test
+    fun reaching_a_limit_bumps() {
+        val top = TextScale.pinch(2.4f, 2f)
+        assertEquals(2.5f, top.scale, 0f)
+        assertEquals(SizeCue.EDGE, top.cue)
+        val bottom = TextScale.pinch(0.8f, 0.5f)
+        assertEquals(0.75f, bottom.scale, 0f)
+        assertEquals(SizeCue.EDGE, bottom.cue)
+    }
+
+    @Test
+    pinching__further_at_a_limit_does_nothing() {
+        val top = TextScale.pinch(2.5f, 1.5f)
+        assertEquals(2.5f, top.scale, 0f)
+        assertEquals(SizeCue.NONE, top.cue)
+        assertEquals(SizeCue.NONE, TextScale.pinch(0.75f, 0.5f).cue)
     }
 }

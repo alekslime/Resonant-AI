@@ -1,5 +1,6 @@
 package com.resonant.app.core
 
+import com.resonant.app.ui.theme.TextScale
 import android.content.Context
 import com.resonant.app.audio.AudioManager
 
@@ -54,9 +55,9 @@ class ResonantPrefs(context: Context) {
         get() = prefs.getString(KEY_TEXT_SPACING, null)
         set(value) = putOrRemove(KEY_TEXT_SPACING, value)
 
-    /** Reading-screen text scale from pinching, 1.0 to 2.5. */
+    /** App-wide text size from pinching, 0.75 to 2.5. */
     var textScale: Float
-        get() = prefs.getFloat(KEY_TEXT_SCALE, 1f).coerceIn(1f, 2.5f)
+        get() = TextScale.clamp(prefs.getFloat(KEY_TEXT_SCALE, 1f))
         set(value) = prefs.edit().putFloat(KEY_TEXT_SCALE, value).apply()
 
     /** Reduce motion switched on in Settings. Off by default. */

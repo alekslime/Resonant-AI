@@ -74,11 +74,14 @@ fun ResonantTheme(content: @Composable () -> Unit) {
             outline = palette.ink
         )
     }
-    CompositionLocalProvider(LocalResonantColors provides extended) {
-        MaterialTheme(
-            colorScheme = scheme,
-            typography = ResonantTypography,
-            content = content
-        )
+    // Every sp in the app follows the pinch-set text size.
+    TextScaleProvider {
+        CompositionLocalProvider(LocalResonantColors provides extended) {
+            MaterialTheme(
+                colorScheme = scheme,
+                typography = ResonantTypography,
+                content = content
+            )
+        }
     }
 }
