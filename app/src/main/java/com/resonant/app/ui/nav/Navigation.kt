@@ -1,5 +1,8 @@
 package com.resonant.app.ui.nav
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import com.resonant.app.core.LocalAudioManager
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -121,10 +124,22 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { fadeIn(tween(ActiveMotion.ms(SCREEN_FADE_MS))) },
+        enterTransition = {
+            fadeIn(tween(ActiveMotion.ms(SCREEN_FADE_MS))) +
+                scaleIn(
+                    animationSpec = tween(ActiveMotion.ms(SCREEN_FADE_MS), easing = FastOutSlowInEasing),
+                    initialScale = if (ActiveMotion.reduce) 1f else 0.96f
+                )
+        },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
-        popExitTransition = { fadeOut(tween(ActiveMotion.ms(SCREEN_FADE_MS))) }
+        popExitTransition = {
+            fadeOut(tween(ActiveMotion.ms(SCREEN_FADE_MS))) +
+                scaleOut(
+                    animationSpec = tween(ActiveMotion.ms(SCREEN_FADE_MS), easing = FastOutSlowInEasing),
+                    targetScale = if (ActiveMotion.reduce) 1f else 0.96f
+                )
+        }
     ) {
         composable(Routes.SETUP) {
             SetupScreen(onFinished = {
