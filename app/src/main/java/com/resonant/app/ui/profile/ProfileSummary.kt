@@ -1,6 +1,9 @@
 package com.resonant.app.ui.profile
 
+import com.resonant.app.content.ActivityLog
+import com.resonant.app.content.ActivityText
 import com.resonant.app.content.QuizProgressStore
+import com.resonant.app.content.Streaks
 
 /** What the Profile screen shows about progress. Plain numbers, so the wording is unit tested. */
 internal data class ProfileStats(
@@ -8,25 +11,47 @@ internal data class ProfileStats(
     val quizzesTotal: Int,
     /** Mean of each finished quiz's best score, in percent. Null until one is finished. */
     val averagePercent: Int?,
-    val materials: Int
+    val materials: Int,
+    /** Days in a row with some learning, still alive if yesterday counted. */
+    val streak: Int = 0,
+    val longestStreak: Int = 0,
+    val listeningSeconds: Long = 0L,
+    val lessonsDone: Int = 0,
+    val lessonsTotal: Int = 0
 )
 
 internal object ProfileSummary {
 
-    /** Counts only quizzes that exist now, so a removed quiz can't push the count past the total. */
+    /** Counts only quizzes and lessons that exist now, so a removed one can't push a count past its total. */
     fun stats(
         progress: Map<String, QuizProgressStore.QuizProgress>,
         quizIds: List<String>,
-        materials: Int
+        materials: Int,
+        activity: ActivityLog = ActivityLog(),
+        today: Int = 0,
+        lessonIds: List<String> = emptyList()
     ): ProfileStats {
         val done = quizIds.mapNotNull { progress[it] }
             .filter { it.status == QuizProgressStore.Status.COMPLETED }
         val average = if (done.isEmpty()) null else done.sumOf { it.percentComplete } / done.size
-        return ProfileStats(done.size, quizIds.size, average, materials)
+        return ProfileStats(
+            quizzesDone = done.size,
+            quizzesTotal = quizIds.size,
+            averagePercent = average,
+            materials = materials,
+            streak = Streaks.current(activity.activeDays, today),
+            longestStreak = Streaks.longest(activity.activeDays),
+            listeningSeconds = activity.listeningSeconds,
+            lessonsDone = lessonIds.count { it in activity.lessonsFinished },
+            lessonsTotal = lessonIds.size
+        )
     }
 
     fun quizLine(s: ProfileStats): String =
         if (s.quizzesTotal == 0) "Quizzes: none yet" else "Quizzes: ${s.quizzesDone} of ${s.quizzesTotal} done"
+
+    fun lessonsLine(s: ProfileStats): String =
+        if (s.lessonsTotal == 0) "Lessons: none yet" else "Lessons: ${s.lessonsDone} of ${s.lessonsTotal} finished"
 
     fun averageLine(s: ProfileStats): String? =
         s.averagePercent?.let { "Average best score: $it percent" }
@@ -39,6 +64,11 @@ internal object ProfileSummary {
         val who = name?.trim()?.takeIf { it.isNotEmpty() }
         val parts = mutableListOf<String>()
         parts += if (who != null) "Here is how you are doing, $who." else "Here is how you are doing."
+        if (s.streak > 0) parts += "You are on a ${s.streak} day streak."
+        if (s.lessonsTotal > 0) {
+            parts += if (s.lessonsDone == 0) "You have not finished a lesson yet."
+            else "You have finished ${s.lessonsDone} of ${s.lessonsTotal} lessons."
+        }
         parts += when {
             s.quizzesTotal == 0 -> "There are no quizzes yet."
             s.quizzesDone == 0 -> "You have not finished a quiz yet."
@@ -50,8 +80,10 @@ internal object ProfileSummary {
             1 -> "You have added one material of your own."
             else -> "You have added ${s.materials} materials of your own."
         }
+        if (s.listeningSeconds >= 60) parts += "You have listened for ${ActivityText.listening(s.listeningSeconds)}."
         parts += when {
             s.quizzesTotal > 0 && s.quizzesDone < s.quizzesTotal -> "Next, try a quiz you have not finished."
+            s.lessonsTotal > 0 && s.lessonsDone < s.lessonsTotal -> "Next, open a lesson you have not finished."
             s.materials == 0 -> "You can add your own material in Settings."
             else -> "Keep going."
         }

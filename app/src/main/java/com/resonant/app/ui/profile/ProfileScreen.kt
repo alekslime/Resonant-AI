@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.resonant.app.ResonantApp
 import com.resonant.app.audio.AudioManager
+import com.resonant.app.content.ActivityText
+import com.resonant.app.content.LessonLibrary
 import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.QuizData
 import com.resonant.app.content.QuizProgressStore
@@ -74,6 +76,7 @@ import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.cardShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 import kotlinx.coroutines.withContext
 
 private const val PROFILE_HINT =
@@ -86,14 +89,14 @@ private class ProfileRow(val label: String, val action: (() -> Unit)?)
 @Composable
 fun ProfileScreen(
     onOpenName: () -> Unit,
-    onOpenSettings: () -> Unit,
     onBack: () -> Unit
 ) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current
     val context = LocalContext.current
-    val prefs = remember { (context.applicationContext as ResonantApp).container.prefs }
+    val container = remember { (context.applicationContext as ResonantApp).container }
+    val prefs = container.prefs
     val name = prefs.userName?.trim()?.takeIf { it.isNotEmpty() }
     val speedIndex by audio.speedIndex.collectAsState()
 
@@ -105,10 +108,14 @@ fun ProfileScreen(
         debug.setScreen("Profile")
         stats = withContext(Dispatchers.IO) {
             val progress = QuizProgressStore.loadAll(context)
+            val store = MaterialStore.forContext(context)
             ProfileSummary.stats(
                 progress = progress,
                 quizIds = QuizData.allQuizSets.map { it.id },
-                materials = MaterialStore.forContext(context).list().size
+                materials = store.list().size,
+                activity = container.activity.snapshot(),
+                today = LocalDate.now().toEpochDay().toInt(),
+                lessonIds = LessonLibrary.items(store).map { it.id }
             )
         }
     }
@@ -119,9 +126,13 @@ fun ProfileScreen(
         add(ProfileRow("How am I doing?") {
             audio.announce(ProfileSummary.spoken(name, loaded))
         })
+        add(ProfileRow(ActivityText.streakLine(loaded.streak), null))
+        if (loaded.longestStreak > loaded.streak) add(ProfileRow(ActivityText.longestLine(loaded.longestStreak), null))
+        if (loaded.lessonsTotal > 0) add(ProfileRow(ProfileSummary.lessonsLine(loaded), null))
         add(ProfileRow(ProfileSummary.quizLine(loaded), null))
         ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, null)) }
         add(ProfileRow(ProfileSummary.materialsLine(loaded), null))
+        add(ProfileRow(ActivityText.listeningLine(loaded.listeningSeconds), null))
         // Theme and font change right here, one step per tap, as they do in Settings. Changing the label
         // re-queues the row, which speaks the new value.
         add(ProfileRow("Color theme: ${ActivePalette.current.label}") {

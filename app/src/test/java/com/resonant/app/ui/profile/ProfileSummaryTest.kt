@@ -1,5 +1,6 @@
 package com.resonant.app.ui.profile
 
+import com.resonant.app.content.ActivityLog
 import com.resonant.app.content.QuizProgressStore.QuizProgress
 import com.resonant.app.content.QuizProgressStore.Status
 import org.junit.Assert.assertEquals
@@ -69,5 +70,59 @@ class ProfileSummaryTest {
         assertEquals(BrailleAvatar.MAX_CELLS, BrailleAvatar.cells("abcdefghij").size)
         assertTrue(BrailleAvatar.cells("").isEmpty())
         assertTrue(BrailleAvatar.cells(null).isEmpty())
+    }
+
+    // ---- streaks, lessons, listening ----
+
+    @Test
+    fun stats_carry_the_streak_the_listening_time_and_the_lessons_that_still_exist() {
+        val activity = ActivityLog(
+            activeDays = setOf(98, 99, 100, 40, 41),
+            listeningSeconds = 3700,
+            lessonsFinished = setOf("intro", "removed")
+        )
+        val s = ProfileSummary.stats(
+            progress = emptyMap(),
+            quizIds = ids,
+            materials = 0,
+            activity = activity,
+            today = 100,
+            lessonIds = listOf("intro", "sorting", "search")
+        )
+        assertEquals(3, s.streak)
+        assertEquals(3, s.longestStreak)
+        assertEquals(3700L, s.listeningSeconds)
+        assertEquals(1, s.lessonsDone)     // "removed" no longer exists, so it does not count
+        assertEquals(3, s.lessonsTotal)
+    }
+
+    @Test
+    fun lessons_line() {
+        assertEquals("Lessons: 2 of 7 finished", ProfileSummary.lessonsLine(ProfileStats(0, 0, null, 0, lessonsDone = 2, lessonsTotal = 7)))
+        assertEquals("Lessons: none yet", ProfileSummary.lessonsLine(ProfileStats(0, 0, null, 0)))
+    }
+
+    @Test
+    fun spoken_summary_mentions_streak_lessons_and_listening_when_there_are_any() {
+        val s = ProfileStats(4, 4, 90, 1, streak = 3, longestStreak = 5, listeningSeconds = 5400, lessonsDone = 2, lessonsTotal = 6)
+        val text = ProfileSummary.spoken("Aleks", s)
+        assertTrue(text.contains("You are on a 3 day streak."))
+        assertTrue(text.contains("You have finished 2 of 6 lessons."))
+        assertTrue(text.contains("You have listened for 1 hour 30 minutes."))
+        assertTrue(text.endsWith("Next, open a lesson you have not finished."))
+    }
+
+    @Test
+    fun spoken_summary_leaves_out_what_does_not_exist_yet() {
+        val text = ProfileSummary.spoken(null, ProfileStats(0, 0, null, 0))
+        assertTrue(!text.contains("streak"))
+        assertTrue(!text.contains("listened"))
+        assertTrue(!text.contains("lesson"))
+    }
+
+    @Test
+    fun a_quiz_still_comes_before_a_lesson_as_the_next_step() {
+        val s = ProfileStats(1, 3, 50, 2, lessonsDone = 0, lessonsTotal = 4)
+        assertTrue(ProfileSummary.spoken("A", s).endsWith("Next, try a quiz you have not finished."))
     }
 }

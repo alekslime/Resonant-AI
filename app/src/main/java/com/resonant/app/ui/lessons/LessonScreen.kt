@@ -74,7 +74,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     val debug = LocalDebugState.current
     val flat = remember(lesson) { flatten(lesson) }
 
-    val prefs = (LocalContext.current.applicationContext as ResonantApp).container.prefs
+    val container = (LocalContext.current.applicationContext as ResonantApp).container
+    val prefs = container.prefs
     var textScale by remember { mutableStateOf(TextScale.clamp(prefs.textScale)) }
     val onPinch: (Float) -> Unit = { factor ->
         val old = textScale
@@ -115,6 +116,8 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
         )
         audio.index.collect { newIndex ->
             flatIndex = newIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
+            // Reaching the last sentence is what counts as finishing the lesson.
+            if (flat.isNotEmpty() && flatIndex == flat.lastIndex) container.activity.lessonFinished(lesson.id)
             val newSection = flat.getOrNull(flatIndex)?.sectionIndex ?: 0
             if (newSection != lastSectionIndex) {
                 haptics.play(HapticPattern.SECTION_CHANGE)

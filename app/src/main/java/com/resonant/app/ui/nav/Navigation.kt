@@ -1,5 +1,6 @@
 package com.resonant.app.ui.nav
 
+import com.resonant.app.core.LocalAudioManager
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -84,7 +85,18 @@ private const val SCREEN_FADE_MS = 250
 @Composable
 fun ResonantNavHost(startDestination: String = Routes.HOME) {
     val navController = rememberNavController()
-    val prefs = (LocalContext.current.applicationContext as ResonantApp).container.prefs
+    val container = (LocalContext.current.applicationContext as ResonantApp).container
+    val prefs = container.prefs
+    val audio = LocalAudioManager.current
+
+    // One second of listening counts whenever speech is actually playing (not paused, unless it is an announcement).
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            val announcing = audio.isAnnouncing.value
+            if ((audio.isSpeaking.value || announcing) && (!audio.isPaused.value || announcing)) container.activity.tick()
+        }
+    }
 
     // Item 2: which questions were missed on the last quiz round (QUIZ or
     // QUIZ_REVIEW), read by QUIZ_RESULTS to decide whether to offer a retry,
@@ -220,6 +232,7 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
                 quiz = quiz,
                 onFinished = { correct, total, missed ->
                     lastMissed = missed
+                    container.activity.quizFinished()
                     scope.launch { QuizProgressStore.markCompleted(context, quiz.id, correct, total) }
                     navController.navigate(Routes.quizResults(correct, total)) {
                         popUpTo("quiz/$quizId") { inclusive = true }
@@ -329,7 +342,6 @@ fun ResonantNavHost(startDestination: String = Routes.HOME) {
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onOpenName = { navController.navigate(Routes.NAME_SETUP) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onBack = goBack
             )
         }
