@@ -1,5 +1,6 @@
 package com.resonant.app.ui.home
 
+import com.resonant.app.ui.theme.CappedTextScale
 import com.resonant.app.ui.components.focusColor
 import com.resonant.app.ui.components.focusLift
 import com.resonant.app.ui.components.enterStagger
@@ -100,9 +101,14 @@ private val MenuTextStyle get() = TextStyle(
 )
 
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit) {
+    CappedTextScale(1.2f) { HomeContent(onNavigate) }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun HomeContent(onNavigate: (String) -> Unit) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current

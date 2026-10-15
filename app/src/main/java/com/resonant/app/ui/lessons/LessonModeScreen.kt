@@ -1,5 +1,6 @@
 package com.resonant.app.ui.lessons
 
+import com.resonant.app.ui.theme.CappedTextScale
 import com.resonant.app.ui.components.focusLift
 import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
@@ -62,6 +63,11 @@ private val modes = listOf(
  */
 @Composable
 fun LessonModeScreen(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpenSettings: (() -> Unit)? = null) {
+    CappedTextScale(1.3f) { LessonModeContent(onPick, onBack, onOpenSettings) }
+}
+
+@Composable
+private fun LessonModeContent(onPick: (auto: Boolean) -> Unit, onBack: () -> Unit, onOpenSettings: (() -> Unit)? = null) {
     val audio = LocalAudioManager.current
     val haptics = LocalHapticManager.current
     val debug = LocalDebugState.current

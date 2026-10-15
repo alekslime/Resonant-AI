@@ -1,5 +1,6 @@
 package com.resonant.app.ui.quiz
 
+import com.resonant.app.ui.theme.CappedTextScale
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantCard
@@ -170,13 +171,16 @@ fun QuizResultsScreen(
                         .padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "$shownCorrect / $total",
-                        style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 72.sp, lineHeight = 78.sp),
-                        color = BrandInk,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.clearAndSetSemantics { contentDescription = "$correct / $total" }
-                    )
+                    // The big score keeps its size: at a larger text size it would no longer fit the card.
+                    CappedTextScale(1f) {
+                        Text(
+                            text = "$shownCorrect / $total",
+                            style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 72.sp, lineHeight = 78.sp),
+                            color = BrandInk,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.clearAndSetSemantics { contentDescription = "$correct / $total" }
+                        )
+                    }
                     Text(
                         text = resultLabel,
                         fontFamily = MetropolisBlack,
