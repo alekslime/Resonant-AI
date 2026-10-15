@@ -26,14 +26,16 @@ class SetupFlowTest {
 
     @Test
     fun an_old_saved_scale_lands_on_the_nearest_option() {
-        assertEquals(0, SetupFlow.scaleIndexOf(1f))
-        assertEquals(1, SetupFlow.scaleIndexOf(1.2f))
-        assertEquals(3, SetupFlow.scaleIndexOf(1.9f))
-        assertEquals(4, SetupFlow.scaleIndexOf(2.5f))
+        assertEquals(0, SetupFlow.scaleIndexOf(0.8f))
+        assertEquals(1, SetupFlow.scaleIndexOf(1f))
+        assertEquals(2, SetupFlow.scaleIndexOf(1.2f))
+        assertEquals(4, SetupFlow.scaleIndexOf(1.9f))
+        assertEquals(5, SetupFlow.scaleIndexOf(2.5f))
     }
 
     @Test
     fun scale_is_spoken_as_a_percentage() {
+        assertEquals("75 percent", SetupFlow.scaleLabel(0.75f))
         assertEquals("125 percent", SetupFlow.scaleLabel(1.25f))
         assertEquals("250 percent", SetupFlow.scaleLabel(2.5f))
     }

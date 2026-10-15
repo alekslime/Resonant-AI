@@ -1,5 +1,6 @@
 package com.resonant.app.ui.onboarding
 
+import com.resonant.app.ui.theme.ActiveTextScale
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
@@ -78,8 +79,8 @@ internal enum class SetupStep { THEME, FONT, TEXT_SIZE, SPEED, NAME }
 internal object SetupFlow {
     val STEPS: List<SetupStep> = SetupStep.values().toList()
 
-    /** Sizes offered for reading text. Same range as pinching on a reading screen. */
-    val TEXT_SCALES: List<Float> = listOf(1f, 1.25f, 1.5f, 2f, 2.5f)
+    /** Sizes offered for text. Same range as pinching on any screen. */
+    val TEXT_SCALES: List<Float> = listOf(0.75f, 1f, 1.25f, 1.5f, 2f, 2.5f)
 
     fun title(step: SetupStep): String = when (step) {
         SetupStep.THEME -> "Color theme"
@@ -93,7 +94,7 @@ internal object SetupFlow {
     fun prompt(step: SetupStep): String = when (step) {
         SetupStep.THEME -> "Color theme. Swipe left or right with two fingers to look through them. Tap the middle to keep one."
         SetupStep.FONT -> "Font. Swipe left or right with two fingers to try each one. Tap the middle to keep it."
-        SetupStep.TEXT_SIZE -> "Text size for reading. Swipe left or right with two fingers. Tap the middle to keep it. You can still pinch on any reading screen later."
+        SetupStep.TEXT_SIZE -> "Text size. Swipe left or right with two fingers and this whole screen changes size. Tap the middle to keep it. You can pinch on any screen later."
         SetupStep.SPEED -> "Speaking speed. Swipe right with two fingers to speak faster, left to slow down. Each change is spoken at the new speed. Tap the middle to keep it."
         SetupStep.NAME -> "Last one. What should I call you? Tap the middle to type your first name, or swipe left or right to skip."
     }
@@ -166,7 +167,6 @@ fun SetupScreen(onFinished: () -> Unit) {
     var step by remember { mutableIntStateOf(-1) }          // -1 = intro still playing, steps.size = finished
     var index by remember { mutableIntStateOf(0) }          // option showing in the current step
     var start by remember { mutableIntStateOf(0) }          // option in use when the step opened, for reverting
-    var scale by remember { mutableFloatStateOf(TextScale.clamp(prefs.textScale)) }
     var typing by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(prefs.userName.orEmpty()) }
     var leaving by remember { mutableStateOf(false) }
@@ -193,7 +193,7 @@ fun SetupScreen(onFinished: () -> Unit) {
     fun currentIndex(s: SetupStep): Int = when (s) {
         SetupStep.THEME -> Palettes.ALL.indexOf(ActivePalette.current)
         SetupStep.FONT -> AppFonts.ALL.indexOf(ActiveFont.current)
-        SetupStep.TEXT_SIZE -> SetupFlow.scaleIndexOf(scale)
+        SetupStep.TEXT_SIZE -> SetupFlow.scaleIndexOf(ActiveTextScale.current)
         SetupStep.SPEED -> audio.speedIndex.value
         SetupStep.NAME -> 0
     }.coerceAtLeast(0)
@@ -203,7 +203,7 @@ fun SetupScreen(onFinished: () -> Unit) {
         when (s) {
             SetupStep.THEME -> ActivePalette.current = Palettes.ALL[i]
             SetupStep.FONT -> ActiveFont.current = AppFonts.ALL[i]
-            SetupStep.TEXT_SIZE -> scale = SetupFlow.TEXT_SCALES[i]
+            SetupStep.TEXT_SIZE -> ActiveTextScale.current = SetupFlow.TEXT_SCALES[i]
             else -> Unit
         }
     }
@@ -325,7 +325,7 @@ fun SetupScreen(onFinished: () -> Unit) {
         ?: if (current == SetupStep.NAME) (name.trim().ifBlank { "No name yet" }) else "Listen"
 
     // The mark answers what is happening: it talks while the intro plays, listens on the name step, runs at the
-    // speed being chosen, shrinks and grows with the text size, and bounces a little on every change.
+    // speed being chosen, and bounces a little on every change.
     val dotsState = when {
         step < 0 || step >= steps.size -> DotsState.Speaking
         current == SetupStep.NAME -> DotsState.Listening
@@ -334,11 +334,6 @@ fun SetupScreen(onFinished: () -> Unit) {
     val dotsSpeed = if (current == SetupStep.SPEED) {
         AudioManager.SPEEDS[index.coerceIn(0, AudioManager.SPEEDS.lastIndex)].coerceIn(0.5f, 3f)
     } else 1f
-    val sizeFactor by animateFloatAsState(
-        targetValue = if (current == SetupStep.TEXT_SIZE) 0.55f + 0.45f * ((scale - 1f) / (TextScale.MAX - 1f)) else 1f,
-        animationSpec = tween(ActiveMotion.ms(250)),
-        label = "setupDotsSize"
-    )
     val pop = remember { Animatable(1f) }
     LaunchedEffect(step, index) {
         if (ActiveMotion.reduce || step < 0) {
@@ -389,6 +384,7 @@ fun SetupScreen(onFinished: () -> Unit) {
         } else {
             GestureSurface(
                 twoFingerSwipe = true,
+                pinchResize = false,
                 hint = "Swipe left or right with two fingers to try options, tap the middle to keep, hold the right edge to go back a step, or hold the left edge to skip setup.",
                 onGesture = { gesture ->
                     if (!leaving) {
@@ -429,7 +425,7 @@ fun SetupScreen(onFinished: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    val k = sizeFactor * pop.value
+                                    val k = pop.value
                                     scaleX = k
                                     scaleY = k
                                 },
@@ -483,14 +479,13 @@ fun SetupScreen(onFinished: () -> Unit) {
                     )
                     if (current != SetupStep.NAME) {
                         Spacer(Modifier.height(20.dp))
-                        val sampleScale = if (current == SetupStep.TEXT_SIZE) scale else 1f
                         Text(
                             text = SAMPLE,
                             style = TextStyle(
                                 fontFamily = MetropolisBlack,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = (18 * sampleScale).sp,
-                                lineHeight = (26 * sampleScale).sp,
+                                fontSize = 18.sp,
+                                lineHeight = 26.sp,
                                 textAlign = TextAlign.Center
                             ),
                             color = BrandInk.copy(alpha = 0.85f)

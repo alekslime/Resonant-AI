@@ -78,9 +78,9 @@ fun explain(gesture: ResonantGesture): GestureExplanation? = when (gesture) {
  */
 fun explainPinch(factor: Float): GestureExplanation =
     if (factor >= 1f) {
-        said("Pinch apart", "spread two fingers apart", "larger text. It works on reading screens", HapticPattern.SPEED_UP)
+        said("Pinch apart", "spread two fingers apart", "larger text. It works on any screen", HapticPattern.SPEED_UP)
     } else {
-        said("Pinch together", "pinched two fingers together", "smaller text. It works on reading screens", HapticPattern.SPEED_DOWN)
+        said("Pinch together", "pinched two fingers together", "smaller text. It works on any screen", HapticPattern.SPEED_DOWN)
     }
 
 /** The practice area's answer for a four-finger drag left that went back [seconds] seconds' worth. */

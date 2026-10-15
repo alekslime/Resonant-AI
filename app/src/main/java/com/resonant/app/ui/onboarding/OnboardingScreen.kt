@@ -148,7 +148,7 @@ private val lessons = listOf(
     ),
     GestureLesson(
         label = "Pinch",
-        spoken = "On reading screens you can change the text size. Put two fingers on the screen and spread them apart for larger text, or bring them together for smaller text.",
+        spoken = "On any screen you can change the text size. Put two fingers on the screen and spread them apart for larger text, or bring them together for smaller text.",
         hint = "Put two fingers down and spread them apart.",
         matches = { false },
         tool = Tool.PINCH
@@ -350,6 +350,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             GestureSurface(
                 twoFingerSwipe = true,
                 hints = false,
+                pinchResize = false,
                 rewind = false,
                 onPinch = if (pinchOn) onPinch else null,
                 onRewind = if (rewindOn) onRewind else null,
