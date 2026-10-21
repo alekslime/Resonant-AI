@@ -102,12 +102,14 @@ internal object BrailleAvatar {
         'u' to "136", 'v' to "1236", 'w' to "2456", 'x' to "1346", 'y' to "13456", 'z' to "1356"
     )
 
-    const val MAX_CELLS = 5
-
     /** One list of the dot numbers that are raised per cell. Only plain a-z letters count; the rest are skipped. */
-    fun cells(name: String?, max: Int = MAX_CELLS): List<List<Int>> =
+    fun cells(name: String?): List<List<Int>> =
         (name ?: "").lowercase()
             .mapNotNull { LETTERS[it] }
-            .take(max)
             .map { dots -> dots.map { it - '0' } }
+
+    /** Width in dp of one cell so that [count] cells and their gaps fit in [availableDp]. Never wider than [maxDp]. */
+    fun cellWidthDp(count: Int, availableDp: Float, maxDp: Float = 44f, gapRatio: Float = 16f / 44f): Float =
+        if (count <= 0) maxDp
+        else minOf(maxDp, availableDp / (count + gapRatio * (count - 1)))
 }

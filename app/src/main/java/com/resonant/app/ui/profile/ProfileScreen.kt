@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -293,28 +294,30 @@ private fun Avatar(name: String?) {
         if (ActiveMotion.reduce) { shown = cells.size; return@LaunchedEffect }
         while (shown < cells.size) { delay(110); shown += 1 }
     }
-    Row(
-        Modifier
-            .height(120.dp)
-            .semantics { contentDescription = "Your name in braille dots" },
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        cells.forEachIndexed { i, dots ->
-            val alpha by animateFloatAsState(
-                targetValue = if (i < shown) 1f else 0f,
-                animationSpec = tween(ActiveMotion.ms(200)),
-                label = "avatarCell"
-            )
-            BrailleCell(dots, alpha)
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        // One cell per letter. They shrink, gaps included, until the whole name fits the width.
+        val cellW = BrailleAvatar.cellWidthDp(cells.size, maxWidth.value).dp
+        Row(
+            Modifier.semantics { contentDescription = "Your name in braille dots" },
+            horizontalArrangement = Arrangement.spacedBy(cellW * (16f / 44f)),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            cells.forEachIndexed { i, dots ->
+                val alpha by animateFloatAsState(
+                    targetValue = if (i < shown) 1f else 0f,
+                    animationSpec = tween(ActiveMotion.ms(200)),
+                    label = "avatarCell"
+                )
+                BrailleCell(dots, alpha, cellW)
+            }
         }
     }
 }
 
 @Composable
-private fun BrailleCell(raised: List<Int>, alpha: Float) {
+private fun BrailleCell(raised: List<Int>, alpha: Float, width: androidx.compose.ui.unit.Dp) {
     val ink = BrandInk
-    Canvas(Modifier.size(width = 44.dp, height = 88.dp)) {
+    Canvas(Modifier.size(width = width, height = width * 2)) {
         val r = size.width * 0.17f
         val colX = listOf(size.width * 0.25f, size.width * 0.75f)
         val rowY = listOf(size.height * 0.15f, size.height * 0.5f, size.height * 0.85f)

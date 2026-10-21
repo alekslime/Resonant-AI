@@ -67,7 +67,10 @@ class ProfileSummaryTest {
     @Test
     fun braille_skips_non_letters_and_caps_the_length() {
         assertEquals(2, BrailleAvatar.cells("a-b!").size)
-        assertEquals(BrailleAvatar.MAX_CELLS, BrailleAvatar.cells("abcdefghij").size)
+        assertEquals(10, BrailleAvatar.cells("abcdefghij").size)
+        assertEquals(44f, BrailleAvatar.cellWidthDp(3, 320f), 0.001f)
+        val w = BrailleAvatar.cellWidthDp(20, 320f)
+        assertTrue(w < 44f && w * 20 + w * (16f / 44f) * 19 <= 320.01f)
         assertTrue(BrailleAvatar.cells("").isEmpty())
         assertTrue(BrailleAvatar.cells(null).isEmpty())
     }
