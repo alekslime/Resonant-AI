@@ -1,5 +1,7 @@
 package com.resonant.app.ui.settings
 
+import com.resonant.app.ui.theme.TextScale
+import com.resonant.app.ui.theme.ActiveTextScale
 import com.resonant.app.ui.components.focusLift
 import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.components.focusColor
@@ -87,6 +89,7 @@ private const val ADD_MATERIAL = "Add material from a file"
 private const val SOUND_CUES = "Sound cues"
 private const val COLOR_THEME = "Color theme"
 private const val FONT = "Font"
+private const val TEXT_SIZE = "Text size"
 private const val TEXT_SPACING = "Text spacing"
 private const val REDUCE_MOTION = "Reduce motion"
 private const val VOICE_ENGINE = "Voice engine"
@@ -97,16 +100,16 @@ private const val OFFLINE_VOICE_MODEL = "Offline voice model"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, ADD_MATERIAL, SOUND_CUES, COLOR_THEME, FONT, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, ADD_MATERIAL, SOUND_CUES, COLOR_THEME, FONT, TEXT_SIZE, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
 
 /** Rows you can hold and swipe through, with the screen showing each option as a preview. */
-private val previewable = listOf(COLOR_THEME, FONT, TEXT_SPACING)
+private val previewable = listOf(COLOR_THEME, FONT, TEXT_SIZE, TEXT_SPACING)
 
 private const val SETTINGS_HINT =
-    "Swipe down with two fingers for the next item, tap the middle to choose, hold the middle on a theme, font or spacing row to preview it, or hold three fingers to hear where you are."
+    "Swipe down with two fingers for the next item, tap the middle to choose, hold the middle on a theme, font, text size or spacing row to preview it, or hold three fingers to hear where you are."
 private const val PREVIEW_HINT =
     "Swipe left or right to preview, tap the middle to keep, or hold the right edge to cancel."
 
@@ -116,18 +119,21 @@ private data class Pick(val item: String, val start: Int, val index: Int)
 private fun optionCount(item: String) = when (item) {
     COLOR_THEME -> Palettes.ALL.size
     FONT -> AppFonts.ALL.size
+    TEXT_SIZE -> TextScale.PRESETS.size
     else -> TextSpacings.ALL.size
 }
 
 private fun optionLabel(item: String, i: Int) = when (item) {
     COLOR_THEME -> Palettes.ALL[i].label
     FONT -> AppFonts.ALL[i].label
+    TEXT_SIZE -> TextScale.presetLabel(i)
     else -> TextSpacings.ALL[i].label
 }
 
 private fun currentOption(item: String) = when (item) {
     COLOR_THEME -> Palettes.ALL.indexOf(ActivePalette.current)
     FONT -> AppFonts.ALL.indexOf(ActiveFont.current)
+    TEXT_SIZE -> TextScale.presetIndexOf(ActiveTextScale.current)
     else -> TextSpacings.ALL.indexOf(ActiveSpacing.current)
 }.coerceAtLeast(0)
 
@@ -136,6 +142,7 @@ private fun showOption(item: String, i: Int) {
     when (item) {
         COLOR_THEME -> ActivePalette.current = Palettes.ALL[i]
         FONT -> ActiveFont.current = AppFonts.ALL[i]
+        TEXT_SIZE -> ActiveTextScale.current = TextScale.PRESETS[i]
         else -> ActiveSpacing.current = TextSpacings.ALL[i]
     }
 }
@@ -144,6 +151,7 @@ private fun saveOption(prefs: ResonantPrefs, item: String, i: Int) {
     when (item) {
         COLOR_THEME -> prefs.colorTheme = Palettes.ALL[i].id
         FONT -> prefs.font = AppFonts.ALL[i].id
+        TEXT_SIZE -> prefs.textScale = TextScale.PRESETS[i]
         else -> prefs.textSpacing = TextSpacings.ALL[i].id
     }
 }
@@ -161,6 +169,7 @@ private fun labelFor(
 ) = when (item) {
     COLOR_THEME -> "$COLOR_THEME: ${ActivePalette.current.label}"
     FONT -> "$FONT: ${ActiveFont.current.label}"
+    TEXT_SIZE -> "$TEXT_SIZE: ${TextScale.percent(ActiveTextScale.current)} percent"
     TEXT_SPACING -> "$TEXT_SPACING: ${ActiveSpacing.current.label}"
     REDUCE_MOTION -> "$REDUCE_MOTION: ${if (ActiveMotion.userReduced) "on" else "off"}"
     VOICE_ENGINE -> "$VOICE_ENGINE: $engineLabel"
@@ -327,6 +336,18 @@ fun SettingsScreen(
                 audio.setQueue(
                     settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
                     startIndex = settingsItems.indexOf(FONT),
+                    autoAdvance = false
+                )
+                haptics.play(HapticPattern.CONFIRM)
+            }
+            TEXT_SIZE -> {
+                // One step up per tap, back to the smallest after the largest. Pinching does the same anywhere.
+                val next = TextScale.nextPreset(ActiveTextScale.current)
+                ActiveTextScale.current = next
+                prefs.textScale = next
+                audio.setQueue(
+                    settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
+                    startIndex = settingsItems.indexOf(TEXT_SIZE),
                     autoAdvance = false
                 )
                 haptics.play(HapticPattern.CONFIRM)
