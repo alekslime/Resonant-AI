@@ -65,4 +65,36 @@ class TextScaleTest {
         assertEquals(SizeCue.NONE, top.cue)
         assertEquals(SizeCue.NONE, TextScale.pinch(0.75f, 0.5f).cue)
     }
+
+    // ---- presets (Settings row, setup step) ----
+
+    @Test
+    fun presets_run_from_smallest_to_largest_and_match_the_pinch_range() {
+        assertEquals(TextScale.MIN, TextScale.PRESETS.first(), 0f)
+        assertEquals(TextScale.MAX, TextScale.PRESETS.last(), 0f)
+        assertEquals(TextScale.PRESETS.sorted(), TextScale.PRESETS)
+    }
+
+    @Test
+    fun a_pinched_size_lands_on_the_nearest_preset() {
+        assertEquals(1, TextScale.presetIndexOf(1.0f))
+        assertEquals(2, TextScale.presetIndexOf(1.2f))
+        assertEquals(4, TextScale.presetIndexOf(1.9f))
+        assertEquals(0, TextScale.presetIndexOf(0.75f))
+    }
+
+    @Test
+    fun a_tap_goes_to_the_next_size_up_and_wraps_after_the_largest() {
+        assertEquals(1.25f, TextScale.nextPreset(1f), 0f)
+        assertEquals(1.25f, TextScale.nextPreset(1.2f), 0f)   // off a preset: the next one above, not one skipped
+        assertEquals(2.5f, TextScale.nextPreset(2f), 0f)
+        assertEquals(0.75f, TextScale.nextPreset(2.5f), 0f)
+    }
+
+    @Test
+    fun preset_labels_are_spoken_as_percentages() {
+        assertEquals("75 percent", TextScale.presetLabel(0))
+        assertEquals("100 percent", TextScale.presetLabel(1))
+        assertEquals("250 percent", TextScale.presetLabel(5))
+    }
 }

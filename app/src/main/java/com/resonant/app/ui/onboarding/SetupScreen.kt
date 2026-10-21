@@ -80,7 +80,7 @@ internal object SetupFlow {
     val STEPS: List<SetupStep> = SetupStep.values().toList()
 
     /** Sizes offered for text. Same range as pinching on any screen. */
-    val TEXT_SCALES: List<Float> = listOf(0.75f, 1f, 1.25f, 1.5f, 2f, 2.5f)
+    val TEXT_SCALES: List<Float> = TextScale.PRESETS
 
     fun title(step: SetupStep): String = when (step) {
         SetupStep.THEME -> "Color theme"
@@ -100,8 +100,7 @@ internal object SetupFlow {
     }
 
     /** Index into [TEXT_SCALES] closest to a saved scale, so an old value still lands on an option. */
-    fun scaleIndexOf(scale: Float): Int =
-        TEXT_SCALES.indices.minByOrNull { abs(TEXT_SCALES[it] - scale) } ?: 0
+    fun scaleIndexOf(scale: Float): Int = TextScale.presetIndexOf(scale)
 
     fun scaleLabel(scale: Float): String = "${TextScale.percent(scale)} percent"
 

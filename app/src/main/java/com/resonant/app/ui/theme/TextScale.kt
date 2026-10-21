@@ -30,6 +30,18 @@ object TextScale {
 
     fun percent(scale: Float): Int = (scale * 100).roundToInt()
 
+    /** The sizes offered when choosing instead of pinching (the Settings row and the setup step). */
+    val PRESETS: List<Float> = listOf(0.75f, 1f, 1.25f, 1.5f, 2f, 2.5f)
+
+    /** The preset closest to a size, so a pinched-to size still lands on one. */
+    fun presetIndexOf(scale: Float): Int =
+        PRESETS.indices.minByOrNull { kotlin.math.abs(PRESETS[it] - scale) } ?: 0
+
+    fun presetLabel(index: Int): String = "${percent(PRESETS[index])} percent"
+
+    /** The next size up from [scale], or the smallest once past the largest. Used by a tap on the Settings row. */
+    fun nextPreset(scale: Float): Float = PRESETS.firstOrNull { it > scale + 0.001f } ?: PRESETS.first()
+
     /**
      * One movement of a pinch. [factor] is the change in finger distance since the last movement. A tick plays
      * when a new quarter step is crossed, an edge bump when the limit is reached, nothing when already there.
