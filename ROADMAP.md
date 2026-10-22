@@ -25,6 +25,8 @@ agent to join instead of falling back.
 - `agent/token_server.py` - gives the phone a LiveKit token (port 8787)
 - `dev.ps1` - repo root. Starts Ollama, token server and agent in three windows. `dev.sh` is the Linux version (one terminal); `scripts/setup-linux.sh` is the one-time Linux setup, see `docs/linux.md`
 - Design system (the "Design pass" below): `ui/theme/ThemePalette.kt` (colors, outlines, card/button radius per theme), `ThemeBorders.kt` (`cardBorder`, `controlBorder`, `cardShape()`, `controlShape()`), `Dimens.kt` (`MinTouchTarget`), `Motion.kt` (`ActiveMotion`), `ui/components/Press.kt` (`pressScale`), `ui/components/FocusFade.kt` (`focusColor`)
+- Motion and life (the "Alive" items below): `ui/components/Enter.kt` (`enterStagger`, `focusLift`, `focusGlow` = the resonance ping, `GlowTiming`), `ui/components/Press.kt` (`pressScale`, `SpringFeel`), `ui/components/DotsPing.kt` (ping behind the dots), `ui/components/ResonantSurface.kt` (`AmbientMotion`, the slow background drift), `ui/theme/MotionProfile.kt` (per-theme motion personality: standard, gentle, quiet, clear), `ui/theme/ThemeTypeDefaults.kt` (per-theme starting font and spacing; `ActiveFont.chosen` / `ActiveSpacing.chosen` say whether the person picked)
+- Profile: `ui/profile/ProfileScreen.kt`, `ProfileSummary.kt` (`ProfileMotion`, `BrailleAvatar`), `ProfileMotion.kt` (`CountUp`, `AvatarMotion`), `Milestones.kt` (rules), `content/MilestoneStore.kt` (which milestones were already celebrated)
 - `app/.../gestures/GestureManager.kt` - the touch detector. `GestureSurface` options: `twoFingerSwipe` (a vertical swipe needs two fingers, one finger scrolls), `contentScrolls` (read touches before a scrolling list; defaults to `twoFingerSwipe`), `ignoreChildTaps` (a tap an item handled is not also a centre tap)
 
 ## Rules
@@ -34,7 +36,7 @@ agent to join instead of falling back.
 - Eyes-free first: every state change needs a haptic, sound or spoken cue, not only a visual one.
 - The app's own speech must never play while the live mic is open (the agent would answer it).
 - Free services only.
-- **Motion goes through `ActiveMotion`.** Never read `Settings.Global.ANIMATOR_DURATION_SCALE` directly. Use `ActiveMotion.reduce` or `ActiveMotion.ms(base)` (0 when reduced). Every new animation must be off or instant with Reduce motion, and must never be the only signal (haptic/sound/speech still carry it). No looping, bouncing or idle motion.
+- **Motion goes through `ActiveMotion`.** Never read `Settings.Global.ANIMATOR_DURATION_SCALE` directly. Use `ActiveMotion.reduce` or `ActiveMotion.ms(base)` (0 when reduced). Every new animation must be off or instant with Reduce motion, and must never be the only signal (haptic/sound/speech still carry it). No bouncing, and nothing that loops fast or flashes. Idle motion is allowed only when it is very slow (a lap of minutes), faint, and off with Reduce motion (the background drift). A theme can turn motion down further through `MotionProfile`; the light-sensitive and low-vision themes stay still.
 - **Shapes and sizes come from the theme.** Cards: `cardShape()` + `cardBorder(...)`. Buttons and bars: `controlShape()` + `controlBorder(...)`. Anything you tap is at least `MinTouchTarget` (56 dp). Do not hard-code `RoundedCornerShape(28.dp)` or `RoundedCornerShape(50)`.
 - **Every new theme must keep its card, bar and button edges visible** (3:1 against the screen, or an outline). `ThemePaletteTest` checks it; the default theme is exempt on purpose (Figma brand look).
 - Test on the phone after each step. Say plainly what was not tested.
@@ -98,13 +100,23 @@ agent to join instead of falling back.
 - [-] Make `LiveKitManager` lazy: skipped, the phone is the only target and the gain is a little startup time. Revisit only if the x86 emulator is needed (one line in `ResonantApp`: `by lazy`)
 - [x] Firewall: `scripts/allow-lan.sh` opens 8787 and 11434 to every private range (10.x, 172.16-31.x, 192.168.x), called from `setup-linux.sh`; `dev.sh` warns when the PC address changed or `local.properties` holds another one. Script logic tested here against a stand-in `ufw`; not run on a real firewall
 - [x] Spoken Live connection errors: `LiveErrors` (pure, tested) tells timeout, refused, unknown host, wrong token key, bad token address, token server crash, no internet and a refused token apart; `LiveKitState.Error` carries what is said and the short status text. Pure part tested on the JVM; not yet checked on the phone by breaking each thing on purpose
-- [x] Resonance ping: when focus lands on a card, a soft filled wave in the theme's ink leaves its edge and fades in about 0.5 s, once (`focusGlow` in `ui/components/Enter.kt`, via `focusLift`; `GlowTiming` tested). Off with Reduce motion. Not tested on the phone yet
-- [x] Profile: the avatar shows every letter and shrinks to fit (`BrailleAvatar.cellWidthDp`); each cell's dots light one after another, then one light travels along the name (`AvatarMotion`, `ProfileMotion.shine`); the numbers count up once (`CountUp`). Off with Reduce motion. Not tested on the phone yet
-- [x] Ambient background: two very faint patches of ink drift across `ResonantSurface` over 2.5 to 3.5 minutes (`AmbientMotion`). Off with Reduce motion. Not tested on the phone yet
+
+## Alive (2026-10-22 and 23)
+Compiles and the unit tests pass on the PC. None of it has been seen on a phone yet.
+- [x] Resonance ping: when focus lands on a card, a soft filled wave in the theme's ink leaves its edge, spreads about 12 dp and fades in about 0.5 s, once (`focusGlow`, `GlowTiming`; through `focusLift`). It replaced a pulsing glow the user did not like. Off with Reduce motion
+- [x] Profile avatar: one braille cell per letter, shrinking to fit the width (`BrailleAvatar.cellWidthDp`); each cell's raised dots light one after another, then one light travels along the name (`AvatarMotion`, `ProfileMotion.shine`); the numbers count up once (`CountUp`). Off with Reduce motion
+- [x] Ambient background: two very faint patches of ink drift across `ResonantSurface`, a lap takes 2.5 to 3.5 minutes (`AmbientMotion`, 8 percent ink per patch). Position refreshed 10 times a second. Off with Reduce motion. Check it is visible on every screen: Lessons, Quiz and Chat may paint their own background
+- [x] Light springs on presses and focus lifts (`SpringFeel`). Screen transitions stay 250 ms fades
+- [x] Per-theme motion personality (`MotionProfile`): standard, gentle (Warm ambiance, Soft cream, Paper gray), quiet (Photophobia, Night red: no ping, no drift, no bounce), clear (Low vision, Cataracts, Handsfree, Monochrome: no ping, flat background, a steady 4 dp ring around the focused card, which stays with Reduce motion)
+- [x] Profile milestones: 14 of them (`Milestones`), a "Milestones: N of 14" row that speaks what was reached and the next goal, and a haptic plus one spoken line the first time new ones are reached (`MilestoneStore` remembers which). The first open after the update celebrates everything already reached
+- [x] Chat: a ping behind the dots when the conversation changes state (`DotsPing`, skipped if closer than 1.2 s to the last), the answer crossfades when you move to another exchange (keyed on the exchange, not its text, which grows while it streams), the greeting rises in. Off with Reduce motion and in the quiet and clear themes
+- [x] Per-theme starting font and text spacing (`ThemeTypeDefaults`): Low vision and Cataracts and Handsfree start with Atkinson, the calm themes with Lexend, the native one with Metropolis. A font or spacing the person picks wins in every theme. Known edge: cancelling a hold-to-preview of the font in Settings leaves the font pinned as a pick
+- [ ] Per-theme focus styles beyond the clear themes' ring (shape, thickness). Wait until the current ones have been seen on a phone
+- [ ] Phone check of all of the above: ping size and speed, drift visible, springs not too soft, the thick ring against the yellow outline of Low vision, Photophobia still, fonts per theme, milestones on first open, Chat ping and crossfade
 
 ## Design pass brief (from the user, 2026-10-11)
 - One cohesive design system: consistent spacing, type, buttons, cards, icons, motion.
-- Themes should feel like different experiences, not color swaps. So far only radius and outlines differ. Ideas not done: per-theme spacing or type weight, a different focus style per theme (for example a thick outline for Handsfree), a default font per theme.
+- Themes should feel like different experiences, not color swaps. So far only radius and outlines differ. Done since: per-theme motion (`MotionProfile`) and per-theme starting font and spacing (`ThemeTypeDefaults`). Ideas not done: a different focus shape or thickness per theme.
 - Accessible defaults: strong contrast, readable text, comfortable touch targets, nothing communicated by color alone.
 - Reduced stimulation: restrained motion plus a setting to reduce it. Themes for light sensitivity.
 - Personality without noise: satisfying feedback, no constant bouncing, flashing or decoration.
@@ -142,4 +154,6 @@ agent to join instead of falling back.
 - Code comment-light, plain English names, no reformatting of existing files.
 - Browsers drop the leading dot of downloaded files (`.env.example` arrives as `env.example`): remind them to rename it.
 - Say plainly what was not tested. Never claim a device run happened.
+- Since 2026-10-22 the user also builds on Windows (repo `C:\Users\aleks\Resonant-AI`, `gradlew.bat`, cmd or PowerShell: cmd does not understand `$var` or `&`). Give `git` lines in that syntax, and use `git --no-pager diff` (the pager traps people).
+- Before the user replaces a big or shared file, say which one and ask for `git diff` if they may have changed it: an old copy once dropped `ProfileMotion` and broke the tests.
 - Do not bring up key rotation again; the user knows.=
