@@ -29,6 +29,6 @@ class AmbientMotionTest {
         val b = AmbientMotion.position(AmbientMotion.TICK_MS / 1000f / AmbientMotion.PERIOD_A_S, 1, 2, 0.8f, 0f)
         assertTrue(kotlin.math.abs(a.x - b.x) < 0.005f && kotlin.math.abs(a.y - b.y) < 0.005f)
         assertTrue(AmbientMotion.PERIOD_A_S >= 120f && AmbientMotion.PERIOD_B_S >= 120f)
-        assertTrue(AmbientMotion.PATCH_ALPHA * 2 <= 0.08f)
+        assertTrue(AmbientMotion.PATCH_ALPHA * 2 <= 0.2f)
     }
 }

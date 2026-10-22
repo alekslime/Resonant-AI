@@ -32,10 +32,10 @@ internal object AmbientMotion {
     const val PERIOD_B_S = 210f
 
     /** Ink strength at the centre of a patch. Two patches overlapping give at most twice this. */
-    const val PATCH_ALPHA = 0.03f
+    const val PATCH_ALPHA = 0.08f
 
     /** Patch radius as a share of the longer screen side. */
-    const val RADIUS_SHARE = 1.1f
+    const val RADIUS_SHARE = 0.9f
 
     /** How often the position is refreshed. The drift is so slow that this is invisible, and it spares the battery. */
     const val TICK_MS = 100L
