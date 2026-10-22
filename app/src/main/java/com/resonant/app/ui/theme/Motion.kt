@@ -14,6 +14,9 @@ object ActiveMotion {
 
     val reduce: Boolean get() = userReduced || systemReduced
 
+    /** The motion personality of the theme in use. Reads the theme state, so screens redraw when it changes. */
+    val profile: MotionProfile get() = MotionProfiles.forTheme(ActivePalette.current.id)
+
     /** A duration in ms that becomes 0 when motion is reduced. */
     fun ms(base: Int): Int = if (reduce) 0 else base
 }

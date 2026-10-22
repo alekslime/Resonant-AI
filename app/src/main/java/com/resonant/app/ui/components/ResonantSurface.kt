@@ -75,8 +75,10 @@ fun ResonantSurface(
     // Seconds since this screen appeared; stands still with Reduce motion on.
     var elapsedS by remember { mutableFloatStateOf(0f) }
     val reduce = ActiveMotion.reduce
-    LaunchedEffect(reduce) {
-        if (reduce) return@LaunchedEffect
+    val profile = ActiveMotion.profile
+    val drifts = profile.driftStrength > 0f
+    LaunchedEffect(reduce, drifts) {
+        if (reduce || !drifts) return@LaunchedEffect
         val start = System.nanoTime()
         while (true) {
             elapsedS = (System.nanoTime() - start) / 1_000_000_000f
@@ -84,6 +86,8 @@ fun ResonantSurface(
         }
     }
     val ink = BrandInk
+    val patchAlpha = AmbientMotion.PATCH_ALPHA * profile.driftStrength
+    val slowdown = profile.driftSlowdown
 
     Box(
         modifier
@@ -92,14 +96,15 @@ fun ResonantSurface(
             .drawBehind {
                 // Read in the draw phase, so the drift redraws without recomposing the screen.
                 val t = elapsedS
+                if (patchAlpha <= 0f) return@drawBehind
                 val radius = max(size.width, size.height) * AmbientMotion.RADIUS_SHARE
-                val a = AmbientMotion.position(AmbientMotion.lapShare(t, AmbientMotion.PERIOD_A_S), 1, 2, 0.8f, 0f)
-                val b = AmbientMotion.position(AmbientMotion.lapShare(t, AmbientMotion.PERIOD_B_S), 1, 1, 2.6f, 1.9f)
+                val a = AmbientMotion.position(AmbientMotion.lapShare(t, AmbientMotion.PERIOD_A_S * slowdown), 1, 2, 0.8f, 0f)
+                val b = AmbientMotion.position(AmbientMotion.lapShare(t, AmbientMotion.PERIOD_B_S * slowdown), 1, 1, 2.6f, 1.9f)
                 for (patch in listOf(a, b)) {
                     val center = Offset(patch.x * size.width, patch.y * size.height)
                     drawRect(
                         Brush.radialGradient(
-                            colors = listOf(ink.copy(alpha = AmbientMotion.PATCH_ALPHA), ink.copy(alpha = 0f)),
+                            colors = listOf(ink.copy(alpha = patchAlpha), ink.copy(alpha = 0f)),
                             center = center,
                             radius = radius
                         )

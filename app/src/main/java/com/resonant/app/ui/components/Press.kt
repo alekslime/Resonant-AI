@@ -24,13 +24,18 @@ internal object SpringFeel {
     const val FOCUS_DAMPING = 0.55f
     const val FOCUS_STIFFNESS = Spring.StiffnessMediumLow
 
-    /** The press spring, or an instant jump with Reduce motion on. */
-    fun press(): FiniteAnimationSpec<Float> =
-        if (ActiveMotion.reduce) snap() else spring(PRESS_DAMPING, PRESS_STIFFNESS)
+    /** The damping to use: the base, or the theme's floor if that is calmer. */
+    fun damping(base: Float, themeFloor: Float): Float = maxOf(base, themeFloor)
 
-    /** The focus-lift spring, or an instant jump with Reduce motion on. */
+    /** The press spring, or an instant jump with Reduce motion on. Calmer in quiet themes. */
+    fun press(): FiniteAnimationSpec<Float> =
+        if (ActiveMotion.reduce) snap()
+        else spring(damping(PRESS_DAMPING, ActiveMotion.profile.minDamping), PRESS_STIFFNESS)
+
+    /** The focus-lift spring, or an instant jump with Reduce motion on. Calmer in quiet themes. */
     fun focus(): FiniteAnimationSpec<Float> =
-        if (ActiveMotion.reduce) snap() else spring(FOCUS_DAMPING, FOCUS_STIFFNESS)
+        if (ActiveMotion.reduce) snap()
+        else spring(damping(FOCUS_DAMPING, ActiveMotion.profile.minDamping), FOCUS_STIFFNESS)
 }
 
 /**

@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -42,6 +43,8 @@ internal object GlowTiming {
     const val START_ALPHA = 0.26f
     /** Soft edge: the wave is drawn as this many nested layers, thinning outwards. */
     const val LAYERS = 3
+    /** The clear gap between a card and its steady focus ring. */
+    const val RING_GAP_DP = 3f
 
     /** How far the wave has travelled at [progress] 0..1. */
     fun spreadDp(progress: Float): Float = MAX_SPREAD_DP * progress.coerceIn(0f, 1f)
@@ -61,8 +64,9 @@ internal object GlowTiming {
 fun Modifier.focusGlow(focused: Boolean, shape: Shape? = null): Modifier = composed {
     // 1f means finished (nothing drawn).
     val progress = remember { Animatable(1f) }
-    LaunchedEffect(focused) {
-        if (focused && !ActiveMotion.reduce) {
+    val profile = ActiveMotion.profile
+    LaunchedEffect(focused, profile) {
+        if (focused && !ActiveMotion.reduce && profile.pingStrength > 0f) {
             progress.snapTo(0f)
             progress.animateTo(1f, tween(GlowTiming.PING_MS, easing = FastOutSlowInEasing))
         } else {
@@ -71,11 +75,26 @@ fun Modifier.focusGlow(focused: Boolean, shape: Shape? = null): Modifier = compo
     }
     val ink = BrandInk
     val waveShape = shape ?: cardShape()
+    val ringDp = profile.focusRingDp
+    val strength = profile.pingStrength
     Modifier.drawBehind {
+        // A steady ring for the themes that want focus to be unmissable. Not motion, so Reduce motion keeps it.
+        if (focused && ringDp > 0f) {
+            val stroke = ringDp.dp.toPx()
+            val grow = GlowTiming.RING_GAP_DP.dp.toPx() + stroke / 2f
+            val ringOutline = waveShape.createOutline(
+                Size(size.width + 2 * grow, size.height + 2 * grow),
+                layoutDirection,
+                this
+            )
+            translate(-grow, -grow) {
+                drawOutline(ringOutline, ink, style = Stroke(width = stroke))
+            }
+        }
         // Read in the draw phase: the wave redraws each frame without recomposing the card.
         val p = progress.value
         if (p >= 1f) return@drawBehind
-        val layerAlpha = GlowTiming.alpha(p) / GlowTiming.LAYERS
+        val layerAlpha = GlowTiming.alpha(p) * strength / GlowTiming.LAYERS
         val spread = GlowTiming.spreadDp(p).dp.toPx()
         for (k in 1..GlowTiming.LAYERS) {
             val grow = spread * k / GlowTiming.LAYERS
