@@ -119,7 +119,7 @@ fun Modifier.enterStagger(index: Int): Modifier = composed {
 fun Modifier.focusLift(focused: Boolean, amount: Float = 1.02f): Modifier = composed {
     val scale by animateFloatAsState(
         targetValue = if (focused && !ActiveMotion.reduce) amount else 1f,
-        animationSpec = tween(ActiveMotion.ms(200), easing = FastOutSlowInEasing),
+        animationSpec = SpringFeel.focus(),
         label = "focusLift"
     )
     Modifier
