@@ -41,7 +41,12 @@ import com.resonant.app.livekit.LiveKitState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import androidx.compose.ui.Alignment
+import com.resonant.app.ui.components.DotsPing
 import com.resonant.app.ui.components.DotsState
+import com.resonant.app.ui.components.enterStagger
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import com.resonant.app.ui.theme.ActiveMotion
 import com.resonant.app.ui.components.FitText
 import com.resonant.app.ui.components.ResonantDots
 import androidx.compose.foundation.layout.fillMaxSize
@@ -991,11 +996,13 @@ fun ChatScreen(
                 // speaking, offline. (On the empty chat the big ones above show the same thing.)
                 if (!hero) {
                     Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                        ResonantDots(
-                            state = dotsState,
-                            level = dotsLevel,
-                            modifier = Modifier.size(CHAT_DOTS_SIZE)
-                        )
+                        DotsPing(state = dotsState, modifier = Modifier.size(CHAT_DOTS_SIZE)) {
+                            ResonantDots(
+                                state = dotsState,
+                                level = dotsLevel,
+                                modifier = Modifier.size(CHAT_DOTS_SIZE)
+                            )
+                        }
                     }
                 }
                 AskPill(
@@ -1063,11 +1070,13 @@ fun ChatScreen(
                     verticalArrangement = if (hero) Arrangement.Center else Arrangement.Top
                 ) {
                     if (hero) {
-                    ResonantDots(
-                        state = dotsState,
-                        level = dotsLevel,
-                        modifier = Modifier.size(dotsSize)
-                    )
+                    DotsPing(state = dotsState, modifier = Modifier.size(dotsSize)) {
+                        ResonantDots(
+                            state = dotsState,
+                            level = dotsLevel,
+                            modifier = Modifier.size(dotsSize)
+                        )
+                    }
                     }
                     if (hero) {
                         Text(
@@ -1076,7 +1085,8 @@ fun ChatScreen(
                                 fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.SemiBold
                             ),
                             color = colors.text,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.enterStagger(1)
                         )
                         // Figma has no prompt line under the greeting. This slot only shows
                         // "Listening…" / "Thinking…", and is reserved so the layout doesn't jump.
@@ -1095,16 +1105,25 @@ fun ChatScreen(
                         val nextUser = exchanges.getOrNull((current?.exchangeIndex ?: exchanges.lastIndex) + 1)?.userText
                         Spacer(Modifier.height(8.dp))
                         UserLine(exchange?.userText ?: "")
-                        FitText(
-                            text = exchange?.assistantChunks?.joinToString(" ") { it.text } ?: "",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Black,
-                                fontSize = 31.sp,
-                                lineHeight = 35.sp
-                            ),
-                            color = colors.text,
-                            modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp)
-                        )
+                        // Crossfades when you move to another exchange. Keyed on the exchange and not on its text,
+                        // which grows while the answer streams in and must not fade on every sentence.
+                        Crossfade(
+                            targetState = current?.exchangeIndex ?: exchanges.lastIndex,
+                            animationSpec = tween(ActiveMotion.ms(250)),
+                            modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp),
+                            label = "answer"
+                        ) { shownIndex ->
+                            FitText(
+                                text = exchanges.getOrNull(shownIndex)?.assistantChunks?.joinToString(" ") { it.text } ?: "",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 31.sp,
+                                    lineHeight = 35.sp
+                                ),
+                                color = colors.text,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                         UserLine(statusText.ifEmpty { nextUser ?: "" })
                     }
                 }
