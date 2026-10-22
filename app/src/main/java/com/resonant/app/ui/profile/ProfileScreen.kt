@@ -54,6 +54,7 @@ import com.resonant.app.ResonantApp
 import com.resonant.app.audio.AudioManager
 import com.resonant.app.content.ActivityText
 import com.resonant.app.content.LessonLibrary
+import com.resonant.app.content.MilestoneStore
 import com.resonant.app.content.MaterialStore
 import com.resonant.app.content.QuizData
 import com.resonant.app.content.QuizProgressStore
@@ -107,11 +108,14 @@ fun ProfileScreen(
     val speedIndex by audio.speedIndex.collectAsState()
 
     var stats by remember { mutableStateOf<ProfileStats?>(null) }
+    val milestoneStore = remember { MilestoneStore(context) }
+    var seenBefore by remember { mutableStateOf<Set<String>>(emptySet()) }
     // Saved, so coming back from Name or Settings lands on the row you left.
     var index by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         debug.setScreen("Profile")
+        seenBefore = withContext(Dispatchers.IO) { milestoneStore.seen() }
         stats = withContext(Dispatchers.IO) {
             val progress = QuizProgressStore.loadAll(context)
             val store = MaterialStore.forContext(context)
@@ -127,6 +131,8 @@ fun ProfileScreen(
     }
 
     val loaded = stats
+    val reachedMilestones = if (loaded == null) emptyList() else Milestones.reached(loaded, seenBefore)
+    val freshMilestones = if (loaded == null) emptyList() else Milestones.fresh(loaded, seenBefore)
     val rows: List<ProfileRow> = if (loaded == null) emptyList() else buildList {
         add(ProfileRow("Your name: ${name ?: "not set"}", action = onOpenName))
         add(ProfileRow("How am I doing?") {
@@ -138,6 +144,9 @@ fun ProfileScreen(
         add(ProfileRow(ProfileSummary.quizLine(loaded), counts = true))
         ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, counts = true)) }
         add(ProfileRow(ProfileSummary.materialsLine(loaded), counts = true))
+        add(ProfileRow(Milestones.rowLine(reachedMilestones, freshMilestones)) {
+            audio.announce(Milestones.spoken(reachedMilestones))
+        })
         add(ProfileRow(ActivityText.listeningLine(loaded.listeningSeconds)))
         // Theme and font change right here, one step per tap, as they do in Settings. Changing the label
         // re-queues the row, which speaks the new value.
@@ -196,6 +205,18 @@ fun ProfileScreen(
             autoAdvance = false,
             queueBehindAnnouncement = true
         )
+    }
+
+    // New milestones are celebrated once, after the numbers have counted up: a haptic and one short spoken line.
+    // They are only marked as told afterwards, so leaving early does not lose the celebration.
+    LaunchedEffect(loaded != null) {
+        if (loaded == null) return@LaunchedEffect
+        val fresh = Milestones.fresh(loaded, seenBefore)
+        if (fresh.isEmpty()) return@LaunchedEffect
+        delay(1800)
+        haptics.play(HapticPattern.CORRECT)
+        audio.announce(Milestones.announcement(fresh))
+        withContext(Dispatchers.IO) { milestoneStore.markSeen(fresh.map { it.id }) }
     }
 
     fun activate(i: Int) {
