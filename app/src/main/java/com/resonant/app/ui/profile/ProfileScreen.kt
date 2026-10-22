@@ -88,7 +88,7 @@ private const val PROFILE_HINT =
     "Swipe down with two fingers for the next item, tap the middle to open or change it, or hold the right edge to go back."
 
 /** One line on the screen. [action] is what a tap does; null means the line is only read. */
-private class ProfileRow(val label: String, val action: (() -> Unit)?, val counts: Boolean = false)
+private class ProfileRow(val label: String, val counts: Boolean = false, val action: (() -> Unit)? = null)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -127,17 +127,17 @@ fun ProfileScreen(
 
     val loaded = stats
     val rows: List<ProfileRow> = if (loaded == null) emptyList() else buildList {
-        add(ProfileRow("Your name: ${name ?: "not set"}", onOpenName))
+        add(ProfileRow("Your name: ${name ?: "not set"}", action = onOpenName))
         add(ProfileRow("How am I doing?") {
             audio.announce(ProfileSummary.spoken(name, loaded))
         })
-        add(ProfileRow(ActivityText.streakLine(loaded.streak), null, counts = true))
-        if (loaded.longestStreak > loaded.streak) add(ProfileRow(ActivityText.longestLine(loaded.longestStreak), null, counts = true))
-        if (loaded.lessonsTotal > 0) add(ProfileRow(ProfileSummary.lessonsLine(loaded), null, counts = true))
-        add(ProfileRow(ProfileSummary.quizLine(loaded), null, counts = true))
-        ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, null, counts = true)) }
-        add(ProfileRow(ProfileSummary.materialsLine(loaded), null, counts = true))
-        add(ProfileRow(ActivityText.listeningLine(loaded.listeningSeconds), null))
+        add(ProfileRow(ActivityText.streakLine(loaded.streak), counts = true))
+        if (loaded.longestStreak > loaded.streak) add(ProfileRow(ActivityText.longestLine(loaded.longestStreak), counts = true))
+        if (loaded.lessonsTotal > 0) add(ProfileRow(ProfileSummary.lessonsLine(loaded), counts = true))
+        add(ProfileRow(ProfileSummary.quizLine(loaded), counts = true))
+        ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, counts = true)) }
+        add(ProfileRow(ProfileSummary.materialsLine(loaded), counts = true))
+        add(ProfileRow(ActivityText.listeningLine(loaded.listeningSeconds)))
         // Theme and font change right here, one step per tap, as they do in Settings. Changing the label
         // re-queues the row, which speaks the new value.
         add(ProfileRow("Color theme: ${ActivePalette.current.label}") {
