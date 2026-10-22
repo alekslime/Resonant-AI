@@ -20,6 +20,37 @@ internal data class ProfileStats(
     val lessonsTotal: Int = 0
 )
 
+/** How the Profile numbers count up when the screen opens, and how the avatar shimmer travels. Pure, so it is tested. */
+internal object ProfileMotion {
+    const val COUNT_UP_MS = 900
+    const val SWEEP_MS = 1400
+
+    /** Totals stay put; only what the person has done counts up. 1f gives the exact numbers back. */
+    fun scaled(s: ProfileStats, fraction: Float): ProfileStats {
+        val f = fraction.coerceIn(0f, 1f)
+        fun n(v: Int) = Math.round(v * f)
+        return s.copy(
+            quizzesDone = n(s.quizzesDone),
+            averagePercent = s.averagePercent?.let { n(it) },
+            materials = n(s.materials),
+            streak = n(s.streak),
+            longestStreak = n(s.longestStreak),
+            listeningSeconds = Math.round(s.listeningSeconds * f.toDouble()),
+            lessonsDone = n(s.lessonsDone)
+        )
+    }
+
+    /**
+     * How lit cell [index] of [count] is while a light travels left to right once. [sweep] runs 0..1. 0 when the
+     * light is elsewhere, 1 right under it, so the glow rolls along the name and is gone at the end.
+     */
+    fun shine(sweep: Float, index: Int, count: Int): Float {
+        if (count <= 0) return 0f
+        val x = sweep.coerceIn(0f, 1f) * (count + 1) - 0.5f
+        return (1f - Math.abs(x - index) / 1.6f).coerceIn(0f, 1f)
+    }
+}
+
 internal object ProfileSummary {
 
     /** Counts only quizzes and lessons that exist now, so a removed one can't push a count past its total. */
