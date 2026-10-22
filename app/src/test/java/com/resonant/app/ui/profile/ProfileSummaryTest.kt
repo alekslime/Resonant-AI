@@ -128,4 +128,67 @@ class ProfileSummaryTest {
         val s = ProfileStats(1, 3, 50, 2, lessonsDone = 0, lessonsTotal = 4)
         assertTrue(ProfileSummary.spoken("A", s).endsWith("Next, try a quiz you have not finished."))
     }
+
+    @Test
+    fun counting_up_ends_on_the_true_numbers_and_starts_at_zero_but_keeps_totals() {
+        val s = ProfileStats(
+            quizzesDone = 4, quizzesTotal = 10, averagePercent = 80, materials = 3,
+            streak = 5, longestStreak = 9, listeningSeconds = 3600L, lessonsDone = 2, lessonsTotal = 10
+        )
+        assertEquals(s, ProfileMotion.scaled(s, 1f))
+        val zero = ProfileMotion.scaled(s, 0f)
+        assertEquals(0, zero.quizzesDone)
+        assertEquals(0, zero.streak)
+        assertEquals(0L, zero.listeningSeconds)
+        assertEquals(10, zero.quizzesTotal)
+        assertEquals(10, zero.lessonsTotal)
+        assertEquals(40, ProfileMotion.scaled(s, 0.5f).averagePercent)
+        assertEquals(null, ProfileMotion.scaled(s.copy(averagePercent = null), 0.5f).averagePercent)
+    }
+
+    @Test
+    fun the_shimmer_travels_along_the_name_and_leaves_it_dark_at_both_ends() {
+        assertEquals(0f, ProfileMotion.shine(0f, 3, 5), 0.0001f)
+        assertEquals(0f, ProfileMotion.shine(1f, 0, 5), 0.0001f)
+        // Under the light, a cell is at its brightest; a far one is dark.
+        val best = (0..4).maxByOrNull { ProfileMotion.shine(0.5f, it, 5) }!!
+        assertEquals(1f, ProfileMotion.shine(0.5f, best, 5), 0.5f)
+        assertEquals(0f, ProfileMotion.shine(0.5f, 0, 0), 0.0001f)
+    }
+}
+
+class ProfileMotionTest {
+
+    @Test
+    fun numbers_climb_from_zero_and_the_finished_label_is_untouched() {
+        assertEquals("Quizzes: 0 of 0 done", CountUp.apply("Quizzes: 3 of 8 done", 0f))
+        assertEquals("Quizzes: 2 of 4 done", CountUp.apply("Quizzes: 3 of 8 done", 0.5f))
+        assertEquals("Quizzes: 3 of 8 done", CountUp.apply("Quizzes: 3 of 8 done", 1f))
+        assertEquals("Streak: none yet", CountUp.apply("Streak: none yet", 0.3f))
+    }
+
+    @Test
+    fun a_bad_progress_never_breaks_the_label() {
+        assertEquals("Materials: 0", CountUp.apply("Materials: 5", -2f))
+        assertEquals("Materials: 5", CountUp.apply("Materials: 5", 7f))
+    }
+
+    @Test
+    fun dots_arrive_in_order_and_every_dot_ends_fully_in_at_normal_size() {
+        assertTrue(AvatarMotion.dotProgress(0.3f, 1) > AvatarMotion.dotProgress(0.3f, 4))
+        for (dot in 1..6) {
+            assertEquals(1f, AvatarMotion.dotProgress(1f, dot), 0.0001f)
+            assertEquals(0f, AvatarMotion.dotProgress(0f, dot), 0.0001f)
+        }
+        assertEquals(1f, AvatarMotion.swell(0f), 0.0001f)
+        assertEquals(1f, AvatarMotion.swell(1f), 0.0001f)
+        assertEquals(1f + AvatarMotion.SWELL, AvatarMotion.swell(0.5f), 0.0001f)
+    }
+
+    @Test
+    fun resting_dots_are_faint_and_settled_by_a_quarter_of_the_way() {
+        assertEquals(0f, AvatarMotion.restingAlpha(0f), 0.0001f)
+        assertEquals(0.15f, AvatarMotion.restingAlpha(0.25f), 0.0001f)
+        assertEquals(0.15f, AvatarMotion.restingAlpha(1f), 0.0001f)
+    }
 }

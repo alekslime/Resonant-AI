@@ -2,6 +2,8 @@ package com.resonant.app.ui.profile
 
 import com.resonant.app.ui.components.focusLift
 import com.resonant.app.ui.components.enterStagger
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
@@ -86,7 +88,7 @@ private const val PROFILE_HINT =
     "Swipe down with two fingers for the next item, tap the middle to open or change it, or hold the right edge to go back."
 
 /** One line on the screen. [action] is what a tap does; null means the line is only read. */
-private class ProfileRow(val label: String, val action: (() -> Unit)?)
+private class ProfileRow(val label: String, val action: (() -> Unit)?, val counts: Boolean = false)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -129,12 +131,12 @@ fun ProfileScreen(
         add(ProfileRow("How am I doing?") {
             audio.announce(ProfileSummary.spoken(name, loaded))
         })
-        add(ProfileRow(ActivityText.streakLine(loaded.streak), null))
-        if (loaded.longestStreak > loaded.streak) add(ProfileRow(ActivityText.longestLine(loaded.longestStreak), null))
-        if (loaded.lessonsTotal > 0) add(ProfileRow(ProfileSummary.lessonsLine(loaded), null))
-        add(ProfileRow(ProfileSummary.quizLine(loaded), null))
-        ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, null)) }
-        add(ProfileRow(ProfileSummary.materialsLine(loaded), null))
+        add(ProfileRow(ActivityText.streakLine(loaded.streak), null, counts = true))
+        if (loaded.longestStreak > loaded.streak) add(ProfileRow(ActivityText.longestLine(loaded.longestStreak), null, counts = true))
+        if (loaded.lessonsTotal > 0) add(ProfileRow(ProfileSummary.lessonsLine(loaded), null, counts = true))
+        add(ProfileRow(ProfileSummary.quizLine(loaded), null, counts = true))
+        ProfileSummary.averageLine(loaded)?.let { add(ProfileRow(it, null, counts = true)) }
+        add(ProfileRow(ProfileSummary.materialsLine(loaded), null, counts = true))
         add(ProfileRow(ActivityText.listeningLine(loaded.listeningSeconds), null))
         // Theme and font change right here, one step per tap, as they do in Settings. Changing the label
         // re-queues the row, which speaks the new value.
@@ -155,6 +157,13 @@ fun ProfileScreen(
         })
     }
     val labels = rows.map { it.label }
+
+    // The numbers climb once, when they first arrive. Instant with Reduce motion.
+    val countProgress = remember { Animatable(if (ActiveMotion.reduce) 1f else 0f) }
+    LaunchedEffect(loaded != null) {
+        if (loaded == null || countProgress.value >= 1f) return@LaunchedEffect
+        countProgress.animateTo(1f, tween(ActiveMotion.ms(900), easing = FastOutSlowInEasing))
+    }
 
     val labelsNow by rememberUpdatedState(labels)
 
@@ -263,7 +272,7 @@ fun ProfileScreen(
                             label = "profileRow"
                         ) { shown ->
                             Text(
-                                shown,
+                                if (row.counts) CountUp.apply(shown, countProgress.value) else shown,
                                 style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 26.sp, lineHeight = 32.sp),
                                 color = focusColor(if (focused) ResonantOnInk else BrandInk)
                             )
@@ -292,7 +301,7 @@ private fun Avatar(name: String?) {
     var shown by remember(name) { mutableIntStateOf(if (ActiveMotion.reduce) cells.size else 0) }
     LaunchedEffect(name) {
         if (ActiveMotion.reduce) { shown = cells.size; return@LaunchedEffect }
-        while (shown < cells.size) { delay(110); shown += 1 }
+        while (shown < cells.size) { delay(AvatarMotion.CELL_GAP_MS); shown += 1 }
     }
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         // One cell per letter. They shrink, gaps included, until the whole name fits the width.
@@ -303,19 +312,19 @@ private fun Avatar(name: String?) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             cells.forEachIndexed { i, dots ->
-                val alpha by animateFloatAsState(
+                val progress by animateFloatAsState(
                     targetValue = if (i < shown) 1f else 0f,
-                    animationSpec = tween(ActiveMotion.ms(200)),
+                    animationSpec = tween(ActiveMotion.ms(AvatarMotion.CELL_MS)),
                     label = "avatarCell"
                 )
-                BrailleCell(dots, alpha, cellW)
+                BrailleCell(dots, progress, cellW)
             }
         }
     }
 }
 
 @Composable
-private fun BrailleCell(raised: List<Int>, alpha: Float, width: androidx.compose.ui.unit.Dp) {
+private fun BrailleCell(raised: List<Int>, progress: Float, width: androidx.compose.ui.unit.Dp) {
     val ink = BrandInk
     Canvas(Modifier.size(width = width, height = width * 2)) {
         val r = size.width * 0.17f
@@ -325,9 +334,11 @@ private fun BrailleCell(raised: List<Int>, alpha: Float, width: androidx.compose
             val col = if (dot <= 3) 0 else 1
             val row = (dot - 1) % 3
             val on = dot in raised
+            // Raised dots light one after another and swell a little as they arrive; the rest just fade in.
+            val local = AvatarMotion.dotProgress(progress, dot)
             drawCircle(
-                color = ink.copy(alpha = (if (on) 1f else 0.15f) * alpha),
-                radius = r,
+                color = ink.copy(alpha = if (on) local else AvatarMotion.restingAlpha(progress)),
+                radius = if (on) r * AvatarMotion.swell(local) else r,
                 center = Offset(colX[col], rowY[row])
             )
         }
