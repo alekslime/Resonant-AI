@@ -31,19 +31,21 @@ class EnterTimingTest {
     }
 
     @Test
-    fun the_glow_swells_between_a_faint_and_a_soft_halo_and_never_leaves_that_range() {
-        assertEquals(GlowTiming.MIN_ALPHA, GlowTiming.alpha(0f), 0.0001f)
-        assertEquals(GlowTiming.MAX_ALPHA, GlowTiming.alpha(1f), 0.0001f)
-        assertEquals(GlowTiming.MIN_ALPHA, GlowTiming.alpha(-3f), 0.0001f)
-        assertEquals(GlowTiming.MAX_ALPHA, GlowTiming.alpha(9f), 0.0001f)
-        assertEquals(GlowTiming.MIN_SPREAD_DP, GlowTiming.spreadDp(0f), 0.0001f)
+    fun the_ping_starts_strong_at_the_card_and_is_gone_at_the_end() {
+        assertEquals(GlowTiming.START_ALPHA, GlowTiming.alpha(0f), 0.0001f)
+        assertEquals(0f, GlowTiming.alpha(1f), 0.0001f)
+        assertEquals(GlowTiming.START_ALPHA, GlowTiming.alpha(-3f), 0.0001f)
+        assertEquals(0f, GlowTiming.alpha(9f), 0.0001f)
+        assertTrue(GlowTiming.alpha(0.3f) > GlowTiming.alpha(0.6f))
+        assertEquals(0f, GlowTiming.spreadDp(0f), 0.0001f)
         assertEquals(GlowTiming.MAX_SPREAD_DP, GlowTiming.spreadDp(1f), 0.0001f)
+        assertEquals(GlowTiming.MAX_SPREAD_DP, GlowTiming.spreadDp(5f), 0.0001f)
     }
 
     @Test
-    fun the_glow_is_never_solid_and_a_breath_takes_seconds() {
-        assertTrue(GlowTiming.MAX_ALPHA < 0.5f)
-        assertTrue(GlowTiming.MIN_ALPHA > 0f)
-        assertTrue(GlowTiming.HALF_PERIOD_MS * 2 >= 2500)
+    fun the_ping_is_soft_short_and_never_solid() {
+        assertTrue(GlowTiming.START_ALPHA < 0.4f)
+        assertTrue(GlowTiming.PING_MS in 300..800)
+        assertTrue(GlowTiming.LAYERS >= 2)
     }
 }

@@ -2,11 +2,7 @@ package com.resonant.app.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,52 +32,61 @@ internal object EnterTiming {
     fun delayMs(index: Int): Int = index.coerceIn(0, MAX_STEPS) * STEP_MS
 }
 
-/** How the focus glow breathes. Plain numbers so the range can be tested. */
+/** The ping that leaves a card when focus lands on it. Plain numbers so the range can be tested. */
 internal object GlowTiming {
-    /** One swell takes this long; swell and fade back make a breath of twice this. Slow on purpose. */
-    const val HALF_PERIOD_MS = 1600
-    const val MIN_SPREAD_DP = 2f
-    const val MAX_SPREAD_DP = 7f
-    const val MIN_ALPHA = 0.10f
-    const val MAX_ALPHA = 0.32f
+    /** The whole ping, from the card's edge to gone. One shot, so it is short. */
+    const val PING_MS = 520
+    /** How far the wave travels past the card's edge by the time it is gone. */
+    const val MAX_SPREAD_DP = 12f
+    /** How strong the wave is where it leaves the card. */
+    const val START_ALPHA = 0.26f
+    /** Soft edge: the wave is drawn as this many nested layers, thinning outwards. */
+    const val LAYERS = 3
 
-    /** How far the halo reaches past the card at [pulse] 0..1. */
-    fun spreadDp(pulse: Float): Float = MIN_SPREAD_DP + (MAX_SPREAD_DP - MIN_SPREAD_DP) * pulse.coerceIn(0f, 1f)
+    /** How far the wave has travelled at [progress] 0..1. */
+    fun spreadDp(progress: Float): Float = MAX_SPREAD_DP * progress.coerceIn(0f, 1f)
 
-    /** How strong the halo is at [pulse] 0..1. Never fully gone, never solid. */
-    fun alpha(pulse: Float): Float = MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * pulse.coerceIn(0f, 1f)
+    /** How strong the whole wave is at [progress] 0..1: full at the card, fading to nothing as it goes. */
+    fun alpha(progress: Float): Float {
+        val left = 1f - progress.coerceIn(0f, 1f)
+        return START_ALPHA * left * left
+    }
 }
 
 /**
- * A soft halo in the theme's ink that slowly swells and fades behind the focused card, so the focus feels
- * alive and not only drawn. Only the focused card runs it. Nothing at all with Reduce motion on, and it is
- * never the only signal: the inverted card, the haptic and the speech still say where focus is.
+ * A resonance ping: when focus lands on a card, a soft filled wave in the theme's ink leaves its edge, spreads
+ * outwards and fades away once. Then the card is still. Not a stroke and not a loop. Nothing at all with Reduce
+ * motion on, and never the only signal: the inverted card, the haptic and the speech still say where focus is.
  */
 fun Modifier.focusGlow(focused: Boolean, shape: Shape? = null): Modifier = composed {
-    if (!focused || ActiveMotion.reduce) return@composed Modifier
-    val transition = rememberInfiniteTransition(label = "focusGlow")
-    val pulse by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(GlowTiming.HALF_PERIOD_MS, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "focusGlowPulse"
-    )
+    // 1f means finished (nothing drawn).
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(focused) {
+        if (focused && !ActiveMotion.reduce) {
+            progress.snapTo(0f)
+            progress.animateTo(1f, tween(GlowTiming.PING_MS, easing = FastOutSlowInEasing))
+        } else {
+            progress.snapTo(1f)
+        }
+    }
     val ink = BrandInk
-    val glowShape = shape ?: cardShape()
+    val waveShape = shape ?: cardShape()
     Modifier.drawBehind {
-        // Read in the draw phase: the glow redraws each frame without recomposing the card.
-        val p = pulse
+        // Read in the draw phase: the wave redraws each frame without recomposing the card.
+        val p = progress.value
+        if (p >= 1f) return@drawBehind
+        val layerAlpha = GlowTiming.alpha(p) / GlowTiming.LAYERS
         val spread = GlowTiming.spreadDp(p).dp.toPx()
-        val outline = glowShape.createOutline(
-            Size(size.width + 2 * spread, size.height + 2 * spread),
-            layoutDirection,
-            this
-        )
-        translate(-spread, -spread) {
-            drawOutline(outline, ink.copy(alpha = GlowTiming.alpha(p)))
+        for (k in 1..GlowTiming.LAYERS) {
+            val grow = spread * k / GlowTiming.LAYERS
+            val outline = waveShape.createOutline(
+                Size(size.width + 2 * grow, size.height + 2 * grow),
+                layoutDirection,
+                this
+            )
+            translate(-grow, -grow) {
+                drawOutline(outline, ink.copy(alpha = layerAlpha))
+            }
         }
     }
 }
@@ -108,7 +113,7 @@ fun Modifier.enterStagger(index: Int): Modifier = composed {
 
 /**
  * The item that has focus grows a touch and settles back when focus moves on, so focus can be seen travelling,
- * and it breathes a soft halo (see [focusGlow]). Colour already fades (see [focusColor]); this adds size and
+ * and a soft ping leaves it as focus lands (see [focusGlow]). Colour already fades (see [focusColor]); this adds size and
  * life. Off with Reduce motion.
  */
 fun Modifier.focusLift(focused: Boolean, amount: Float = 1.02f): Modifier = composed {
