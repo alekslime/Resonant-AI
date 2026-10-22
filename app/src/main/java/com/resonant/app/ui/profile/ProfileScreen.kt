@@ -4,6 +4,7 @@ import com.resonant.app.ui.components.focusLift
 import com.resonant.app.ui.components.enterStagger
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
@@ -299,9 +300,13 @@ private fun Avatar(name: String?) {
         return
     }
     var shown by remember(name) { mutableIntStateOf(if (ActiveMotion.reduce) cells.size else 0) }
+    // After the last cell has landed, one light travels along the name from left to right, then is gone.
+    val sweep = remember(name) { Animatable(0f) }
     LaunchedEffect(name) {
         if (ActiveMotion.reduce) { shown = cells.size; return@LaunchedEffect }
         while (shown < cells.size) { delay(AvatarMotion.CELL_GAP_MS); shown += 1 }
+        delay(AvatarMotion.CELL_MS.toLong())
+        sweep.animateTo(1f, tween(ProfileMotion.SWEEP_MS, easing = LinearEasing))
     }
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         // One cell per letter. They shrink, gaps included, until the whole name fits the width.
@@ -317,14 +322,16 @@ private fun Avatar(name: String?) {
                     animationSpec = tween(ActiveMotion.ms(AvatarMotion.CELL_MS)),
                     label = "avatarCell"
                 )
-                BrailleCell(dots, progress, cellW)
+                // The light is spent at 1f; shine() keeps a faint tail on the last cell, so cut it there.
+                val shine = if (sweep.value >= 1f) 0f else ProfileMotion.shine(sweep.value, i, cells.size)
+                BrailleCell(dots, progress, cellW, shine)
             }
         }
     }
 }
 
 @Composable
-private fun BrailleCell(raised: List<Int>, progress: Float, width: androidx.compose.ui.unit.Dp) {
+private fun BrailleCell(raised: List<Int>, progress: Float, width: androidx.compose.ui.unit.Dp, shine: Float) {
     val ink = BrandInk
     Canvas(Modifier.size(width = width, height = width * 2)) {
         val r = size.width * 0.17f
@@ -337,8 +344,8 @@ private fun BrailleCell(raised: List<Int>, progress: Float, width: androidx.comp
             // Raised dots light one after another and swell a little as they arrive; the rest just fade in.
             val local = AvatarMotion.dotProgress(progress, dot)
             drawCircle(
-                color = ink.copy(alpha = if (on) local else AvatarMotion.restingAlpha(progress)),
-                radius = if (on) r * AvatarMotion.swell(local) else r,
+                color = ink.copy(alpha = if (on) local else AvatarMotion.restingAlpha(progress) + 0.45f * shine),
+                radius = (if (on) r * AvatarMotion.swell(local) else r) * (1f + 0.18f * shine),
                 center = Offset(colX[col], rowY[row])
             )
         }
