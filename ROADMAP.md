@@ -98,6 +98,9 @@ agent to join instead of falling back.
 - [-] Make `LiveKitManager` lazy: skipped, the phone is the only target and the gain is a little startup time. Revisit only if the x86 emulator is needed (one line in `ResonantApp`: `by lazy`)
 - [x] Firewall: `scripts/allow-lan.sh` opens 8787 and 11434 to every private range (10.x, 172.16-31.x, 192.168.x), called from `setup-linux.sh`; `dev.sh` warns when the PC address changed or `local.properties` holds another one. Script logic tested here against a stand-in `ufw`; not run on a real firewall
 - [x] Spoken Live connection errors: `LiveErrors` (pure, tested) tells timeout, refused, unknown host, wrong token key, bad token address, token server crash, no internet and a refused token apart; `LiveKitState.Error` carries what is said and the short status text. Pure part tested on the JVM; not yet checked on the phone by breaking each thing on purpose
+- [x] Resonance ping: when focus lands on a card, a soft filled wave in the theme's ink leaves its edge and fades in about 0.5 s, once (`focusGlow` in `ui/components/Enter.kt`, via `focusLift`; `GlowTiming` tested). Off with Reduce motion. Not tested on the phone yet
+- [x] Profile: the avatar shows every letter and shrinks to fit (`BrailleAvatar.cellWidthDp`); each cell's dots light one after another, then one light travels along the name (`AvatarMotion`, `ProfileMotion.shine`); the numbers count up once (`CountUp`). Off with Reduce motion. Not tested on the phone yet
+- [x] Ambient background: two very faint patches of ink drift across `ResonantSurface` over 2.5 to 3.5 minutes (`AmbientMotion`). Off with Reduce motion. Not tested on the phone yet
 
 ## Design pass brief (from the user, 2026-10-11)
 - One cohesive design system: consistent spacing, type, buttons, cards, icons, motion.
