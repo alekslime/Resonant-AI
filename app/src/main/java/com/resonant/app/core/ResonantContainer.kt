@@ -33,6 +33,9 @@ class ResonantContainer(context: Context) {
         ActivePalette.current = Palettes.byId(prefs.colorTheme)
         ActiveFont.current = AppFonts.byId(prefs.font)
         ActiveSpacing.current = TextSpacings.byId(prefs.textSpacing)
+        // Setting them above marks them as chosen; only a saved pick counts. With none, the theme's own type applies.
+        ActiveFont.chosen = prefs.font != null
+        ActiveSpacing.chosen = prefs.textSpacing != null
         ActiveMotion.userReduced = prefs.reduceMotion
         ActiveTextScale.current = prefs.textScale
         ActiveMotion.systemReduced =

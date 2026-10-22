@@ -78,7 +78,18 @@ object AppFonts {
 
 /** The font in use. A snapshot state, like ActivePalette, so text redraws when it changes. */
 object ActiveFont {
-    var current: AppFont by mutableStateOf(AppFonts.METROPOLIS)
+    private var picked: AppFont by mutableStateOf(AppFonts.METROPOLIS)
+
+    /** True once the person has picked a font, now or in an earlier session. Until then the theme's own font is used. */
+    var chosen: Boolean by mutableStateOf(false)
+
+    /** The font in use: the person's pick if there is one, otherwise the one the theme starts with. */
+    var current: AppFont
+        get() = if (chosen) picked else AppFonts.byId(ThemeTypeDefaults.forTheme(ActivePalette.current.id).fontId)
+        set(value) {
+            picked = value
+            chosen = true
+        }
 }
 
 /**

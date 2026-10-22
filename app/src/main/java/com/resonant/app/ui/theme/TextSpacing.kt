@@ -32,7 +32,18 @@ object TextSpacings {
 
 /** The spacing in use. A snapshot state, like ActivePalette. */
 object ActiveSpacing {
-    var current: TextSpacing by mutableStateOf(TextSpacings.NORMAL)
+    private var picked: TextSpacing by mutableStateOf(TextSpacings.NORMAL)
+
+    /** True once the person has picked a spacing, now or in an earlier session. Until then the theme's own is used. */
+    var chosen: Boolean by mutableStateOf(false)
+
+    /** The spacing in use: the person's pick if there is one, otherwise the one the theme starts with. */
+    var current: TextSpacing
+        get() = if (chosen) picked else TextSpacings.byId(ThemeTypeDefaults.forTheme(ActivePalette.current.id).spacingId)
+        set(value) {
+            picked = value
+            chosen = true
+        }
 
     val letterSpacing: TextUnit get() = current.letterSpacingEm.em
 
