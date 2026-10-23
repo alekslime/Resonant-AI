@@ -27,6 +27,9 @@ internal object AvatarMotion {
     const val DOT_WINDOW = 0.5f
     const val SWELL = 0.4f
 
+    /** How long the light takes to travel along the whole name once, after the last cell has landed. */
+    const val SWEEP_MS = 1400
+
     /** 0..1 progress of dot number [dot] (1..6) when its cell is [cellProgress] of the way in. */
     fun dotProgress(cellProgress: Float, dot: Int): Float =
         ((cellProgress - (dot - 1) * DOT_STAGGER) / DOT_WINDOW).coerceIn(0f, 1f)
@@ -36,4 +39,14 @@ internal object AvatarMotion {
 
     /** The faint resting dots of a cell fade in quickly at the start. */
     fun restingAlpha(cellProgress: Float): Float = 0.15f * (cellProgress * 4f).coerceIn(0f, 1f)
+
+    /**
+     * How lit cell [index] of [count] is while a light travels left to right once. [sweep] runs 0..1. 0 when the
+     * light is elsewhere, 1 right under it, so the glow rolls along the name and is gone at the end.
+     */
+    fun shine(sweep: Float, index: Int, count: Int): Float {
+        if (count <= 0) return 0f
+        val x = sweep.coerceIn(0f, 1f) * (count + 1) - 0.5f
+        return (1f - kotlin.math.abs(x - index) / 1.6f).coerceIn(0f, 1f)
+    }
 }

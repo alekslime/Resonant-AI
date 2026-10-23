@@ -327,7 +327,7 @@ private fun Avatar(name: String?) {
         if (ActiveMotion.reduce) { shown = cells.size; return@LaunchedEffect }
         while (shown < cells.size) { delay(AvatarMotion.CELL_GAP_MS); shown += 1 }
         delay(AvatarMotion.CELL_MS.toLong())
-        sweep.animateTo(1f, tween(ProfileMotion.SWEEP_MS, easing = LinearEasing))
+        sweep.animateTo(1f, tween(AvatarMotion.SWEEP_MS, easing = LinearEasing))
     }
     BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         // One cell per letter. They shrink, gaps included, until the whole name fits the width.
@@ -344,7 +344,7 @@ private fun Avatar(name: String?) {
                     label = "avatarCell"
                 )
                 // The light is spent at 1f; shine() keeps a faint tail on the last cell, so cut it there.
-                val shine = if (sweep.value >= 1f) 0f else ProfileMotion.shine(sweep.value, i, cells.size)
+                val shine = if (sweep.value >= 1f) 0f else AvatarMotion.shine(sweep.value, i, cells.size)
                 BrailleCell(dots, progress, cellW, shine)
             }
         }

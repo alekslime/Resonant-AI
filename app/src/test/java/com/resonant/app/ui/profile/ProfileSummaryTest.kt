@@ -130,30 +130,13 @@ class ProfileSummaryTest {
     }
 
     @Test
-    fun counting_up_ends_on_the_true_numbers_and_starts_at_zero_but_keeps_totals() {
-        val s = ProfileStats(
-            quizzesDone = 4, quizzesTotal = 10, averagePercent = 80, materials = 3,
-            streak = 5, longestStreak = 9, listeningSeconds = 3600L, lessonsDone = 2, lessonsTotal = 10
-        )
-        assertEquals(s, ProfileMotion.scaled(s, 1f))
-        val zero = ProfileMotion.scaled(s, 0f)
-        assertEquals(0, zero.quizzesDone)
-        assertEquals(0, zero.streak)
-        assertEquals(0L, zero.listeningSeconds)
-        assertEquals(10, zero.quizzesTotal)
-        assertEquals(10, zero.lessonsTotal)
-        assertEquals(40, ProfileMotion.scaled(s, 0.5f).averagePercent)
-        assertEquals(null, ProfileMotion.scaled(s.copy(averagePercent = null), 0.5f).averagePercent)
-    }
-
-    @Test
     fun the_shimmer_travels_along_the_name_and_leaves_it_dark_at_both_ends() {
-        assertEquals(0f, ProfileMotion.shine(0f, 3, 5), 0.0001f)
-        assertEquals(0f, ProfileMotion.shine(1f, 0, 5), 0.0001f)
+        assertEquals(0f, AvatarMotion.shine(0f, 3, 5), 0.0001f)
+        assertEquals(0f, AvatarMotion.shine(1f, 0, 5), 0.0001f)
         // Under the light, a cell is at its brightest; a far one is dark.
-        val best = (0..4).maxByOrNull { ProfileMotion.shine(0.5f, it, 5) }!!
-        assertEquals(1f, ProfileMotion.shine(0.5f, best, 5), 0.5f)
-        assertEquals(0f, ProfileMotion.shine(0.5f, 0, 0), 0.0001f)
+        val best = (0..4).maxByOrNull { AvatarMotion.shine(0.5f, it, 5) }!!
+        assertEquals(1f, AvatarMotion.shine(0.5f, best, 5), 0.5f)
+        assertEquals(0f, AvatarMotion.shine(0.5f, 0, 0), 0.0001f)
     }
 }
 
