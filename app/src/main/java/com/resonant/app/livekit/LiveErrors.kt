@@ -24,7 +24,12 @@ object LiveErrors {
     const val GENERIC_SPOKEN = "Couldn't connect to Resonant Live. Check your PC, then go back and open Chat again."
     const val GENERIC_SHORT = "Connection error"
 
-    fun describe(phase: ConnectPhase, error: Throwable): LiveError {
+    /**
+     * [hosted] is a build where the server is run for the person (`app.hosted` in local.properties): they have no PC,
+     * address or key to fix, so the messages are shorter and never blame their PC.
+     */
+    fun describe(phase: ConnectPhase, error: Throwable, hosted: Boolean = false): LiveError {
+        if (hosted) return describeHosted(phase, error)
         val causes = generateSequence(error) { it.cause }.take(6).toList()
         val token = causes.filterIsInstance<TokenServerException>().firstOrNull()
         val timedOut = causes.any { it is SocketTimeoutException || it is NoRouteToHostException }
@@ -66,6 +71,44 @@ object LiveErrors {
         }
     }
 
+    const val HOSTED_GENERIC_SPOKEN =
+        "Couldn't connect to Resonant. Check your internet connection, then go back and open Chat again."
+
+    /** What a person hears when the server is run for them: only things they can actually do something about. */
+    private fun describeHosted(phase: ConnectPhase, error: Throwable): LiveError {
+        val causes = generateSequence(error) { it.cause }.take(6).toList()
+        val token = causes.filterIsInstance<TokenServerException>().firstOrNull()
+        val network = causes.any {
+            it is SocketTimeoutException || it is NoRouteToHostException || it is ConnectException || it is UnknownHostException
+        }
+        return when {
+            phase == ConnectPhase.TOKEN && token != null -> when {
+                token.code == 401 || token.code == 403 -> LiveError(
+                    "Resonant couldn't verify this copy of the app. Update the app from where you got it, then try again.",
+                    "Not allowed"
+                )
+                token.code == 404 -> LiveError(
+                    "Resonant has moved. Update the app from where you got it, then try again.",
+                    "Update needed"
+                )
+                token.code >= 500 -> LiveError(
+                    "Resonant has a problem on its side right now. Please try again in a few minutes.",
+                    "Server problem"
+                )
+                else -> LiveError(HOSTED_GENERIC_SPOKEN, GENERIC_SHORT)
+            }
+            network -> LiveError(
+                "Couldn't reach Resonant. Check that this phone is online, then go back and open Chat again.",
+                "No internet"
+            )
+            phase == ConnectPhase.ROOM && refusedByService(causes) -> LiveError(
+                "The Live service refused the connection. Please try again in a few minutes.",
+                "Live service refused"
+            )
+            else -> LiveError(HOSTED_GENERIC_SPOKEN, GENERIC_SHORT)
+        }
+    }
+
     private fun tokenServerAnswer(code: Int): LiveError = when {
         code == 401 || code == 403 -> LiveError(
             "Your PC refused the token key. The key on the phone and the key on the PC don't match. " +
@@ -88,4 +131,22 @@ object LiveErrors {
         val m = it.message?.lowercase() ?: ""
         "401" in m || "unauthorized" in m || "invalid token" in m || "expired" in m || "not allowed" in m
     }
+}
+
+/**
+ * The other spoken and shown lines that name the PC. For a hosted build they talk about Resonant instead, since
+ * the person has no PC to check. Plain strings, so the wording is unit tested.
+ */
+object LiveWording {
+    fun agentMissingSpoken(hosted: Boolean) =
+        if (hosted) "Resonant isn't responding right now. Please try again in a few minutes."
+        else "Your PC isn't responding. Check that the Resonant agent is running on your computer."
+
+    fun lostSpoken(hosted: Boolean) = if (hosted) "Lost connection to Resonant." else "Lost connection to your PC."
+
+    fun notConnectedSpoken(hosted: Boolean) = if (hosted) "Resonant isn't connected." else "Your PC isn't connected."
+
+    fun statusAgentMissing(hosted: Boolean) = if (hosted) "Live · Not responding" else "Live · PC not responding"
+
+    fun statusConnecting(hosted: Boolean) = if (hosted) "Live · Connecting…" else "Live · Connecting to your PC…"
 }
