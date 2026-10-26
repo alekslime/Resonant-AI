@@ -4,32 +4,23 @@ import com.resonant.app.ui.theme.CappedTextScale
 import com.resonant.app.ui.theme.cardShape
 import com.resonant.app.ui.theme.cardBorder
 import com.resonant.app.ui.theme.ResonantCard
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import kotlin.math.roundToInt
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,7 +36,7 @@ import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantButton
 import com.resonant.app.ui.components.ResonantScaffold
-import com.resonant.app.ui.theme.ActiveMotion
+import com.resonant.app.ui.components.enterStagger
 import com.resonant.app.ui.theme.BrandInk
 import com.resonant.app.ui.theme.MetropolisBlack
 
@@ -84,20 +75,21 @@ fun QuizResultsScreen(
     }
 
     val percent = if (total > 0) correct * 100 / total else 0
+
+    // A perfect score gets a second, brighter tap just after the first. Nothing else changes, and
+    // the spoken result is never delayed.
+    LaunchedEffect(correct, total) {
+        if (total > 0 && percent == 100) {
+            delay(650)
+            haptics.play(HapticPattern.CORRECT)
+        }
+    }
     val resultLabel = when {
         percent == 100 -> "Perfect score!"
         percent >= 80 -> "Great work."
         percent >= 60 -> "Good effort."
         else -> "Keep practicing."
     }
-    val fraction by animateFloatAsState(
-        targetValue = if (total > 0) correct.toFloat() / total else 0f,
-        animationSpec = if (ActiveMotion.reduce) snap() else tween(900, delayMillis = 200, easing = FastOutSlowInEasing),
-        label = "score"
-    )
-    // The number counts up in step with the bar, so both land together.
-    val shownCorrect = if (total > 0) (fraction * total).roundToInt().coerceIn(0, total) else 0
-
     fun retry() {
         haptics.play(HapticPattern.SELECT)
         audio.announce("Retrying $missedCount missed question${if (missedCount == 1) "" else "s"}.")
@@ -164,6 +156,7 @@ fun QuizResultsScreen(
                 // The score sits in one of the white cards used on every other screen.
                 Column(
                     Modifier
+                        .enterStagger(0)
                         .fillMaxWidth()
                         .clip(cardShape())
                         .background(ResonantCard)
@@ -174,7 +167,7 @@ fun QuizResultsScreen(
                     // The big score keeps its size: at a larger text size it would no longer fit the card.
                     CappedTextScale(1f) {
                         Text(
-                            text = "$shownCorrect / $total",
+                            text = "$correct / $total",
                             style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.Black, fontSize = 72.sp, lineHeight = 78.sp),
                             color = BrandInk,
                             textAlign = TextAlign.Center,
@@ -190,25 +183,6 @@ fun QuizResultsScreen(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp)
                     )
-
-                    // Score bar: how much of the quiz was right, filling in once on arrival.
-                    Box(
-                        Modifier
-                            .padding(top = 28.dp)
-                            .fillMaxWidth()
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(BrandInk.copy(alpha = .15f))
-                            .clearAndSetSemantics { }
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(fraction)
-                                .height(14.dp)
-                                .clip(RoundedCornerShape(percent = 50))
-                                .background(BrandInk)
-                        )
-                    }
                 }
 
                 Text(
@@ -219,7 +193,7 @@ fun QuizResultsScreen(
                     style = TextStyle(fontFamily = MetropolisBlack, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp),
                     color = BrandInk,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 24.dp)
+                    modifier = Modifier.enterStagger(2).padding(top = 24.dp)
                 )
             }
         }
