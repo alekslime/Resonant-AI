@@ -1,7 +1,7 @@
 package com.resonant.app.content
 
 /**
- * Six more built-in lessons and eight more quiz sets. They are written with two small helpers so each
+ * Twelve more built-in lessons and fourteen more quiz sets, in two batches. They are written with two small helpers so each
  * section is one line of metadata plus its sentences. Everything is read aloud, so: short sentences,
  * no symbols, no digits that read badly.
  *
@@ -214,8 +214,191 @@ object MoreContent {
         )
     )
 
+    // ---- second batch
+
+    val percentagesLesson = Lesson(
+        id = "lesson_percentages",
+        title = "Introduction to Percentages",
+        sections = listOf(
+            section("s1", "What is a percentage?", introWords,
+                "A percentage is a fraction out of one hundred.",
+                "The word percent means for each hundred, and it is written with the percent sign.",
+                "Fifty percent means fifty out of one hundred, which is the same as one half."),
+            section("s2", "Percentages, fractions, and decimals",
+                listOf("fraction", "fractions", "decimal", "decimals", "convert", "converting", "change", "equivalent", "point"),
+                "To turn a percentage into a decimal, divide it by one hundred. Twenty five percent is zero point two five.",
+                "To turn a percentage into a fraction, put it over one hundred and simplify. Twenty five percent is twenty five over one hundred, which is one quarter.",
+                "To go the other way, multiply by one hundred."),
+            section("s3", "Finding a percentage of a number",
+                listOf("find", "calculate", "calculation", "compute", "amount", "ten", "half", "quarter", "multiply"),
+                "To find a percentage of a number, turn the percentage into a decimal and multiply.",
+                "Ten percent of eighty is zero point one times eighty, which is eight.",
+                "A shortcut: ten percent is the number divided by ten, and fifty percent is the number divided by two."),
+            section("s4", "Discounts and increases",
+                listOf("discount", "discounts", "sale", "price", "prices", "increase", "decrease", "tax", "tip", "save", "cheaper"),
+                "A discount takes a percentage off a price. Twenty percent off forty is forty minus eight, which is thirty two.",
+                "An increase adds a percentage on top, such as a tip or a tax.",
+                "The percentage always applies to the starting amount, so the change is easy to work out."),
+            section("s5", "Key takeaway", takeawayWords,
+                "A percentage is a number out of one hundred.",
+                "Divide by one hundred for a decimal, and multiply by it to find a share of a number.",
+                "Discounts and increases are percentages of the starting price.")
+        )
+    )
+
+    val ancientEgyptLesson = Lesson(
+        id = "lesson_ancient_egypt",
+        title = "Introduction to Ancient Egypt",
+        sections = listOf(
+            section("s1", "Who were the ancient Egyptians?", introWords + listOf("people", "civilization", "civilisation"),
+                "Ancient Egypt was a civilization that grew up along the river Nile in northeast Africa, more than five thousand years ago.",
+                "It lasted for about three thousand years, which is longer than most countries have existed.",
+                "Its people built cities, farmed, wrote, and made great monuments."),
+            section("s2", "The Nile",
+                listOf("nile", "river", "flood", "floods", "farming", "farm", "farmers", "crops", "soil", "desert", "silt"),
+                "Almost no rain falls in Egypt, so life depended on the Nile.",
+                "Each year the river flooded and left behind rich, dark soil, which was perfect for growing crops.",
+                "The river was also the main road, with boats carrying people and goods up and down it."),
+            section("s3", "Pharaohs and pyramids",
+                listOf("pharaoh", "pharaohs", "king", "ruler", "pyramid", "pyramids", "giza", "tomb", "tombs", "mummy", "mummies", "afterlife"),
+                "The ruler of Egypt was called the pharaoh, and people believed he was both a king and a god.",
+                "Pharaohs were buried in huge tombs. The Great Pyramid at Giza was built as a tomb about forty five hundred years ago.",
+                "Egyptians believed in an afterlife, so they preserved bodies as mummies and filled tombs with things the dead might need."),
+            section("s4", "Writing",
+                listOf("write", "writing", "hieroglyph", "hieroglyphs", "hieroglyphics", "papyrus", "scribe", "scribes", "rosetta", "stone", "symbols"),
+                "Egyptians wrote using pictures and symbols called hieroglyphs.",
+                "Scribes wrote on papyrus, a paper made from a river plant, and carved hieroglyphs into stone.",
+                "For centuries no one could read them, until the Rosetta Stone, which had the same text in three scripts, helped scholars decode them."),
+            section("s5", "Key takeaway", takeawayWords,
+                "Ancient Egypt grew along the Nile, which gave it water, soil, and a way to travel.",
+                "Its pharaohs built pyramids as tombs, and its scribes wrote in hieroglyphs.",
+                "Many of its buildings and writings survive, so we know a great deal about it today.")
+        )
+    )
+
+    val grammarLesson = Lesson(
+        id = "lesson_parts_of_speech",
+        title = "Introduction to Parts of Speech",
+        sections = listOf(
+            section("s1", "What are parts of speech?", introWords + listOf("categories", "kinds", "types"),
+                "Parts of speech are the groups that words belong to, based on the job they do in a sentence.",
+                "The main ones are nouns, verbs, adjectives, adverbs, pronouns, prepositions, and conjunctions.",
+                "Knowing them helps you build clear sentences and understand tricky ones."),
+            section("s2", "Nouns and pronouns",
+                listOf("noun", "nouns", "pronoun", "pronouns", "person", "place", "thing", "name", "names", "she", "they", "replace"),
+                "A noun names a person, a place, a thing, or an idea. Teacher, Cairo, table, and freedom are all nouns.",
+                "A pronoun takes the place of a noun, so you do not have to repeat it. She, they, and it are pronouns.",
+                "Instead of saying Maria likes Maria's book, you say Maria likes her book."),
+            section("s3", "Verbs",
+                listOf("verb", "verbs", "action", "actions", "doing", "tense", "past", "present", "future", "state"),
+                "A verb shows an action or a state. Run, think, and be are verbs.",
+                "Verbs change form to show time. Walk, walked, and will walk are the present, the past, and the future.",
+                "Every complete sentence needs at least one verb."),
+            section("s4", "Adjectives and adverbs",
+                listOf("adjective", "adjectives", "adverb", "adverbs", "describe", "describes", "describing", "modify", "quickly", "ly"),
+                "An adjective describes a noun. In the sentence a tall tree, tall is the adjective.",
+                "An adverb describes a verb, an adjective, or another adverb. It often tells how, when, or where. In she ran quickly, quickly is the adverb.",
+                "Many adverbs end in l y, but not all of them do."),
+            section("s5", "Key takeaway", takeawayWords,
+                "Words are grouped by the job they do.",
+                "Nouns name things, pronouns replace them, and verbs show action.",
+                "Adjectives describe nouns, and adverbs describe how, when, or where something happens.")
+        )
+    )
+
+    val continentsLesson = Lesson(
+        id = "lesson_continents_oceans",
+        title = "Introduction to Continents and Oceans",
+        sections = listOf(
+            section("s1", "What are continents and oceans?", introWords,
+                "A continent is one of Earth's seven large areas of land. An ocean is one of its large areas of salt water.",
+                "About seventy percent of the planet's surface is covered by water, and about thirty percent is land.",
+                "The oceans are all connected, so you could sail from any one to any other."),
+            section("s2", "The seven continents",
+                listOf("continent", "continents", "africa", "asia", "europe", "antarctica", "australia", "oceania", "north", "south", "america", "seven", "list", "names"),
+                "The seven continents are Africa, Antarctica, Asia, Australia, Europe, North America, and South America.",
+                "Asia is the largest by area and by population. Australia is the smallest.",
+                "Antarctica is almost entirely covered in ice, and no one lives there permanently."),
+            section("s3", "The five oceans",
+                listOf("ocean", "oceans", "pacific", "atlantic", "indian", "arctic", "southern", "five", "sea", "seas", "salt", "deepest"),
+                "The five oceans are the Pacific, the Atlantic, the Indian, the Southern, and the Arctic.",
+                "The Pacific is the largest and the deepest. It is bigger than all of the land on Earth put together.",
+                "The Arctic is the smallest, and much of it is covered with floating ice."),
+            section("s4", "Hemispheres and the equator",
+                listOf("equator", "hemisphere", "hemispheres", "northern", "southern", "line", "latitude", "longitude", "prime", "meridian", "hot", "tropics"),
+                "The equator is an imaginary line around the middle of the Earth. It divides the planet into the northern and southern hemispheres.",
+                "Places near the equator are usually hot all year, and places near the poles are cold.",
+                "The prime meridian is another imaginary line, running from the north pole to the south pole, and it divides the east from the west."),
+            section("s5", "Key takeaway", takeawayWords,
+                "Earth has seven continents and five oceans.",
+                "Most of the surface is water, and the Pacific is the biggest ocean.",
+                "The equator splits the planet into north and south, and the prime meridian into east and west.")
+        )
+    )
+
+    val newtonLesson = Lesson(
+        id = "lesson_newton",
+        title = "Introduction to Newton's Laws of Motion",
+        sections = listOf(
+            section("s1", "What are Newton's laws?", introWords + listOf("laws", "newton", "isaac", "force", "forces"),
+                "Newton's laws of motion are three rules that explain how forces make things move, or stop them from moving.",
+                "A force is a push or a pull. It is measured in units called newtons, named after Isaac Newton.",
+                "They describe everything from a rolling ball to a rocket."),
+            section("s2", "The first law: inertia",
+                listOf("first", "inertia", "rest", "stay", "keep", "moving", "balanced", "seatbelt", "lazy", "one"),
+                "The first law says that an object at rest stays at rest, and an object moving stays moving in a straight line, unless a force acts on it.",
+                "This tendency to keep doing what it is doing is called inertia.",
+                "It is why you lurch forward when a car brakes suddenly, and why seatbelts matter."),
+            section("s3", "The second law: force and mass",
+                listOf("second", "mass", "heavy", "heavier", "acceleration", "accelerate", "faster", "push", "pushing", "two"),
+                "The second law says that a bigger force causes a bigger acceleration, and a bigger mass needs more force for the same acceleration.",
+                "Written as an equation, force equals mass times acceleration.",
+                "That is why it is harder to push a full shopping cart than an empty one."),
+            section("s4", "The third law: action and reaction",
+                listOf("third", "action", "reaction", "equal", "opposite", "pair", "pairs", "rocket", "recoil", "three"),
+                "The third law says that for every action there is an equal and opposite reaction.",
+                "When you push on a wall, the wall pushes back on you with the same force.",
+                "A rocket works this way. It pushes hot gas down, and the gas pushes the rocket up."),
+            section("s5", "Key takeaway", takeawayWords,
+                "Things keep doing what they are doing until a force changes it.",
+                "A bigger force or a smaller mass means more acceleration.",
+                "Forces always come in pairs: every push has an equal push back.")
+        )
+    )
+
+    val digestionLesson = Lesson(
+        id = "lesson_digestion",
+        title = "Introduction to Digestion",
+        sections = listOf(
+            section("s1", "What is digestion?", introWords,
+                "Digestion is how your body breaks food down into tiny pieces it can use.",
+                "Those pieces pass into your blood, which carries them to the cells that need energy and building materials.",
+                "Whatever the body cannot use is removed as waste."),
+            section("s2", "The mouth and the stomach",
+                listOf("mouth", "teeth", "chew", "chewing", "saliva", "swallow", "stomach", "acid", "churn", "churns", "enzyme", "enzymes"),
+                "Digestion starts in the mouth. Teeth chew food into small pieces, and saliva begins to break it down.",
+                "When you swallow, food travels down a tube called the esophagus to the stomach.",
+                "The stomach churns the food with acid and enzymes until it becomes a thick liquid."),
+            section("s3", "The small intestine",
+                listOf("small", "intestine", "intestines", "absorb", "absorbs", "absorption", "nutrients", "villi", "long", "bile", "liver"),
+                "The small intestine is a long, coiled tube where most digestion finishes.",
+                "Its walls are covered in tiny folds called villi, which absorb nutrients into the blood.",
+                "The liver and pancreas add juices that help break down fats, proteins, and sugars."),
+            section("s4", "The large intestine",
+                listOf("large", "intestine", "colon", "water", "waste", "fiber", "fibre", "bacteria", "rectum", "leftover"),
+                "What is left goes into the large intestine, which soaks up water.",
+                "Helpful bacteria live here and make some vitamins.",
+                "The remaining waste is stored, then leaves the body."),
+            section("s5", "Key takeaway", takeawayWords,
+                "Food is broken down in the mouth, stomach, and small intestine.",
+                "Nutrients pass into the blood in the small intestine, and the large intestine takes back water.",
+                "The whole journey takes about one to two days.")
+        )
+    )
+
     val all: List<Lesson> = listOf(
-        waterCycleLesson, fractionsLesson, sortingLesson, solarSystemLesson, soundLesson, heartLesson
+        waterCycleLesson, fractionsLesson, sortingLesson, solarSystemLesson, soundLesson, heartLesson,
+        percentagesLesson, ancientEgyptLesson, grammarLesson, continentsLesson, newtonLesson, digestionLesson
     )
 
     // ------------------------------------------------------------------ quizzes
@@ -398,8 +581,149 @@ object MoreContent {
         )
     )
 
+    // ---- second batch of quizzes
+
+    val percentagesQuiz = QuizSet(
+        id = "quiz_percentages",
+        title = "Percentages",
+        category = "Math",
+        questions = listOf(
+            q("pc_q1", "What does percent mean?", 2,
+                "Percent means for each hundred. A percentage is a fraction out of one hundred.",
+                "Out of ten", "Out of one thousand", "Out of one hundred", "Out of fifty"),
+            q("pc_q2", "What is fifty percent as a fraction?", 0,
+                "Fifty out of one hundred simplifies to one half.",
+                "One half", "One quarter", "One fifth", "One tenth"),
+            q("pc_q3", "What is ten percent of eighty?", 1,
+                "Ten percent is the number divided by ten, so eighty divided by ten is eight.",
+                "Ten", "Eight", "Eighteen", "Eighty"),
+            q("pc_q4", "How do you turn twenty five percent into a decimal?", 3,
+                "Divide by one hundred. Twenty five divided by one hundred is zero point two five.",
+                "Multiply by one hundred", "Add one hundred", "Subtract it from one", "Divide by one hundred"),
+            q("pc_q5", "A price of forty is reduced by twenty percent. What is the new price?", 0,
+                "Twenty percent of forty is eight, and forty minus eight is thirty two.",
+                "Thirty two", "Twenty", "Thirty eight", "Eight")
+        )
+    )
+
+    val ancientEgyptQuiz = QuizSet(
+        id = "quiz_ancient_egypt",
+        title = "Ancient Egypt",
+        category = "History",
+        questions = listOf(
+            q("eg_q1", "Which river was the heart of ancient Egypt?", 1,
+                "The Nile gave Egypt water, rich soil, and a way to travel.",
+                "The Amazon", "The Nile", "The Tigris", "The Danube"),
+            q("eg_q2", "Why was the yearly flood of the Nile important?", 3,
+                "It left behind rich, dark soil, which was perfect for growing crops.",
+                "It stopped enemies", "It made the desert bigger", "It brought rain", "It left rich soil for farming"),
+            q("eg_q3", "What was the ruler of Egypt called?", 0,
+                "The pharaoh was seen as both a king and a god.",
+                "Pharaoh", "Emperor", "Sultan", "Consul"),
+            q("eg_q4", "What was the Great Pyramid at Giza built as?", 2,
+                "It was built about forty five hundred years ago as a tomb.",
+                "A temple for crops", "A fortress", "A tomb", "A library"),
+            q("eg_q5", "What helped scholars finally read hieroglyphs?", 1,
+                "The Rosetta Stone had the same text in three scripts, one of which scholars could already read.",
+                "A pharaoh's diary", "The Rosetta Stone", "A map of the Nile", "The Great Pyramid")
+        )
+    )
+
+    val partsOfSpeechQuiz = QuizSet(
+        id = "quiz_parts_of_speech",
+        title = "Parts of speech",
+        category = "English",
+        questions = listOf(
+            q("ps_q1", "What does a noun name?", 3,
+                "A noun names a person, a place, a thing, or an idea.",
+                "An action", "A quality only", "A time only", "A person, place, thing, or idea"),
+            q("ps_q2", "What does a pronoun do?", 0,
+                "It takes the place of a noun, so you do not have to repeat the noun.",
+                "Takes the place of a noun", "Shows an action", "Describes a verb", "Joins two sentences"),
+            q("ps_q3", "Which word is a verb in: the dog runs home?", 1,
+                "Runs shows an action, so it is the verb.",
+                "Dog", "Runs", "The", "Home"),
+            q("ps_q4", "What does an adjective describe?", 2,
+                "An adjective describes a noun, as in a tall tree.",
+                "A verb", "A sentence", "A noun", "A pronoun only"),
+            q("ps_q5", "Which word is the adverb in: she ran quickly?", 0,
+                "Quickly tells how she ran, so it describes the verb. That makes it an adverb.",
+                "Quickly", "She", "Ran", "There is no adverb")
+        )
+    )
+
+    val continentsQuiz = QuizSet(
+        id = "quiz_continents_oceans",
+        title = "Continents and oceans",
+        category = "Geography",
+        questions = listOf(
+            q("co_q1", "How many continents are there?", 2,
+                "Africa, Antarctica, Asia, Australia, Europe, North America, and South America make seven.",
+                "Five", "Six", "Seven", "Eight"),
+            q("co_q2", "Which is the largest continent?", 1,
+                "Asia is the largest by area and by population.",
+                "Africa", "Asia", "North America", "Europe"),
+            q("co_q3", "Which is the largest ocean?", 3,
+                "The Pacific is the largest and the deepest, bigger than all the land on Earth put together.",
+                "Atlantic", "Indian", "Arctic", "Pacific"),
+            q("co_q4", "What does the equator divide?", 0,
+                "The equator is an imaginary line that divides the Earth into the northern and southern hemispheres.",
+                "North from south", "East from west", "Land from sea", "Day from night"),
+            q("co_q5", "About how much of Earth's surface is covered by water?", 1,
+                "About seventy percent is water, and about thirty percent is land.",
+                "About half", "About seventy percent", "About ten percent", "About ninety percent")
+        )
+    )
+
+    val newtonQuiz = QuizSet(
+        id = "quiz_newton",
+        title = "Newton's laws of motion",
+        category = "Physics",
+        questions = listOf(
+            q("nw_q1", "What is a force?", 2,
+                "A force is a push or a pull, and it is measured in newtons.",
+                "A kind of speed", "A kind of energy", "A push or a pull", "A weight only"),
+            q("nw_q2", "What is inertia?", 0,
+                "Inertia is the tendency of an object to keep doing what it is doing, unless a force acts on it.",
+                "The tendency to keep doing what it is doing", "A strong push", "Friction with the air", "Falling to the ground"),
+            q("nw_q3", "Why is a full shopping cart harder to push than an empty one?", 1,
+                "A bigger mass needs a bigger force for the same acceleration. That is the second law.",
+                "It has less friction", "It has more mass", "It has less inertia", "The floor is steeper"),
+            q("nw_q4", "What does the third law say?", 3,
+                "For every action there is an equal and opposite reaction. Forces come in pairs.",
+                "Heavy things fall faster", "Objects slow down by themselves", "Force equals speed", "Every action has an equal and opposite reaction"),
+            q("nw_q5", "How does a rocket lift off?", 2,
+                "It pushes hot gas down, and the gas pushes the rocket up.",
+                "It pushes against the air", "It pushes against the ground", "It pushes gas down, and the gas pushes it up", "It is pulled up by the sun")
+        )
+    )
+
+    val digestionQuiz = QuizSet(
+        id = "quiz_digestion",
+        title = "Digestion",
+        category = "Biology",
+        questions = listOf(
+            q("dg_q1", "Where does digestion start?", 1,
+                "Teeth chew the food and saliva begins breaking it down.",
+                "The stomach", "The mouth", "The small intestine", "The liver"),
+            q("dg_q2", "What does the stomach do to food?", 0,
+                "It churns food with acid and enzymes until it becomes a thick liquid.",
+                "Churns it with acid and enzymes", "Absorbs the nutrients", "Soaks up the water", "Stores it for a week"),
+            q("dg_q3", "Where are most nutrients absorbed into the blood?", 2,
+                "The small intestine has tiny folds called villi that absorb nutrients.",
+                "The stomach", "The large intestine", "The small intestine", "The esophagus"),
+            q("dg_q4", "What does the large intestine mostly do?", 3,
+                "It soaks up water from what is left, and helpful bacteria live there.",
+                "Breaks down fat", "Makes saliva", "Makes acid", "Soaks up water from the leftovers"),
+            q("dg_q5", "What are villi?", 0,
+                "Villi are tiny folds in the walls of the small intestine that absorb nutrients.",
+                "Tiny folds that absorb nutrients", "Muscles in the stomach", "Glands in the mouth", "Bacteria in the colon")
+        )
+    )
+
     val allQuizzes: List<QuizSet> = listOf(
         binarySearchQuiz, plateTectonicsQuiz, waterCycleQuiz, fractionsQuiz,
-        sortingQuiz, solarSystemQuiz, soundQuiz, heartQuiz
+        sortingQuiz, solarSystemQuiz, soundQuiz, heartQuiz,
+        percentagesQuiz, ancientEgyptQuiz, partsOfSpeechQuiz, continentsQuiz, newtonQuiz, digestionQuiz
     )
 }

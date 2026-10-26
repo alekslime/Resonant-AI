@@ -28,6 +28,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import com.resonant.app.ui.components.enterStagger
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +87,28 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
     // Saved across opening Settings from the gear, so coming back resumes at the same sentence.
     var flatIndex by rememberSaveable { mutableStateOf(0) }
     var lastSectionIndex by rememberSaveable { mutableStateOf(0) }
+    // Set once the last sentence has been reached, and again once it has been read to the end.
+    var reachedEnd by rememberSaveable { mutableStateOf(false) }
+    var finished by rememberSaveable { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+
+    // The finished moment: once the last sentence has been read out (not just reached, and not
+    // while paused), a bright tap, one spoken line, and a card that rises in. Once per visit.
+    LaunchedEffect(reachedEnd) {
+        if (!reachedEnd || finished) return@LaunchedEffect
+        withTimeoutOrNull(6000) { audio.isSpeaking.first { it } }
+        audio.isSpeaking.first { !it }
+        if (audio.isPaused.value) return@LaunchedEffect
+        finished = true
+        haptics.play(HapticPattern.CORRECT)
+        audio.announce("Lesson finished. Long press the right edge to go back.")
+    }
+    LaunchedEffect(finished) {
+        if (finished) {
+            delay(120)
+            scroll.animateScrollTo(scroll.maxValue, tween(ActiveMotion.ms(450)))
+        }
+    }
 
     LaunchedEffect(lesson.id, autoAdvance) {
         debug.setScreen("Lesson: ${lesson.title}")
@@ -103,7 +129,10 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
         audio.index.collect { newIndex ->
             flatIndex = newIndex.coerceIn(0, (flat.size - 1).coerceAtLeast(0))
             // Reaching the last sentence is what counts as finishing the lesson.
-            if (flat.isNotEmpty() && flatIndex == flat.lastIndex) container.activity.lessonFinished(lesson.id)
+            if (flat.isNotEmpty() && flatIndex == flat.lastIndex) {
+                container.activity.lessonFinished(lesson.id)
+                reachedEnd = true
+            }
             val newSection = flat.getOrNull(flatIndex)?.sectionIndex ?: 0
             if (newSection != lastSectionIndex) {
                 haptics.play(HapticPattern.SECTION_CHANGE)
@@ -175,7 +204,7 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(scroll)
                         .padding(horizontal = 20.dp)
                 ) {
                     // Title card
@@ -241,6 +270,39 @@ fun LessonScreen(lesson: Lesson, onExit: () -> Unit, autoAdvance: Boolean = true
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    if (finished) {
+                        Spacer(Modifier.height(8.dp))
+                        Column(
+                            Modifier
+                                .enterStagger(0)
+                                .fillMaxWidth()
+                                .clip(cardShape())
+                                .background(ResonantCard)
+                                .cardBorder(cardShape())
+                                .padding(horizontal = 20.dp, vertical = 24.dp)
+                        ) {
+                            Text(
+                                text = "Lesson finished",
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 32.sp,
+                                lineHeight = ActiveSpacing.lineHeight(40f),
+                                letterSpacing = ActiveSpacing.letterSpacing,
+                                color = BrandInk
+                            )
+                            Text(
+                                text = "Long press the right edge to go back.",
+                                fontFamily = MetropolisBlack,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 20.sp,
+                                lineHeight = ActiveSpacing.lineHeight(28f),
+                                letterSpacing = ActiveSpacing.letterSpacing,
+                                color = BrandInk,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                     }
 
