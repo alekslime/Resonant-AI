@@ -97,6 +97,8 @@ android {
     }
 
     packaging {
+        // whisper_jni and llama_jni both use the shared C++ runtime; one copy is enough.
+        jniLibs { pickFirsts += "**/libc++_shared.so" }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
@@ -104,6 +106,8 @@ android {
 }
 
 dependencies {
+    // llama.cpp, for Chat answering on the phone alone (phoneai/PhoneAi.kt).
+    implementation(project(":llama"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.1")

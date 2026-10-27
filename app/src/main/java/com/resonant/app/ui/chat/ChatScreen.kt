@@ -90,6 +90,8 @@ import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.phoneai.PhoneAi
+import com.resonant.app.phoneai.PhoneAiSupport
 import com.resonant.app.network.OllamaConfig
 import com.resonant.app.network.checkOllamaConnection
 import com.resonant.app.network.isServerUnavailable
@@ -217,6 +219,7 @@ fun ChatScreen(
             alive = false
             speech.stopListening()
             speech.release() // frees the native Whisper model — nothing does this automatically
+            PhoneAi.unload() // and the on-phone language model, if it was ever loaded
             requestJob?.cancel()
             audio.endStream()
         }
@@ -235,7 +238,10 @@ fun ChatScreen(
                 if (late) {
                     agentMissing = true
                     haptics.play(HapticPattern.ERROR)
-                    audio.announce("Your PC isn't responding. Check that the Resonant agent is running on your computer.")
+                    audio.announce(
+                        "Your PC isn't responding. Check that the Resonant agent is running on your computer." +
+                            if (PhoneAi.isReady(context)) " Or tap the center to talk on this phone." else ""
+                    )
                     liveKitManager.agentPresent.first { it } // keep waiting; cancelled when we leave
                     agentMissing = false
                 }
@@ -264,7 +270,7 @@ fun ChatScreen(
             is LiveKitState.Error -> {
                 liveIntroDone = true
                 haptics.play(HapticPattern.ERROR)
-                audio.announce(state.spoken)
+                audio.announce(state.spoken + if (PhoneAi.isReady(context)) " Tap the center to talk on this phone." else "")
             }
             else -> {}
         }
@@ -468,6 +474,28 @@ fun ChatScreen(
                 OfflineAnswers.answer(userText, lessons).sentences.forEach { onSentence(it) }
             }
 
+            // No PC to answer: the language model on this phone, if it has been downloaded, then the
+            // lesson text. Only if the phone model has said nothing yet does the lesson text step in.
+            suspend fun answerOnPhone() {
+                if (PhoneAi.isReady(context)) {
+                    val phoneChunker = SentenceChunker()
+                    try {
+                        PhoneAi.chatStream(context, history).collect { delta ->
+                            phoneChunker.feed(delta).forEach { onSentence(it) }
+                        }
+                        phoneChunker.flush()?.let { onSentence(it) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w("ResonantChat", "On-phone AI failed", e)
+                        phoneChunker.flush()?.let { onSentence(it) }
+                        if (sentenceCount > 0) return // it had started answering: keep that, don't add lesson text after it
+                    }
+                    if (sentenceCount > 0) return
+                }
+                answerFromLessons()
+            }
+
             suspend fun serverCameBack(): Boolean {
                 val check = checkOllamaConnection(OllamaConfig.BASE_URL, OllamaConfig.MODEL, RECHECK_TIMEOUT_MS)
                 val usable = serverIsUsable(check)
@@ -480,9 +508,12 @@ fun ChatScreen(
                 // We already believe the server is down (the check made when Chat opened, or an
                 // earlier failure). Take a quick look instead of waiting out a long connect
                 // timeout for an answer that is probably not coming.
-                val skipNetwork = serverUp == false && !serverCameBack()
+                // No server was ever set up (the build default is the emulator's address): do not
+                // wait out a connect timeout for a PC that does not exist.
+                val noPc = PhoneAiSupport.noServerConfigured(OllamaConfig.BASE_URL) && PhoneAi.isReady(context)
+                val skipNetwork = noPc || (serverUp == false && !serverCameBack())
                 if (skipNetwork) {
-                    answerFromLessons()
+                    answerOnPhone()
                 } else {
                     try {
                         OllamaClient.chatStream(history).collect { delta ->
@@ -498,7 +529,7 @@ fun ChatScreen(
                         if (sentenceCount == 0 && isServerUnavailable(e) && requestId == myId) {
                             Log.w("ResonantChat", "AI server unavailable, answering from the lessons", e)
                             serverUp = false
-                            answerFromLessons()
+                            answerOnPhone()
                         } else {
                             throw e
                         }
@@ -780,8 +811,14 @@ fun ChatScreen(
         audio.announce("Hold the center to talk.")
     }
 
+    // No PC agent to talk to (it never joined, went away, or there is no internet for LiveKit):
+    // the phone listens itself with its own speech recognition and answers with its own AI.
+    fun phoneVoiceNow() = liveMode && (agentMissing || liveKitState is LiveKitState.Error)
+
     fun onAskTapped() {
-        if (liveMode) { if (holdToTalk) holdModeTapped() else toggleLiveMic(); return }
+        if (liveMode && !phoneVoiceNow()) { if (holdToTalk) holdModeTapped() else toggleLiveMic(); return }
+        // The live microphone and the phone's recognizer must not both want the mic.
+        if (liveMode && liveMicOn) scope.launch { liveKitManager.setMicrophoneEnabled(false) }
         // A tap while waiting for the model cancels the wait — otherwise the only
         // way out of a slow or hung request would be sitting through the timeout.
         if (thinking) {

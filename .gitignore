@@ -20,3 +20,8 @@ local.properties
 
 # Local AI model files
 agent/models/
+
+# llama.cpp is cloned, not committed (see llama/src/main/cpp/CMakeLists.txt)
+llama/src/main/cpp/llama.cpp/
+llama/build/
+llama/.cxx/

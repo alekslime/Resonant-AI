@@ -67,6 +67,7 @@ import com.resonant.app.gestures.InteractionZone
 import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
+import com.resonant.app.phoneai.PhoneAiModelManager
 import com.resonant.app.speech.whisper.WhisperModelManager
 import com.resonant.app.ui.components.GestureSurface
 import com.resonant.app.ui.components.ResonantScaffold
@@ -97,10 +98,11 @@ private const val LIVE_VOICE = "Live voice"
 private const val LIVE_SPEED = "Live speed"
 private const val LIVE_MIC = "Live mic"
 private const val OFFLINE_VOICE_MODEL = "Offline voice model"
+private const val ON_PHONE_AI = "On-phone AI"
 private const val CLEAR_HISTORY = "Clear chat history"
 private const val DEBUG_MODE = "Debug Mode"
 
-private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, ADD_MATERIAL, SOUND_CUES, COLOR_THEME, FONT, TEXT_SIZE, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, CLEAR_HISTORY, DEBUG_MODE)
+private val settingsItems = listOf(REPLAY_TUTORIAL, YOUR_NAME, ADD_MATERIAL, SOUND_CUES, COLOR_THEME, FONT, TEXT_SIZE, TEXT_SPACING, REDUCE_MOTION, VOICE_ENGINE, LIVE_VOICE, LIVE_SPEED, LIVE_MIC, OFFLINE_VOICE_MODEL, ON_PHONE_AI, CLEAR_HISTORY, DEBUG_MODE)
 
 /** What is shown and spoken for an item. The toggle/state carries its own text, never a guess. */
 private fun liveVoiceLabel(id: String) = ResonantPrefs.LIVE_VOICES.firstOrNull { it.id == id }?.label ?: id
@@ -178,6 +180,7 @@ private fun labelFor(
     LIVE_MIC -> "$LIVE_MIC: ${if (liveHold) "hold to talk" else "always open"}"
     SOUND_CUES -> "$SOUND_CUES: ${if (soundCuesOn) "on" else "off"}"
     OFFLINE_VOICE_MODEL -> "$OFFLINE_VOICE_MODEL: ${voiceModelStatusText(voiceModelState)}"
+    ON_PHONE_AI -> "$ON_PHONE_AI: ${phoneAiStatusText(PhoneAiModelManager.currentState)}"
     else -> item
 }
 
@@ -189,6 +192,26 @@ private fun voiceModelStatusText(state: WhisperModelManager.State): String = whe
     }
     is WhisperModelManager.State.Ready -> "ready"
     is WhisperModelManager.State.Failed -> "download failed, tap to retry"
+}
+
+private fun phoneAiStatusText(state: PhoneAiModelManager.State): String = when (state) {
+    is PhoneAiModelManager.State.NotDownloaded -> "not downloaded"
+    is PhoneAiModelManager.State.Downloading -> {
+        val percent = if (state.totalBytes > 0) (state.bytesDownloaded * 100 / state.totalBytes).toInt() else null
+        if (percent != null) "downloading, $percent percent" else "downloading"
+    }
+    is PhoneAiModelManager.State.Ready -> "ready"
+    is PhoneAiModelManager.State.Failed -> "${state.message} Tap to retry"
+    is PhoneAiModelManager.State.Unsupported -> "not available on this phone"
+}
+
+/** Same idea as [voiceModelCategory]: a percentage tick is not worth re-announcing, a change of kind is. */
+private fun phoneAiCategory(state: PhoneAiModelManager.State): String = when (state) {
+    is PhoneAiModelManager.State.NotDownloaded -> "not_downloaded"
+    is PhoneAiModelManager.State.Downloading -> "downloading"
+    is PhoneAiModelManager.State.Ready -> "ready"
+    is PhoneAiModelManager.State.Failed -> "failed"
+    is PhoneAiModelManager.State.Unsupported -> "unsupported"
 }
 
 /** Coarse category only — used to decide when the voice model's line is worth re-announcing.
@@ -236,6 +259,10 @@ fun SettingsScreen(
     val voiceModel = remember { WhisperModelManager(context.applicationContext) }
     val voiceModelState by voiceModel.state.collectAsState()
     val voiceModelCategory = voiceModelCategory(voiceModelState)
+    // Chat's AI on the phone itself. Created here, before any label is built, so labelFor can read its state.
+    val phoneAi = remember { PhoneAiModelManager.get(context.applicationContext) }
+    val phoneAiState by phoneAi.state.collectAsState()
+    val phoneAiCategory = phoneAiCategory(phoneAiState)
     // Downloads must outlive this screen (leaving Settings mid-download
     // shouldn't cancel it), so this is a plain unscoped launch tied to the
     // process, not rememberCoroutineScope() — the same reasoning as
@@ -285,6 +312,14 @@ fun SettingsScreen(
     // background download finishing doesn't yank focus away from wherever
     // the person actually is in this list.
     LaunchedEffect(voiceModelCategory) {
+        audio.setQueue(
+            settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
+            startIndex = index,
+            autoAdvance = false
+        )
+    }
+
+    LaunchedEffect(phoneAiCategory) {
         audio.setQueue(
             settingsItems.mapIndexed { i, s -> SemanticUnit("settings_$i", labelFor(s, soundCuesOn, voiceModelState, liveVoiceId, liveSpeed, liveHold, engineLabel)) },
             startIndex = index,
@@ -422,6 +457,15 @@ fun SettingsScreen(
                 is WhisperModelManager.State.Ready -> {
                     audio.announce("Offline voice model is already downloaded and ready.")
                 }
+            }
+            ON_PHONE_AI -> when (val st = phoneAiState) {
+                is PhoneAiModelManager.State.NotDownloaded, is PhoneAiModelManager.State.Failed -> {
+                    audio.announce("Downloading the on-phone AI. This is a one-time download of about one gigabyte, best on Wi-Fi. Chat will answer on this phone when your PC isn't there.")
+                    downloadScope.launch { phoneAi.ensureDownloaded() }
+                }
+                is PhoneAiModelManager.State.Downloading -> audio.announce("Still ${phoneAiStatusText(st)}.")
+                is PhoneAiModelManager.State.Ready -> audio.announce("The on-phone AI is downloaded and ready.")
+                is PhoneAiModelManager.State.Unsupported -> audio.announce(st.spoken)
             }
             CLEAR_HISTORY -> {
                 if (awaitingClearConfirm) {

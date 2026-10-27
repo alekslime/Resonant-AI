@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Resonant"
 include(":app")
+include(":llama")

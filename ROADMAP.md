@@ -117,6 +117,17 @@ Compiles and the unit tests pass on the PC. None of it has been seen on a phone 
 - [ ] Per-theme focus styles beyond the clear themes' ring (shape, thickness). Wait until the current ones have been seen on a phone
 - [ ] Phone check of all of the above: ping size and speed, drift visible, springs not too soft, the thick ring against the yellow outline of Low vision, Photophobia still, fonts per theme, milestones on first open, Chat ping and crossfade
 
+## On-phone AI (2026-10-27)
+Chat can answer with no PC: PC agent -> Ollama -> language model on the phone -> lesson text. Target: Galaxy A17 4G (Helio G99, 4 GB). **Written and compiled on a PC only: never run on a phone, and the Android build has not been run.**
+- [x] `llama/` Gradle module (own CMake project, because whisper.cpp and llama.cpp both define `ggml`). llama.cpp is cloned, not committed: `cd llama/src/main/cpp && git clone --depth 1 --branch b11904 https://github.com/ggml-org/llama.cpp.git`. arm64 only
+- [x] `engine.cpp` (no JNI) keeps what the model already read, so question two only reads what is new. Built and run on a PC against a tiny random-weight model: load, reuse, stop, cancel (also while reading the prompt), too-long prompt
+- [x] `phoneai/`: `PhoneAiSupport.kt` + `PhoneAiSupportTest` (18 tests, ran on the JVM), `PhoneAiModelManager.kt` (resumable download of Qwen2.5-1.5B-Instruct Q4_K_M, about 1 GB, from Qwen's Hugging Face repo), `PhoneAi.kt`
+- [x] Settings > "On-phone AI" downloads it. Chat: tap the centre uses the phone's own Whisper when the PC agent is missing (`phoneVoiceNow`)
+- [ ] First run on the A17: does it load, tokens per second (Logcat tag `ResonantPhoneAi`: `prompt= reused= firstWord= speed=`), time to the first word with and without material, thread count (`PhoneAi.loadEngine`: try 2, 3, 4)
+- [ ] The model URL has never been fetched from the build machine (blocked there): check the download works
+- [ ] If too slow: `Qwen2.5-0.5B` or `Llama-3.2-1B` (one filename in `PhoneAiModelManager`); `PhoneAiPrompt.SYSTEM_CHARS` smaller; warm the lesson text when Chat opens
+- Known: the first question with a long lesson reads about 750 tokens, which on this processor may take 20 s or more. Hold-to-talk has no phone fallback yet (tap works)
+
 ## Design pass brief (from the user, 2026-10-11)
 - One cohesive design system: consistent spacing, type, buttons, cards, icons, motion.
 - Themes should feel like different experiences, not color swaps. So far only radius and outlines differ. Done since: per-theme motion (`MotionProfile`) and per-theme starting font and spacing (`ThemeTypeDefaults`). Ideas not done: a different focus shape or thickness per theme.
