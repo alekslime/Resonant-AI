@@ -46,9 +46,13 @@ object OpenAiClient {
     private const val READ_TIMEOUT_MS = 60_000
     private const val IMAGE_READ_TIMEOUT_MS = 120_000
 
-    /** About 250 spoken words: more than the two to four sentences Chat asks for, so a long answer is not cut off. */
-    private const val MAX_REPLY_TOKENS = 500
-    private const val MAX_IMAGE_TOKENS = 800
+    /**
+     * Thinking counts against the limit. Even at low effort a two-sentence answer used 387 thinking tokens
+     * out of 454 (checked against the real API), so 500 left a long lesson answer cut off or empty. This
+     * leaves room for the thinking plus about 250 spoken words. You pay only for tokens used.
+     */
+    private const val MAX_REPLY_TOKENS = 2_000
+    private const val MAX_IMAGE_TOKENS = 2_000
 
     private fun open(path: String, readTimeoutMs: Int, stream: Boolean): HttpURLConnection =
         (URL("${CloudAiConfig.BASE_URL}$path").openConnection() as HttpURLConnection).apply {
