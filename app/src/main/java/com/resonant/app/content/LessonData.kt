@@ -358,5 +358,5 @@ object LessonData {
         plantAdaptationsLesson,
         binarySearchLesson,
         plateTectonicsLesson
-    )
+    ) + MoreContent.all
 }

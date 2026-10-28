@@ -280,7 +280,7 @@ object QuizData {
         cellsAndParts,
         energyInEcosystems,
         plantAdaptations
-    )
+    ) + MoreContent.allQuizzes
 
     // Kept for backward compatibility with QuizScreen/QuizResultsScreen
     // which still reference this. Points to the first set.
