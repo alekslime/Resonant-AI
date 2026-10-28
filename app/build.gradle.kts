@@ -1,0 +1,151 @@
+import java.util.Properties
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+// Ollama endpoint for the Chat screen. Read from local.properties (git-ignored) so a
+// personal LAN address never gets committed; see network/OllamaConfig.kt.
+//   ollama.baseUrl=http://192.168.1.50:11434
+//   ollama.model=llama3.2
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val ollamaBaseUrl: String = localProps.getProperty("ollama.baseUrl", "http://10.0.2.2:11434")
+val ollamaModel: String = localProps.getProperty("ollama.model", "llama3.2")
+// A model that can look at pictures, to describe graphs and diagrams (ollama pull llama3.2-vision).
+//   ollama.visionModel=llama3.2-vision
+val ollamaVisionModel: String = localProps.getProperty("ollama.visionModel", "llama3.2-vision")
+
+// Live mode token server (agent/token_server.py). Leave live.tokenUrl empty to keep using
+// LiveKit's dev sandbox.
+//   live.tokenUrl=http://192.168.1.50:8787/token
+//   live.tokenKey=the same TOKEN_KEY as in agent/.env
+val liveTokenUrl: String = localProps.getProperty("live.tokenUrl", "").trim()
+val liveTokenKey: String = localProps.getProperty("live.tokenKey", "").trim()
+
+// Cloud model for Chat and pictures (network/OpenAiClient.kt). Any OpenAI-compatible server; the default is the
+// Meta Model API. The key is compiled into YOUR build: never share that APK. Empty key = cloud off.
+//   cloud.apiKey=...
+//   cloud.baseUrl=https://api.meta.ai/v1
+//   cloud.model=muse-spark-1.3
+val cloudAiBaseUrl: String = localProps.getProperty("cloud.baseUrl", "https://api.meta.ai/v1").trim()
+val cloudAiApiKey: String = localProps.getProperty("cloud.apiKey", "").trim()
+val cloudAiModel: String = localProps.getProperty("cloud.model", "muse-spark-1.3").trim()
+
+android {
+    namespace = "com.resonant.app"
+    compileSdk = 34
+    ndkVersion = "26.1.10909125"
+
+    defaultConfig {
+        applicationId = "com.resonant.app"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "0.1-prototype"
+
+        vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
+        buildConfigField("String", "OLLAMA_MODEL", "\"$ollamaModel\"")
+        buildConfigField("String", "OLLAMA_VISION_MODEL", "\"$ollamaVisionModel\"")
+        buildConfigField("String", "LIVE_TOKEN_URL", "\"$liveTokenUrl\"")
+        buildConfigField("String", "LIVE_TOKEN_KEY", "\"$liveTokenKey\"")
+        buildConfigField("String", "CLOUD_AI_BASE_URL", "\"$cloudAiBaseUrl\"")
+        buildConfigField("String", "CLOUD_AI_API_KEY", "\"$cloudAiApiKey\"")
+        buildConfigField("String", "CLOUD_AI_MODEL", "\"$cloudAiModel\"")
+
+        // Local Whisper (offline speech-to-text) — see app/src/main/cpp/CMakeLists.txt
+        // for what needs to be vendored before this actually builds.
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
+                arguments += listOf("-DANDROID_STL=c++_shared")
+            }
+        }
+        ndk {
+            // Real devices only for now; add "x86_64" too if you need the emulator.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+    }
+
+    packaging {
+        // whisper_jni and llama_jni both use the shared C++ runtime; one copy is enough.
+        jniLibs { pickFirsts += "**/libc++_shared.so" }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+dependencies {
+    // llama.cpp, for Chat answering on the phone alone (phoneai/PhoneAi.kt).
+    implementation(project(":llama"))
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.activity:activity-compose:1.9.1")
+
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("io.livekit:livekit-android:2.29.0")
+    // Reads the text out of PDFs (content/PdfTextExtractor.kt).
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+
+    // Reads the text in photos and scanned PDFs on the phone (content/ImageTextReader.kt). The
+    // bundled model ships inside the app, so it works offline; exifinterface turns photos upright.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Plain JVM unit tests (./gradlew test) — gesture classification, sentence chunking,
+    // haptic vocabulary, stream parsing. org.json is the real library because the copy in
+    // android.jar is stubs that throw under unit tests.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
+}

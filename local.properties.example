@@ -1,0 +1,24 @@
+## Copy to local.properties (git-ignored) and adjust.
+## Android Studio also writes sdk.dir into that file; leave it alone.
+
+# Address of the machine running `ollama serve`, reachable from your phone.
+# 10.0.2.2 only works from the Android emulator.
+ollama.baseUrl=http://192.168.1.50:11434
+
+# Any model you've already pulled with `ollama pull`.
+ollama.model=llama3.2
+
+# A model that can look at pictures, to describe graphs, diagrams and photos you add.
+# `ollama pull llama3.2-vision` (or qwen2.5vl, gemma3). Without it, pictures are read for their text only.
+ollama.visionModel=llama3.2-vision
+
+# Live mode: your own token server (run `python token_server.py` in agent/).
+# Leave live.tokenUrl empty to use LiveKit's dev sandbox instead (testing only).
+live.tokenUrl=http://192.168.1.50:8787/token
+live.tokenKey=the-same-TOKEN_KEY-as-in-agent-.env
+
+# Cloud model (the Meta Model API by default): Chat answers with it before trying your PC, and it describes pictures.
+# Get a key at dev.meta.ai. It is compiled into your own build, so never share that APK. Leave empty to turn it off.
+cloud.apiKey=
+cloud.baseUrl=https://api.meta.ai/v1
+cloud.model=muse-spark-1.3
