@@ -9,6 +9,9 @@ object MaterialContext {
 
     const val MAX_CHARS = 6000
 
+    /** A cloud model has room for a whole chapter (Muse Spark takes a million tokens). About 30,000 tokens. */
+    const val CLOUD_MAX_CHARS = 120_000
+
     /** The lesson as plain text, section titles included, ending at a whole unit. */
     fun text(lesson: Lesson, maxChars: Int = MAX_CHARS): String {
         val out = StringBuilder()
@@ -25,11 +28,11 @@ object MaterialContext {
     }
 
     /** [base] unchanged when there is no material. */
-    fun systemPrompt(base: String, lesson: Lesson?): String {
+    fun systemPrompt(base: String, lesson: Lesson?, maxChars: Int = MAX_CHARS): String {
         if (lesson == null) return base
         return base + " The student is studying their own material, titled \"${lesson.title}\". " +
             "Answer from it when the question is about it, and keep to what it says. " +
             "If it does not cover the question, say so in one short sentence, then help from what you know. " +
-            "The material follows. " + text(lesson)
+            "The material follows. " + text(lesson, maxChars)
     }
 }

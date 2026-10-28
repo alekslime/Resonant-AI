@@ -26,6 +26,15 @@ val ollamaVisionModel: String = localProps.getProperty("ollama.visionModel", "ll
 val liveTokenUrl: String = localProps.getProperty("live.tokenUrl", "").trim()
 val liveTokenKey: String = localProps.getProperty("live.tokenKey", "").trim()
 
+// Cloud model for Chat and pictures (network/OpenAiClient.kt). Any OpenAI-compatible server; the default is the
+// Meta Model API. The key is compiled into YOUR build: never share that APK. Empty key = cloud off.
+//   cloud.apiKey=...
+//   cloud.baseUrl=https://api.meta.ai/v1
+//   cloud.model=muse-spark-1.3
+val cloudAiBaseUrl: String = localProps.getProperty("cloud.baseUrl", "https://api.meta.ai/v1").trim()
+val cloudAiApiKey: String = localProps.getProperty("cloud.apiKey", "").trim()
+val cloudAiModel: String = localProps.getProperty("cloud.model", "muse-spark-1.3").trim()
+
 android {
     namespace = "com.resonant.app"
     compileSdk = 34
@@ -45,6 +54,9 @@ android {
         buildConfigField("String", "OLLAMA_VISION_MODEL", "\"$ollamaVisionModel\"")
         buildConfigField("String", "LIVE_TOKEN_URL", "\"$liveTokenUrl\"")
         buildConfigField("String", "LIVE_TOKEN_KEY", "\"$liveTokenKey\"")
+        buildConfigField("String", "CLOUD_AI_BASE_URL", "\"$cloudAiBaseUrl\"")
+        buildConfigField("String", "CLOUD_AI_API_KEY", "\"$cloudAiApiKey\"")
+        buildConfigField("String", "CLOUD_AI_MODEL", "\"$cloudAiModel\"")
 
         // Local Whisper (offline speech-to-text) — see app/src/main/cpp/CMakeLists.txt
         // for what needs to be vendored before this actually builds.

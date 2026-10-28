@@ -16,3 +16,9 @@ ollama.visionModel=llama3.2-vision
 # Leave live.tokenUrl empty to use LiveKit's dev sandbox instead (testing only).
 live.tokenUrl=http://192.168.1.50:8787/token
 live.tokenKey=the-same-TOKEN_KEY-as-in-agent-.env
+
+# Cloud model (the Meta Model API by default): Chat answers with it before trying your PC, and it describes pictures.
+# Get a key at dev.meta.ai. It is compiled into your own build, so never share that APK. Leave empty to turn it off.
+cloud.apiKey=
+cloud.baseUrl=https://api.meta.ai/v1
+cloud.model=muse-spark-1.3

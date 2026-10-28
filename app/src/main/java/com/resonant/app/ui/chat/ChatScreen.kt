@@ -89,7 +89,9 @@ import com.resonant.app.gestures.ResonantGesture
 import com.resonant.app.gestures.SwipeDirection
 import com.resonant.app.haptics.HapticPattern
 import com.resonant.app.network.ChatMessage
+import com.resonant.app.network.CloudAiConfig
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.network.OpenAiClient
 import com.resonant.app.phoneai.PhoneAi
 import com.resonant.app.phoneai.PhoneAiSupport
 import com.resonant.app.network.OllamaConfig
@@ -474,6 +476,32 @@ fun ChatScreen(
                 OfflineAnswers.answer(userText, lessons).sentences.forEach { onSentence(it) }
             }
 
+            // The cloud model first (Meta Model API): it needs no PC and can hold a whole chapter. True if it said
+            // anything; otherwise the next one tries, as before.
+            suspend fun answerFromCloud(): Boolean {
+                if (!CloudAiConfig.usable) return false
+                val cloudHistory = history.toMutableList()
+                if (cloudHistory.isNotEmpty() && cloudHistory[0].role == "system") {
+                    cloudHistory[0] = ChatMessage(
+                        "system",
+                        MaterialContext.systemPrompt(ChatData.systemPrompt, activeMaterial(), MaterialContext.CLOUD_MAX_CHARS)
+                    )
+                }
+                val cloudChunker = SentenceChunker()
+                try {
+                    OpenAiClient.chatStream(cloudHistory).collect { delta ->
+                        cloudChunker.feed(delta).forEach { onSentence(it) }
+                    }
+                    cloudChunker.flush()?.let { onSentence(it) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w("ResonantChat", "Cloud AI failed, trying the next one", e)
+                    if (sentenceCount > 0) cloudChunker.flush()?.let { onSentence(it) }
+                }
+                return sentenceCount > 0
+            }
+
             // No PC to answer: the language model on this phone, if it has been downloaded, then the
             // lesson text. Only if the phone model has said nothing yet does the lesson text step in.
             suspend fun answerOnPhone() {
@@ -511,9 +539,10 @@ fun ChatScreen(
                 // No server was ever set up (the build default is the emulator's address): do not
                 // wait out a connect timeout for a PC that does not exist.
                 val noPc = PhoneAiSupport.noServerConfigured(OllamaConfig.BASE_URL) && PhoneAi.isReady(context)
-                val skipNetwork = noPc || (serverUp == false && !serverCameBack())
+                val cloudAnswered = answerFromCloud()
+                val skipNetwork = cloudAnswered || noPc || (serverUp == false && !serverCameBack())
                 if (skipNetwork) {
-                    answerOnPhone()
+                    if (!cloudAnswered) answerOnPhone()
                 } else {
                     try {
                         OllamaClient.chatStream(history).collect { delta ->

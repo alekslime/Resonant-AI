@@ -128,6 +128,15 @@ Chat can answer with no PC: PC agent -> Ollama -> language model on the phone ->
 - [ ] If too slow: `Qwen2.5-0.5B` or `Llama-3.2-1B` (one filename in `PhoneAiModelManager`); `PhoneAiPrompt.SYSTEM_CHARS` smaller; warm the lesson text when Chat opens
 - Known: the first question with a long lesson reads about 750 tokens, which on this processor may take 20 s or more. Hold-to-talk has no phone fallback yet (tap works)
 
+## Meta hackathon (2026-10-28)
+Meta Global AI Developer Hackathon, Indie track, submissions due 2026-11-04 21:00 ET (about 03:00 on 5 Nov in Albania). Judging: Impact 30, Use of Meta AI tooling 25, Demo 25, Technical depth 20. Numbers come from third-party summaries: read the Official Rules.
+- [x] Cloud client (`network/OpenAiProtocol.kt` pure + tested, `OpenAiClient.kt`): OpenAI-style chat to the Meta Model API (`https://api.meta.ai/v1`, `muse-spark-1.3`). Key and URL in `local.properties` (`cloud.apiKey`, `cloud.baseUrl`, `cloud.model`), compiled into your own build only. Chat order: cloud -> PC/Ollama -> phone model -> lesson text. Cloud sees up to 120,000 characters of the material (`MaterialContext.CLOUD_MAX_CHARS`). Pictures and PDF figures are described by the cloud model first. A wrong key or missing billing switches cloud off until the app restarts (`CloudAiConfig.disabledReason`)
+- [ ] **Blocked: Meta billing.** `/chat/completions` returns `billing_not_configured`. The team must finish https://dev.meta.ai/billing/ (and see whether the $150 credit appears)
+- [ ] Not yet run against the real API: streaming shape, `reasoning_effort: low`, `max_completion_tokens`, picture input as an `image_url` data URL (Meta's docs do not show it; check "Image understanding")
+- [ ] Muse Voice Transcribe as a speech engine (`POST /v1/asr/transcribe`, request format not found; realtime websocket: handshake JSON then 24 kHz PCM16 frames)
+- [ ] Open-weight option: Muse Glimmer 30B on Baseten (H100, OpenAI-compatible: base URL `https://model-<id>.api.baseten.co/environments/production/sync/v1`, model `meta-models/Muse-Glimmer-30B`). Same client: only the three `cloud.*` lines change
+- [ ] Modal proxy so a demo APK needs no key; demo video; short write-up; test with a blind or low-vision student; confirm the teammate was accepted individually
+
 ## Design pass brief (from the user, 2026-10-11)
 - One cohesive design system: consistent spacing, type, buttons, cards, icons, motion.
 - Themes should feel like different experiences, not color swaps. So far only radius and outlines differ. Done since: per-theme motion (`MotionProfile`) and per-theme starting font and spacing (`ThemeTypeDefaults`). Ideas not done: a different focus shape or thickness per theme.

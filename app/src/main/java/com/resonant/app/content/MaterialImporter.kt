@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.resonant.app.network.CloudAiConfig
 import com.resonant.app.network.OllamaClient
+import com.resonant.app.network.OpenAiClient
 
 /**
  * Turns something the person shared or picked (a .txt / .md / .pdf file, a photo or screenshot, or plain shared text)
@@ -163,7 +165,7 @@ object MaterialImporter {
         var failures = 0
         for (index in candidates) {
             val jpeg = jpegs[index] ?: continue
-            val reply = OllamaClient.describeImage(jpeg, PdfFigures.pagePrompt(pages[index]))
+            val reply = describePicture(jpeg, PdfFigures.pagePrompt(pages[index]))
             if (reply == null) {
                 if (++failures >= 2) break
                 continue
@@ -173,6 +175,11 @@ object MaterialImporter {
         }
         return out
     }
+
+    /** The cloud model first (far better at graphs than a small one), then the vision model on your own server. Null if neither can. */
+    private fun describePicture(jpeg: ByteArray, prompt: String): String? =
+        (if (CloudAiConfig.usable) OpenAiClient.describeImage(jpeg, prompt) else null)
+            ?: OllamaClient.describeImage(jpeg, prompt)
 
     /** Reads the words in a photo on the phone, then asks the vision model to describe it. Slow: off the main thread. */
     private fun fromImage(store: MaterialStore, fileName: String, bytes: ByteArray): Result {
@@ -185,7 +192,7 @@ object MaterialImporter {
             null
         }
         if (read == null) return Result.Failed
-        val description = OllamaClient.describeImage(read.jpeg, ImageMaterial.prompt(read.text))
+        val description = describePicture(read.jpeg, ImageMaterial.prompt(read.text))
         return decodeImage(store, fileName, read.text, description)
     }
 
