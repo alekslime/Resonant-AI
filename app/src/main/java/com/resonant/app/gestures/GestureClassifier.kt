@@ -16,6 +16,13 @@ object GestureClassifier {
     const val SWIPE_MIN_DISTANCE_PX = 64f
     const val PINCH_MIN_CHANGE_PX = 48f
 
+    /**
+     * A pinch must change the gap between the fingers by at least this many times as far as
+     * the pair travelled together. Below that it is a two-finger swipe whose fingers merely
+     * drifted apart (nobody swipes perfectly parallel).
+     */
+    const val PINCH_DOMINANCE = 1.5f
+
     /** Four-finger rewind: how far the fingers travel left for each rewind step. */
     const val SCRUB_STEP_DP = 80f
 
@@ -38,8 +45,17 @@ object GestureClassifier {
         if (stepPx <= 0f) 0 else ((startX - currentX) / stepPx).toInt().coerceAtLeast(0)
 
     /** True once two fingers have moved apart or together far enough to be a pinch, not a two-finger swipe. */
-    fun isPinch(startDistance: Float, distance: Float): Boolean =
-        abs(distance - startDistance) > PINCH_MIN_CHANGE_PX
+    fun isPinch(startDistance: Float, distance: Float, centroidTravel: Float = 0f): Boolean {
+        val spanChange = abs(distance - startDistance)
+        return spanChange > PINCH_MIN_CHANGE_PX && spanChange > centroidTravel * PINCH_DOMINANCE
+    }
+
+    /**
+     * True once two fingers have clearly moved together as a pair (a two-finger swipe) rather
+     * than toward/away from each other. After this the touch can no longer become a pinch.
+     */
+    fun isTwoFingerPan(startDistance: Float, distance: Float, centroidTravel: Float): Boolean =
+        centroidTravel > TAP_MAX_DRIFT_PX && centroidTravel * PINCH_DOMINANCE >= abs(distance - startDistance)
 
     /**
      * In two-finger mode a vertical swipe needs two fingers; one finger is left to scroll.

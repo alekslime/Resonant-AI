@@ -95,7 +95,9 @@ fun Modifier.resonantGestureDetector(
         var threeFingerHoldFired = false
         var pinchStartDist = -1f
         var pinchLastDist = -1f
+        var pinchStartCentroid = Offset.Zero
         var pinching = false
+        var twoFingerPanning = false   // fingers are travelling together: this is a swipe, never a pinch
         var scrubStartX = Float.NaN
         var scrubSteps = 0
         var scrubArmed = false
@@ -181,11 +183,20 @@ fun Modifier.resonantGestureDetector(
             if (onPinch != null && pressedNow == 2 && maxPointerCount == 2) {
                 val down = changes.filter { it.pressed }
                 val dist = (down[0].position - down[1].position).getDistance()
+                val centroid = (down[0].position + down[1].position) / 2f
                 if (pinchStartDist < 0f) {
                     pinchStartDist = dist
                     pinchLastDist = dist
+                    pinchStartCentroid = centroid
                 } else {
-                    if (!pinching && GestureClassifier.isPinch(pinchStartDist, dist)) pinching = true
+                    val travel = (centroid - pinchStartCentroid).getDistance()
+                    if (!pinching && !twoFingerPanning) {
+                        if (GestureClassifier.isTwoFingerPan(pinchStartDist, dist, travel)) {
+                            twoFingerPanning = true
+                        } else if (GestureClassifier.isPinch(pinchStartDist, dist, travel)) {
+                            pinching = true
+                        }
+                    }
                     if (pinching && pinchLastDist > 0f && dist > 0f) {
                         changes.forEach { it.consume() }
                         onPinch(dist / pinchLastDist)
