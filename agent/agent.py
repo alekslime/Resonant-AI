@@ -1,7 +1,7 @@
 """
 Resonant PC agent - the full local voice loop (+ state to the phone, interruptible).
 
-  phone mic -> LiveKit -> Silero VAD -> faster-whisper (STT) -> Ollama (LLM, streamed)
+  phone mic -> LiveKit -> Silero VAD -> faster-whisper (STT) -> Ollama or the cloud model (LLM, streamed)
   -> Kokoro (TTS, sentence by sentence) -> LiveKit -> phone speaker
 
 Everything but the LiveKit relay runs on this PC. If the Kokoro model files are
@@ -46,6 +46,14 @@ HERE = Path(__file__).parent
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base.en")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/v1")
+# Optional cloud brain (the Meta Model API). Put CLOUD_API_KEY in .env to use it; without it, Ollama answers as before.
+# Ollama stays as the fallback and as the voice-command router.
+CLOUD_API_KEY = os.getenv("CLOUD_API_KEY", "").strip()
+CLOUD_BASE_URL = os.getenv("CLOUD_BASE_URL", "https://api.meta.ai/v1")
+CLOUD_MODEL = os.getenv("CLOUD_MODEL", "muse-spark-1.3")
+# The model's thinking counts against this limit, so it is far above the length of a spoken answer.
+CLOUD_MAX_TOKENS = int(os.getenv("CLOUD_MAX_TOKENS", "1500"))
+USE_CLOUD = bool(CLOUD_API_KEY)
 _KOKORO_FP32 = HERE / "models" / "kokoro-v1.0.onnx"
 _KOKORO_INT8 = HERE / "models" / "kokoro-v1.0.int8.onnx"
 KOKORO_MODEL = Path(os.getenv("KOKORO_MODEL") or (_KOKORO_INT8 if _KOKORO_INT8.exists() else _KOKORO_FP32))
@@ -174,7 +182,13 @@ class Conversation:
         self.kokoro = kokoro
         self.voice_source = voice_source
         self.local = local
-        self.llm = AsyncOpenAI(base_url=OLLAMA_URL, api_key="ollama")
+        self.local_llm = AsyncOpenAI(base_url=OLLAMA_URL, api_key="ollama")
+        # Short timeout and no retries: if the cloud is down the turn falls back to Ollama quickly.
+        self.llm = (
+            AsyncOpenAI(base_url=CLOUD_BASE_URL, api_key=CLOUD_API_KEY, timeout=20.0, max_retries=0)
+            if USE_CLOUD
+            else self.local_llm
+        )
         self.history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.material = ("", "")  # (title, text) the student opened last in the app
         self.pending: list[rtc.AudioFrame] = []
@@ -234,7 +248,7 @@ class Conversation:
         t0 = time.time()
         try:
             resp = await asyncio.wait_for(
-                self.llm.chat.completions.create(
+                self.local_llm.chat.completions.create(
                     model=OLLAMA_MODEL,
                     messages=self.commands.router_messages(text),
                     max_tokens=60,
@@ -337,6 +351,22 @@ class Conversation:
         }
         return messages
 
+    async def _open_stream(self):
+        """The streamed reply. The cloud model first (if set); if it cannot start, Ollama answers this turn."""
+        if USE_CLOUD:
+            try:
+                return await self.llm.chat.completions.create(
+                    model=CLOUD_MODEL,
+                    messages=self._messages(),
+                    stream=True,
+                    extra_body={"reasoning_effort": "low", "max_completion_tokens": CLOUD_MAX_TOKENS},
+                )
+            except Exception as e:
+                log.warning("cloud model failed (%s); Ollama answers this turn", e)
+        return await self.local_llm.chat.completions.create(
+            model=OLLAMA_MODEL, messages=self._messages(), max_tokens=260, stream=True
+        )
+
     def apply_settings(
         self,
         voice: str | None = None,
@@ -394,8 +424,10 @@ class Conversation:
 
     async def warm_up(self) -> None:
         t0 = time.time()
+        if USE_CLOUD:
+            log.info("answers come from the cloud model '%s'; Ollama is the fallback and the command router", CLOUD_MODEL)
         try:
-            await self.llm.chat.completions.create(
+            await self.local_llm.chat.completions.create(
                 model=OLLAMA_MODEL, messages=[{"role": "user", "content": "hi"}], max_tokens=1
             )
             log.info("ollama '%s' warm in %.1fs", OLLAMA_MODEL, time.time() - t0)
@@ -588,9 +620,7 @@ class Conversation:
             self.voice_source.clear_queue()
 
         try:
-            stream = await self.llm.chat.completions.create(
-                model=OLLAMA_MODEL, messages=self._messages(), max_tokens=260, stream=True
-            )
+            stream = await self._open_stream()
             async for chunk in stream:
                 if not chunk.choices:
                     continue
