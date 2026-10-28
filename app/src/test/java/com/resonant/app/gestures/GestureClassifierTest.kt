@@ -106,6 +106,16 @@ class GestureClassifierTest {
     }
 
     @Test
+    fun `fingers drifting apart during a two-finger swipe are not a pinch`() {
+        // Pair travelled 200 px; the gap grew 60 px because the swipe wasn't perfectly parallel.
+        assertFalse(GestureClassifier.isPinch(300f, 360f, centroidTravel = 200f))
+        assertTrue(GestureClassifier.isTwoFingerPan(300f, 360f, centroidTravel = 200f))
+        // A real pinch: the gap changes a lot while the pair barely moves.
+        assertTrue(GestureClassifier.isPinch(300f, 380f, centroidTravel = 15f))
+        assertFalse(GestureClassifier.isTwoFingerPan(300f, 380f, centroidTravel = 15f))
+    }
+
+    @Test
     fun scrub_steps_count_whole_steps_to_the_left_and_never_go_negative() {
         assertEquals(0, GestureClassifier.scrubSteps(500f, 450f, 100f))
         assertEquals(1, GestureClassifier.scrubSteps(500f, 400f, 100f))
